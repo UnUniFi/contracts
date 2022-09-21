@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Uint128;
+use crate::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -18,20 +18,16 @@ pub enum ExecuteMsg {
     UpdateFreezeFlag {
         freeze_flag: bool,
     },
-    Deposit {
-        denom: String,
-        amount: Uint128,
-    },
+    DepositNativeToken {},
     ClaimReward {
-        denom: String,
-        amount: Uint128,
+        asset: Asset,
     },
     ClaimAllRewards {},
     StartUnbond {},
     ClaimUnbond {},
     SwapReward {
-        source_token: String,
-        dest_token: String,
+        source_token: AssetInfo,
+        dest_token: AssetInfo,
     },
     AutoCompoundRewards {},
 }

@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, CanonicalAddr, Coin, CosmosMsg, StdResult, SubMsg, Uint128,
-    WasmMsg,
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -52,20 +51,6 @@ impl Asset {
     pub fn into_submsg(self, recipient: Addr) -> StdResult<SubMsg> {
         Ok(SubMsg::new(self.into_msg(recipient)?))
     }
-
-    pub fn to_raw(&self, api: &dyn Api) -> StdResult<AssetRaw> {
-        Ok(AssetRaw {
-            info: match &self.info {
-                AssetInfo::NativeToken { denom } => AssetInfoRaw::NativeToken {
-                    denom: denom.to_string(),
-                },
-                AssetInfo::Token { contract_addr } => AssetInfoRaw::Token {
-                    contract_addr: api.addr_canonicalize(contract_addr.as_str())?,
-                },
-            },
-            amount: self.amount,
-        })
-    }
 }
 
 /// AssetInfo contract_addr is usually passed from the cw20 hook
@@ -87,17 +72,6 @@ impl fmt::Display for AssetInfo {
 }
 
 impl AssetInfo {
-    pub fn to_raw(&self, api: &dyn Api) -> StdResult<AssetInfoRaw> {
-        match self {
-            AssetInfo::NativeToken { denom } => Ok(AssetInfoRaw::NativeToken {
-                denom: denom.to_string(),
-            }),
-            AssetInfo::Token { contract_addr } => Ok(AssetInfoRaw::Token {
-                contract_addr: api.addr_canonicalize(contract_addr.as_str())?,
-            }),
-        }
-    }
-
     pub fn is_native_token(&self) -> bool {
         match self {
             AssetInfo::NativeToken { .. } => true,
@@ -123,73 +97,11 @@ impl AssetInfo {
             }
         }
     }
-}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AssetRaw {
-    pub info: AssetInfoRaw,
-    pub amount: Uint128,
-}
-
-impl AssetRaw {
-    pub fn to_normal(&self, api: &dyn Api) -> StdResult<Asset> {
-        Ok(Asset {
-            info: match &self.info {
-                AssetInfoRaw::NativeToken { denom } => AssetInfo::NativeToken {
-                    denom: denom.to_string(),
-                },
-                AssetInfoRaw::Token { contract_addr } => AssetInfo::Token {
-                    contract_addr: api.addr_humanize(contract_addr)?.to_string(),
-                },
-            },
-            amount: self.amount,
-        })
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum AssetInfoRaw {
-    Token { contract_addr: CanonicalAddr },
-    NativeToken { denom: String },
-}
-
-impl AssetInfoRaw {
-    pub fn to_normal(&self, api: &dyn Api) -> StdResult<AssetInfo> {
+    pub fn to_string(&self) -> String {
         match self {
-            AssetInfoRaw::NativeToken { denom } => Ok(AssetInfo::NativeToken {
-                denom: denom.to_string(),
-            }),
-            AssetInfoRaw::Token { contract_addr } => Ok(AssetInfo::Token {
-                contract_addr: api.addr_humanize(contract_addr)?.to_string(),
-            }),
-        }
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        match self {
-            AssetInfoRaw::NativeToken { denom } => denom.as_bytes(),
-            AssetInfoRaw::Token { contract_addr } => contract_addr.as_slice(),
-        }
-    }
-
-    pub fn equal(&self, asset: &AssetInfoRaw) -> bool {
-        match self {
-            AssetInfoRaw::Token { contract_addr, .. } => {
-                let self_contract_addr = contract_addr;
-                match asset {
-                    AssetInfoRaw::Token { contract_addr, .. } => {
-                        self_contract_addr == contract_addr
-                    }
-                    AssetInfoRaw::NativeToken { .. } => false,
-                }
-            }
-            AssetInfoRaw::NativeToken { denom, .. } => {
-                let self_denom = denom;
-                match asset {
-                    AssetInfoRaw::Token { .. } => false,
-                    AssetInfoRaw::NativeToken { denom, .. } => self_denom == denom,
-                }
-            }
+            AssetInfo::NativeToken { denom } => denom.to_string(),
+            AssetInfo::Token { contract_addr } => contract_addr.to_string(),
         }
     }
 }

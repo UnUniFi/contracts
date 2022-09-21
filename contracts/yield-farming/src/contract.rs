@@ -1,11 +1,18 @@
-use crate::state::{Config, CONFIG};
+use crate::state::{
+    Config, RewardPool, CONFIG, REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS,
+    USER_REWARD_DEBTS,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage,
+    Uint128,
 };
 
-use yield_farming::farming::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use yield_farming::{
+    asset::{Asset, AssetInfo},
+    farming::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+};
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -35,8 +42,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::UpdateFreezeFlag { freeze_flag } => {
             execute_update_freeze_flag(deps, env, info, freeze_flag)
         }
-        ExecuteMsg::Deposit { denom, amount } => todo!(),
-        ExecuteMsg::ClaimReward { denom, amount } => todo!(),
+        ExecuteMsg::DepositNativeToken {} => execute_deposit_native_token(deps, env, info),
+        ExecuteMsg::ClaimReward { asset } => todo!(),
         ExecuteMsg::ClaimAllRewards {} => todo!(),
         ExecuteMsg::StartUnbond {} => todo!(),
         ExecuteMsg::ClaimUnbond {} => todo!(),
@@ -74,6 +81,7 @@ pub fn execute_update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
+/// Only owner can execute it. To update the owner address
 pub fn execute_update_freeze_flag(
     deps: DepsMut,
     _env: Env,
@@ -91,6 +99,94 @@ pub fn execute_update_freeze_flag(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attribute("action", "update_freeze_flag"))
+}
+
+pub fn execute_deposit_native_token(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> StdResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if config.is_freeze {
+        return Err(StdError::generic_err("contract freezed"));
+    }
+
+    let fund = info.funds[0].clone();
+    if fund.amount.is_zero() {
+        return Err(StdError::generic_err("invalid deposit amount"));
+    }
+
+    let asset: Asset = Asset {
+        info: AssetInfo::NativeToken { denom: fund.denom },
+        amount: fund.amount,
+    };
+
+    // swap, add liquidity, get lp tokens and deposit lp tokens into the target farming pool
+    update_pool(deps.storage, env)?;
+    withdraw_reward(deps.storage, info.sender.to_string())?;
+    // USER_DEPOSITS, TOTAL_DEPOSITS update
+    update_user_reward_debt(deps.storage, info.sender.to_string())?;
+
+    Ok(Response::new().add_attribute("action", "deposit_native_token"))
+}
+
+pub fn update_pool(store: &mut dyn Storage, env: Env) -> StdResult<()> {
+    // claim reward from the osmosis pool
+    let reward_pools = REWARD_POOLS.load(store)?;
+    let mut new_reward_pools: Vec<RewardPool> = vec![];
+    let total_deposits = TOTAL_DEPOSITS.load(store)?;
+
+    for mut reward_pool in reward_pools {
+        if total_deposits.is_zero() {
+            reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
+        } else {
+            let new_rewards = Uint128::zero(); // claimed reward of selected pool
+            reward_pool.acc_reward_per_share += new_rewards
+                .checked_mul(Uint128::from(1_000_000_000_000u128))?
+                .checked_div(total_deposits)?;
+        }
+        new_reward_pools.push(reward_pool);
+    }
+
+    REWARD_POOLS.save(store, &new_reward_pools)?;
+    Ok(())
+}
+
+pub fn withdraw_reward(store: &mut dyn Storage, wallet: String) -> StdResult<()> {
+    let reward_pools = REWARD_POOLS.load(store)?;
+
+    for reward_pool in reward_pools {
+        if let Some(user_deposit) = USER_DEPOSITS.may_load(store, wallet.clone())? {
+            let key = reward_pool.reward_token.to_string() + &wallet;
+            if let Some(user_reward_debt) = USER_REWARD_DEBTS.may_load(store, key.clone())? {
+                let pending = user_deposit
+                    .checked_mul(reward_pool.acc_reward_per_share)?
+                    .checked_div(Uint128::from(1_000_000_000_000u128))?
+                    .checked_sub(user_reward_debt)?;
+                if !pending.is_zero() {
+                    USER_PENDING_REWARDS.save(store, key, &pending)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn update_user_reward_debt(store: &mut dyn Storage, wallet: String) -> StdResult<()> {
+    let reward_pools = REWARD_POOLS.load(store)?;
+
+    for reward_pool in reward_pools {
+        if let Some(user_deposit) = USER_DEPOSITS.may_load(store, wallet.clone())? {
+            let key = reward_pool.reward_token.to_string() + &wallet;
+            let user_reward_debt = user_deposit
+                .checked_mul(reward_pool.acc_reward_per_share)?
+                .checked_div(Uint128::from(1_000_000_000_000u128))?;
+            USER_REWARD_DEBTS.save(store, key, &user_reward_debt)?;
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
