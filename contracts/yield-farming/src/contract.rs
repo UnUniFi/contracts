@@ -43,15 +43,15 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             execute_update_freeze_flag(deps, env, info, freeze_flag)
         }
         ExecuteMsg::DepositNativeToken {} => execute_deposit_native_token(deps, env, info),
-        ExecuteMsg::ClaimReward { asset } => todo!(),
-        ExecuteMsg::ClaimAllRewards {} => todo!(),
-        ExecuteMsg::StartUnbond {} => todo!(),
-        ExecuteMsg::ClaimUnbond {} => todo!(),
+        ExecuteMsg::ClaimReward { asset } => execute_claim_reward(deps, env, info, asset),
+        ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
+        ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
+        ExecuteMsg::ClaimUnbond {} => execute_claim_unbond(deps, env, info),
         ExecuteMsg::SwapReward {
             source_token,
             dest_token,
-        } => todo!(),
-        ExecuteMsg::AutoCompoundRewards {} => todo!(),
+        } => execute_swap_reward(deps, env, info, source_token, dest_token),
+        ExecuteMsg::AutoCompoundRewards {} => execute_auto_compound_rewards(deps, env, info),
     }
 }
 
@@ -116,10 +116,10 @@ pub fn execute_deposit_native_token(
         return Err(StdError::generic_err("invalid deposit amount"));
     }
 
-    let asset: Asset = Asset {
-        info: AssetInfo::NativeToken { denom: fund.denom },
-        amount: fund.amount,
-    };
+    // let asset: Asset = Asset {
+    //     info: AssetInfo::NativeToken { denom: fund.denom },
+    //     amount: fund.amount,
+    // };
 
     // swap, add liquidity, get lp tokens and deposit lp tokens into the target farming pool
     update_pool(deps.storage, env)?;
@@ -128,6 +128,49 @@ pub fn execute_deposit_native_token(
     update_user_reward_debt(deps.storage, info.sender.to_string())?;
 
     Ok(Response::new().add_attribute("action", "deposit_native_token"))
+}
+
+pub fn execute_claim_reward(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _asset: Asset,
+) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_claim_reward"))
+}
+
+pub fn execute_claim_all_rewards(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_claim_all_rewards"))
+}
+
+pub fn execute_start_unbond(_deps: DepsMut, _env: Env, _info: MessageInfo) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_start_unbond"))
+}
+
+pub fn execute_claim_unbond(_deps: DepsMut, _env: Env, _info: MessageInfo) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_claim_unbond"))
+}
+
+pub fn execute_swap_reward(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _source_token: AssetInfo,
+    _dest_token: AssetInfo,
+) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_swap_reward"))
+}
+
+pub fn execute_auto_compound_rewards(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_auto_compound_rewards"))
 }
 
 pub fn update_pool(store: &mut dyn Storage, env: Env) -> StdResult<()> {

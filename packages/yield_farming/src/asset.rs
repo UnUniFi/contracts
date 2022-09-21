@@ -97,11 +97,4 @@ impl AssetInfo {
             }
         }
     }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            AssetInfo::NativeToken { denom } => denom.to_string(),
-            AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-        }
-    }
 }
