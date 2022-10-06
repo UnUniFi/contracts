@@ -26,8 +26,14 @@ pub fn instantiate(
         owner: info.sender,
         unbond_period: msg.unbond_period,
         is_freeze: false,
+        default_timeout: msg.default_timeout,
+        init_channel: false,
+        default_remote_denom: None,
     };
     CONFIG.save(deps.storage, &config)?;
+    TOTAL_DEPOSITS.save(deps.storage, &Uint128::zero())?;
+    REWARD_POOLS.save(deps.storage, &vec![])?;
+
     Ok(Response::new())
 }
 
@@ -245,6 +251,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         owner: config.owner.to_string(),
         unbond_period: config.unbond_period,
         is_freeze: config.is_freeze,
+        default_timeout: config.default_timeout,
     })
 }
 
