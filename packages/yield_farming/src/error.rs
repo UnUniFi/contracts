@@ -3,7 +3,6 @@ use std::string::FromUtf8Error;
 use thiserror::Error;
 
 use cosmwasm_std::StdError;
-use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 
 /// Never is a placeholder to ensure we don't return any errors
@@ -18,14 +17,14 @@ pub enum ContractError {
     #[error("{0}")]
     Payment(#[from] PaymentError),
 
-    #[error("{0}")]
-    Admin(#[from] AdminError),
-
     #[error("Channel doesn't exist: {id}")]
     NoSuchChannel { id: String },
 
     #[error("Didn't send any funds")]
     NoFunds {},
+
+    #[error("Contract Freezed")]
+    ContractFreezed {},
 
     #[error("Amount larger than 2**64, not supported by ics20 packets")]
     AmountOverflow {},
@@ -60,13 +59,7 @@ pub enum ContractError {
     #[error("Only contract admin can do this")]
     Unauthorized,
 
-    #[error("You can only send cw20 tokens that have been explicitly allowed")]
-    NotOnAllowList,
-
-    #[error("Already registered external token denomination")]
-    ExternalTokenExists,
-
-    #[error("Only accepts external tokens that have been explicitly allowed")]
+    #[error("No allowed token")]
     NoAllowedToken {},
 
     #[error("Execute msg unknown")]

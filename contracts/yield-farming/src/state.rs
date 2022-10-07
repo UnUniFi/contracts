@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, IbcEndpoint, Order, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, IbcEndpoint, StdResult, Storage, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -52,8 +52,6 @@ pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");
 /// indexed by (channel_id, denom) maintaining the balance of the channel in that currency
 pub const CHANNEL_STATE: Map<(&str, &str), ChannelState> = Map::new("channel_state");
 
-pub const EXTERNAL_TOKENS: Map<&str, ExternalTokenInfo> = Map::new("external_tokens");
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ChannelState {
     pub outstanding: Uint128,
@@ -68,11 +66,6 @@ pub struct ChannelInfo {
     pub counterparty_endpoint: IbcEndpoint,
     /// the connection this exists on (you can use to query client/consensus info)
     pub connection_id: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ExternalTokenInfo {
-    pub contract: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -122,29 +115,6 @@ pub fn reduce_channel_balance(
         },
     )?;
     Ok(())
-}
-
-pub fn find_external_token(
-    storage: &mut dyn Storage,
-    contract: String,
-) -> StdResult<Option<String>> {
-    let allow: Vec<String> = EXTERNAL_TOKENS
-        .range(storage, None, None, Order::Ascending)
-        .filter(|item| {
-            if let Ok((_, allow)) = item {
-                allow.contract.eq(&contract)
-            } else {
-                false
-            }
-        })
-        .map(|d| d.map(|(denom, _)| denom))
-        .collect::<StdResult<_>>()?;
-
-    if allow.is_empty() {
-        return Ok(None);
-    }
-
-    return Ok(Some(allow.get(0).unwrap().to_string()));
 }
 
 // this is like increase, but it only "un-subtracts" (= adds) outstanding, not total_sent

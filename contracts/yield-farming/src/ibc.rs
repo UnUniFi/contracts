@@ -7,10 +7,10 @@ use cosmwasm_std::{
 
 use crate::state::{
     join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ChannelInfo, ReplyArgs,
-    CHANNEL_INFO, CONFIG, EXTERNAL_TOKENS, LOCKUP, REPLY_ARGS,
+    CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS,
 };
 use cw20::Cw20ExecuteMsg;
-use yield_farming::amount::{get_cw20_denom, Amount};
+use yield_farming::amount::Amount;
 use yield_farming::error::{ContractError, Never};
 use yield_farming::ibc::{
     CreateLockupAck, Ics20Ack, Ics20Packet, LockResultAck, OsmoPacket, SwapAmountInAck, Voucher,
@@ -163,21 +163,13 @@ pub fn ibc_packet_receive(
 // Returns local denom if the denom is an encoded voucher from the expected endpoint
 // Otherwise, error
 fn parse_voucher(
-    storage: &mut dyn Storage,
+    _storage: &mut dyn Storage,
     voucher_denom: String,
     remote_endpoint: &IbcEndpoint,
 ) -> Result<Voucher, ContractError> {
     let ibc_prefix = join_ibc_paths(&remote_endpoint.port_id, &remote_endpoint.channel_id);
     if !voucher_denom.starts_with(&ibc_prefix) {
-        let token = EXTERNAL_TOKENS
-            .load(storage, voucher_denom.as_ref())
-            .map_err(|_| ContractError::NoAllowedToken {})?;
-
-        let data = Voucher {
-            denom: get_cw20_denom(token.contract.as_str()),
-            our_chain: false,
-        };
-        return Ok(data);
+        return Err(ContractError::NoAllowedToken {});
     }
 
     let split_denom: Vec<&str> = voucher_denom.splitn(3, '/').collect();
@@ -203,7 +195,7 @@ fn parse_voucher(
 }
 
 fn parse_voucher_ack(
-    storage: &mut dyn Storage,
+    _storage: &mut dyn Storage,
     voucher_denom: String,
     remote_endpoint: &IbcEndpoint,
 ) -> Result<Voucher, ContractError> {
@@ -220,14 +212,7 @@ fn parse_voucher_ack(
         return Err(ContractError::NoForeignTokens {});
     }
 
-    let token = EXTERNAL_TOKENS
-        .load(storage, split_denom[2])
-        .map_err(|_| ContractError::NoAllowedToken {})?;
-
-    Ok(Voucher {
-        denom: get_cw20_denom(token.contract.as_str()),
-        our_chain: false,
-    })
+    return Err(ContractError::NoAllowedToken {});
 }
 
 // this does the work of ibc_packet_receive, we wrap it to turn errors into acknowledgements

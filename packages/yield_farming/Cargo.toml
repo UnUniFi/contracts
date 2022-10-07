@@ -20,7 +20,6 @@ schemars = "0.8.10"
 serde = { version = "1.0.144", default-features = false, features = ["derive"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 thiserror = { version = "1.0.23" }
-cw-controllers = "0.13.4"
 
 [profile.release]
 opt-level = 3

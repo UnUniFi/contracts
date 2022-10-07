@@ -1,17 +1,23 @@
 use crate::state::{
-    Config, RewardPool, CONFIG, REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS,
-    USER_REWARD_DEBTS,
+    increase_channel_balance, Config, RewardPool, CHANNEL_INFO, CONFIG, REWARD_POOLS,
+    TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS, USER_REWARD_DEBTS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage,
-    Uint128,
+    attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, MessageInfo, Response,
+    StdResult, Storage, Uint128,
 };
 
 use yield_farming::{
+    amount::Amount,
     asset::{Asset, AssetInfo},
-    farming::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    error::ContractError,
+    farming::{
+        ConfigResponse, ExecuteMsg, ExitPoolMsg, InstantiateMsg, JoinPoolMsg, MigrateMsg, QueryMsg,
+        SwapMsg, TransferMsg,
+    },
+    ibc::{ExitPoolPacket, Ics20Packet, JoinPoolPacket, OsmoPacket, SwapAmountInRoute, SwapPacket},
 };
 
 //Initialize the contract.
@@ -21,7 +27,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
@@ -39,7 +45,12 @@ pub fn instantiate(
 
 //Execute the handle messages.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig {
             owner,
@@ -68,12 +79,12 @@ pub fn execute_update_config(
     info: MessageInfo,
     owner: Option<String>,
     unbond_period: Option<u64>,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     // Permission check
     if info.sender != config.owner {
-        return Err(StdError::generic_err("unauthorized"));
+        return Err(ContractError::Unauthorized {});
     }
     if let Some(owner) = owner {
         config.owner = deps.api.addr_validate(&owner)?;
@@ -93,12 +104,12 @@ pub fn execute_update_freeze_flag(
     _env: Env,
     info: MessageInfo,
     freeze_flag: bool,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     // Permission check
     if info.sender != config.owner {
-        return Err(StdError::generic_err("unauthorized"));
+        return Err(ContractError::Unauthorized {});
     }
 
     config.is_freeze = freeze_flag;
@@ -111,15 +122,15 @@ pub fn execute_deposit_native_token(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     if config.is_freeze {
-        return Err(StdError::generic_err("contract freezed"));
+        return Err(ContractError::ContractFreezed {});
     }
 
     let fund = info.funds[0].clone();
     if fund.amount.is_zero() {
-        return Err(StdError::generic_err("invalid deposit amount"));
+        return Err(ContractError::NoFunds {});
     }
 
     // let asset: Asset = Asset {
@@ -136,12 +147,167 @@ pub fn execute_deposit_native_token(
     Ok(Response::new().add_attribute("action", "deposit_native_token"))
 }
 
+pub fn swap(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: SwapMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let swap_packet = SwapPacket {
+        routes: vec![SwapAmountInRoute {
+            pool_id: msg.pool,
+            token_out_denom: msg.token_out,
+        }],
+        token_out_min_amount: msg.min_amount_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    transfer_with_action(
+        store,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::Swap(swap_packet)),
+        "swap",
+    )
+}
+
+pub fn join_pool(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: JoinPoolMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let gamm_packet = JoinPoolPacket {
+        pool_id: msg.pool,
+        share_out_min_amount: msg.share_min_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    transfer_with_action(
+        store,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::JoinPool(gamm_packet)),
+        "join_pool",
+    )
+}
+
+pub fn exit_pool(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: ExitPoolMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let gamm_packet = ExitPoolPacket {
+        token_out_denom: msg.token_out,
+        token_out_min_amount: msg.min_amount_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    transfer_with_action(
+        store,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::ExitPool(gamm_packet)),
+        "exit_pool",
+    )
+}
+
+pub fn transfer_with_action(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: TransferMsg,
+    amount: Amount,
+    sender: Addr,
+    action: Option<OsmoPacket>,
+    action_label: &str,
+) -> Result<Response, ContractError> {
+    if amount.is_empty() {
+        return Err(ContractError::NoFunds {});
+    }
+
+    // ensure the requested channel is registered
+    if !CHANNEL_INFO.has(store, &msg.channel) {
+        return Err(ContractError::NoSuchChannel { id: msg.channel });
+    }
+
+    let denom = amount.denom();
+    let our_chain = true;
+
+    // delta from user is in seconds
+    let timeout_delta = match msg.timeout {
+        Some(t) => t,
+        None => CONFIG.load(store)?.default_timeout,
+    };
+    // timeout is in nanoseconds
+    let timeout = env.block.time.plus_seconds(timeout_delta);
+
+    // build ics20 packet
+    let packet = Ics20Packet::new(
+        amount.amount(),
+        denom,
+        sender.as_ref(),
+        &msg.remote_address,
+        action,
+    );
+
+    if our_chain {
+        increase_channel_balance(store, &msg.channel, &amount.denom(), amount.amount())?;
+    }
+
+    // prepare ibc message
+    let msg = IbcMsg::SendPacket {
+        channel_id: msg.channel,
+        data: to_binary(&packet)?,
+        timeout: timeout.into(),
+    }
+    .into();
+    let msgs: Vec<CosmosMsg> = vec![msg];
+    let mut attributes = vec![
+        attr("action", action_label),
+        attr("sender", &packet.sender),
+        attr("denom", &packet.denom),
+        attr("amount", &packet.amount.to_string()),
+    ];
+    if !packet.receiver.is_empty() {
+        attributes.push(attr("receiver", &packet.receiver));
+    }
+
+    // send response
+    let res = Response::new()
+        .add_messages(msgs)
+        .add_attributes(attributes);
+
+    Ok(res)
+}
+
 pub fn execute_claim_reward(
     _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     _asset: Asset,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_claim_reward"))
 }
 
@@ -149,15 +315,23 @@ pub fn execute_claim_all_rewards(
     _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_claim_all_rewards"))
 }
 
-pub fn execute_start_unbond(_deps: DepsMut, _env: Env, _info: MessageInfo) -> StdResult<Response> {
+pub fn execute_start_unbond(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_start_unbond"))
 }
 
-pub fn execute_claim_unbond(_deps: DepsMut, _env: Env, _info: MessageInfo) -> StdResult<Response> {
+pub fn execute_claim_unbond(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_claim_unbond"))
 }
 
@@ -167,7 +341,7 @@ pub fn execute_swap_reward(
     _info: MessageInfo,
     _source_token: AssetInfo,
     _dest_token: AssetInfo,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_swap_reward"))
 }
 
@@ -175,7 +349,7 @@ pub fn execute_auto_compound_rewards(
     _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_auto_compound_rewards"))
 }
 
@@ -256,6 +430,6 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::default())
 }

@@ -1,3 +1,4 @@
+use cosmwasm_std::{Uint128, Uint64};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,14 +9,6 @@ pub struct InstantiateMsg {
     pub unbond_period: u64,
     /// Default timeout for ics20 packets, specified in seconds
     pub default_timeout: u64,
-    /// initial allowlist - all cw20 tokens we will send must be previously allowed
-    pub allowlist: Vec<AllowMsg>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllowMsg {
-    pub contract: String,
-    pub gas_limit: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -46,6 +39,43 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SwapMsg {
+    pub channel: String,
+    pub pool: Uint64,
+    pub token_out: String,
+    pub min_amount_out: Uint128,
+    pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct JoinPoolMsg {
+    pub channel: String,
+    pub pool: Uint64,
+    pub share_min_out: Uint128,
+    pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExitPoolMsg {
+    pub channel: String,
+    pub token_out: String,
+    pub min_amount_out: Uint128,
+    pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TransferMsg {
+    /// The local channel to send the packets on
+    pub channel: String,
+    /// The remote address to send to.
+    /// Don't use HumanAddress as this will likely have a different Bech32 prefix than we use
+    /// and cannot be validated locally
+    pub remote_address: String,
+    /// How long the packet lives in seconds. If not specified, use default_timeout
+    pub timeout: Option<u64>,
 }
 
 // We define a custom struct for each query response

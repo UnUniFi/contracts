@@ -177,31 +177,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-controllers"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f0bc6019b4d3d81e11f5c384bcce7173e2210bd654d75c6c9668e12cca05dfa"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw-storage-plus"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "648b1507290bbc03a8d88463d7cd9b04b1fa0155e5eef366c4fa052b9caaac7a"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "cw-storage-plus"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -245,7 +220,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa74c324af8e3506fd8d50759a265bead3f87402e413c840042af5d2808463d6"
 dependencies = [
  "cosmwasm-std",
- "cw-storage-plus 0.14.0",
+ "cw-storage-plus",
  "schemars",
  "serde",
 ]
@@ -774,7 +749,7 @@ version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.14.0",
+ "cw-storage-plus",
  "cw20 0.13.4",
  "protobuf",
  "schemars",
@@ -788,7 +763,6 @@ name = "yield_farming"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-std",
- "cw-controllers",
  "cw-utils 0.13.4",
  "cw20 0.14.0",
  "protobuf",
