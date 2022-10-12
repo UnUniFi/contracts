@@ -1,23 +1,28 @@
 use crate::state::{
-    increase_channel_balance, Config, RewardPool, CHANNEL_INFO, CONFIG, REWARD_POOLS,
-    TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS, USER_REWARD_DEBTS,
+    increase_channel_balance, join_ibc_paths, Config, RewardPool, CHANNEL_INFO, CHANNEL_STATE,
+    CONFIG, LOCKUP, REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS,
+    USER_REWARD_DEBTS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, MessageInfo, Response,
-    StdResult, Storage, Uint128,
+    attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo,
+    Order, PortIdResponse, Response, StdResult, Storage, Uint128,
 };
 
+use cw_utils::one_coin;
 use yield_farming::{
     amount::Amount,
-    asset::{Asset, AssetInfo},
     error::ContractError,
     farming::{
-        ConfigResponse, ExecuteMsg, ExitPoolMsg, InstantiateMsg, JoinPoolMsg, MigrateMsg, QueryMsg,
-        SwapMsg, TransferMsg,
+        ChannelResponse, ClaimTokensMsg, ConfigResponse, CreateLockupMsg, ExecuteMsg, ExitPoolMsg,
+        InstantiateMsg, JoinPoolMsg, ListChannelsResponse, LockTokensMsg, LockupResponse,
+        MigrateMsg, QueryMsg, SwapMsg, TransferMsg, UnlockTokensMsg,
     },
-    ibc::{ExitPoolPacket, Ics20Packet, JoinPoolPacket, OsmoPacket, SwapAmountInRoute, SwapPacket},
+    ibc::{
+        ClaimPacket, ExitPoolPacket, Ics20Packet, JoinPoolPacket, LockPacket, OsmoPacket,
+        SwapAmountInRoute, SwapPacket, UnlockPacket,
+    },
 };
 
 //Initialize the contract.
@@ -128,15 +133,7 @@ pub fn execute_deposit_native_token(
         return Err(ContractError::ContractFreezed {});
     }
 
-    let fund = info.funds[0].clone();
-    if fund.amount.is_zero() {
-        return Err(ContractError::NoFunds {});
-    }
-
-    // let asset: Asset = Asset {
-    //     info: AssetInfo::NativeToken { denom: fund.denom },
-    //     amount: fund.amount,
-    // };
+    let coin = one_coin(&info)?;
 
     // swap, add liquidity, get lp tokens and deposit lp tokens into the target farming pool
     update_pool(deps.storage, env)?;
@@ -234,6 +231,186 @@ pub fn exit_pool(
     )
 }
 
+pub fn create_lockup(
+    deps: DepsMut,
+    env: Env,
+    msg: CreateLockupMsg,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let lockup_key = (msg.channel.as_str(), sender.as_str());
+    if LOCKUP.has(deps.storage, lockup_key) {
+        return Err(ContractError::LockupAccountFound {});
+    }
+
+    let gamm_packet = OsmoPacket::LockupAccount {};
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_only_action(
+        deps,
+        env,
+        transfer_msg,
+        sender,
+        gamm_packet,
+        "create_lockup",
+    )
+}
+
+pub fn lock_tokens(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: LockTokensMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    assert_lockup_owner(store, msg.channel.as_str(), sender.as_str())?;
+
+    let gamm_packet = OsmoPacket::Lock(LockPacket {
+        duration: msg.duration,
+    });
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    transfer_with_action(
+        store,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(gamm_packet),
+        "lock_tokens",
+    )
+}
+
+pub fn claim_tokens(
+    deps: DepsMut,
+    env: Env,
+    msg: ClaimTokensMsg,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
+
+    let gamm_packet = OsmoPacket::Claim(ClaimPacket { denom: msg.denom });
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_only_action(deps, env, transfer_msg, sender, gamm_packet, "claim_tokens")
+}
+
+pub fn execute_unlock_tokens(
+    deps: DepsMut,
+    env: Env,
+    msg: UnlockTokensMsg,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
+
+    let gamm_packet = OsmoPacket::Unlock(UnlockPacket { id: msg.lock_id });
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_only_action(
+        deps,
+        env,
+        transfer_msg,
+        sender,
+        gamm_packet,
+        "begin_unlock_tokens",
+    )
+}
+
+pub fn assert_lockup_owner(
+    store: &mut dyn Storage,
+    channel: &str,
+    owner: &str,
+) -> Result<(), ContractError> {
+    let lockup_key = (channel, owner);
+    if !LOCKUP.has(store, lockup_key) {
+        return Err(ContractError::NoLockupAccount {});
+    }
+
+    Ok(())
+}
+
+pub fn get_ibc_full_denom(deps: Deps, channel: &str, denom: &str) -> StdResult<String> {
+    let query = IbcQuery::PortId {}.into();
+    let PortIdResponse { port_id } = deps.querier.query(&query)?;
+
+    let ibc_prefix = join_ibc_paths(port_id.as_str(), channel);
+
+    Ok(join_ibc_paths(ibc_prefix.as_str(), denom))
+}
+
+pub fn execute_only_action(
+    deps: DepsMut,
+    env: Env,
+    msg: TransferMsg,
+    sender: Addr,
+    action: OsmoPacket,
+    action_label: &str,
+) -> Result<Response, ContractError> {
+    // ensure the requested channel is registered
+    if !CHANNEL_INFO.has(deps.storage, &msg.channel) {
+        return Err(ContractError::NoSuchChannel { id: msg.channel });
+    }
+
+    let config = CONFIG.load(deps.storage)?;
+    if config.default_remote_denom.is_none() {
+        return Err(ContractError::NoSuchChannel { id: msg.channel });
+    }
+
+    // delta from user is in seconds
+    let timeout_delta = match msg.timeout {
+        Some(t) => t,
+        None => config.default_timeout,
+    };
+    // timeout is in nanoseconds
+    let timeout = env.block.time.plus_seconds(timeout_delta);
+
+    let denom = get_ibc_full_denom(
+        deps.as_ref(),
+        msg.channel.as_str(),
+        config.default_remote_denom.unwrap().as_str(),
+    )?;
+
+    // build ics20 packet
+    let packet = Ics20Packet::new(
+        0u8.into(),
+        denom,
+        sender.as_ref(),
+        &msg.remote_address,
+        Some(action),
+    );
+
+    // prepare ibc message
+    let msg: CosmosMsg = IbcMsg::SendPacket {
+        channel_id: msg.channel,
+        data: to_binary(&packet)?,
+        timeout: timeout.into(),
+    }
+    .into();
+
+    // send response
+    let res = Response::new()
+        .add_message(msg)
+        .add_attribute("action", action_label)
+        .add_attribute("sender", &packet.sender);
+
+    Ok(res)
+}
+
 pub fn transfer_with_action(
     store: &mut dyn Storage,
     env: Env,
@@ -306,7 +483,7 @@ pub fn execute_claim_reward(
     _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _asset: Asset,
+    _amount: Amount,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_claim_reward"))
 }
@@ -339,8 +516,8 @@ pub fn execute_swap_reward(
     _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _source_token: AssetInfo,
-    _dest_token: AssetInfo,
+    _source_token: String,
+    _dest_token: String,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_swap_reward"))
 }
@@ -416,6 +593,9 @@ pub fn update_user_reward_debt(store: &mut dyn Storage, wallet: String) -> StdRe
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::ListChannels {} => to_binary(&query_list(deps)?),
+        QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
+        QueryMsg::Lockup { channel, owner } => to_binary(&query_lockup(deps, channel, owner)?),
     }
 }
 
@@ -427,6 +607,49 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         is_freeze: config.is_freeze,
         default_timeout: config.default_timeout,
     })
+}
+
+fn query_list(deps: Deps) -> StdResult<ListChannelsResponse> {
+    let channels = CHANNEL_INFO
+        .range_raw(deps.storage, None, None, Order::Ascending)
+        .map(|r| r.map(|(_, v)| v))
+        .collect::<StdResult<_>>()?;
+    Ok(ListChannelsResponse { channels })
+}
+
+// make public for ibc tests
+pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
+    let info = CHANNEL_INFO.load(deps.storage, &id)?;
+    // this returns Vec<(outstanding, total)>
+    let state = CHANNEL_STATE
+        .prefix(&id)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|r| {
+            r.map(|(denom, v)| {
+                let outstanding = Amount::from_parts(denom.clone(), v.outstanding);
+                let total = Amount::from_parts(denom, v.total_sent);
+                (outstanding, total)
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+    // we want (Vec<outstanding>, Vec<total>)
+    let (balances, total_sent) = state.into_iter().unzip();
+
+    Ok(ChannelResponse {
+        info,
+        balances,
+        total_sent,
+    })
+}
+
+fn query_lockup(deps: Deps, channel_id: String, owner: String) -> StdResult<LockupResponse> {
+    let lockup_key = (channel_id.as_str(), owner.as_str());
+    let lockup_address = LOCKUP.load(deps.storage, lockup_key).unwrap_or_default();
+    let res = LockupResponse {
+        owner,
+        address: lockup_address,
+    };
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

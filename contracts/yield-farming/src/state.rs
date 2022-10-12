@@ -1,9 +1,9 @@
-use cosmwasm_std::{Addr, IbcEndpoint, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::{Item, Map};
-use yield_farming::{asset::AssetInfo, error::ContractError};
+use yield_farming::{error::ContractError, farming::ChannelInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -18,7 +18,7 @@ pub struct Config {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RewardPool {
-    pub reward_token: AssetInfo,
+    pub reward_token: String,          // denom or contract addr
     pub acc_reward_per_share: Uint128, // Accumulated Rewards per share, times 1e12. See below.
 }
 
@@ -56,16 +56,6 @@ pub const CHANNEL_STATE: Map<(&str, &str), ChannelState> = Map::new("channel_sta
 pub struct ChannelState {
     pub outstanding: Uint128,
     pub total_sent: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ChannelInfo {
-    /// id of this channel
-    pub id: String,
-    /// the remote channel/port we connect to
-    pub counterparty_endpoint: IbcEndpoint,
-    /// the connection this exists on (you can use to query client/consensus info)
-    pub connection_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

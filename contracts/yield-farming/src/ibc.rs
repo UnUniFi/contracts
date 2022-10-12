@@ -4,10 +4,11 @@ use cosmwasm_std::{
     IbcEndpoint, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
     IbcReceiveResponse, Reply, Response, Storage, SubMsg, SubMsgResult, WasmMsg,
 };
+use yield_farming::farming::ChannelInfo;
 
 use crate::state::{
-    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ChannelInfo, ReplyArgs,
-    CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS,
+    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ReplyArgs, CHANNEL_INFO,
+    CONFIG, LOCKUP, REPLY_ARGS,
 };
 use cw20::Cw20ExecuteMsg;
 use yield_farming::amount::Amount;

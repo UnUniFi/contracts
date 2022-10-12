@@ -10,7 +10,6 @@ use std::convert::TryInto;
 #[serde(rename_all = "snake_case")]
 pub enum Amount {
     Native(Coin),
-    // FIXME? USe Cw20CoinVerified, and validate cw20 addresses
     Cw20(Cw20Coin),
 }
 

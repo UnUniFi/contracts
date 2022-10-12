@@ -65,8 +65,14 @@ pub enum ContractError {
     #[error("Execute msg unknown")]
     UnknownRequest {},
 
+    #[error("Lockup account not found")]
+    NoLockupAccount,
+
     #[error("Action needs a default remote denom")]
     NoDefaultDenom {},
+
+    #[error("Lockup account already create")]
+    LockupAccountFound,
 }
 
 impl From<FromUtf8Error> for ContractError {
