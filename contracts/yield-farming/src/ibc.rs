@@ -208,12 +208,11 @@ fn parse_voucher_ack(
         });
     }
 
-    let split_denom: Vec<&str> = voucher_denom.splitn(3, '/').collect();
-    if split_denom.len() != 3 {
+    if voucher_denom.splitn(3, '/').count() != 3 {
         return Err(ContractError::NoForeignTokens {});
     }
 
-    return Err(ContractError::NoAllowedToken {});
+    Err(ContractError::NoAllowedToken {})
 }
 
 // this does the work of ibc_packet_receive, we wrap it to turn errors into acknowledgements

@@ -21,7 +21,11 @@ pub enum ExecuteMsg {
     UpdateFreezeFlag {
         freeze_flag: bool,
     },
-    DepositNativeToken {},
+    DepositNativeToken {
+        channel: String,
+        timeout: Option<u64>,
+        duration: Uint64,
+    },
     ClaimReward {
         asset: Amount,
     },

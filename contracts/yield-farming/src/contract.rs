@@ -7,7 +7,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo,
-    Order, PortIdResponse, Response, StdResult, Storage, Uint128,
+    Order, PortIdResponse, Response, StdResult, Storage, Uint128, Uint64,
 };
 
 use cw_utils::one_coin;
@@ -64,7 +64,11 @@ pub fn execute(
         ExecuteMsg::UpdateFreezeFlag { freeze_flag } => {
             execute_update_freeze_flag(deps, env, info, freeze_flag)
         }
-        ExecuteMsg::DepositNativeToken {} => execute_deposit_native_token(deps, env, info),
+        ExecuteMsg::DepositNativeToken {
+            channel,
+            timeout,
+            duration,
+        } => execute_deposit_native_token(deps, env, info, channel, timeout, duration),
         ExecuteMsg::ClaimReward { asset } => execute_claim_reward(deps, env, info, asset),
         ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
         ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
@@ -127,6 +131,9 @@ pub fn execute_deposit_native_token(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    channel: String,
+    timeout: Option<u64>,
+    duration: Uint64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     if config.is_freeze {
@@ -134,11 +141,43 @@ pub fn execute_deposit_native_token(
     }
 
     let coin = one_coin(&info)?;
+    let port_id = get_ibc_port_id(deps.as_ref())?;
 
-    // swap, add liquidity, get lp tokens and deposit lp tokens into the target farming pool
-    update_pool(deps.storage, env)?;
+    // users need to add liquidity before call this function
+    lock_tokens(
+        deps.storage,
+        env.clone(),
+        LockTokensMsg {
+            channel: channel.clone(),
+            timeout,
+            duration,
+        },
+        Amount::Native(coin.clone()),
+        info.sender.clone(),
+    )?;
+    update_pool(
+        deps.storage,
+        env,
+        channel,
+        timeout,
+        info.sender.clone(),
+        coin.denom,
+        port_id,
+    )?;
     withdraw_reward(deps.storage, info.sender.to_string())?;
-    // USER_DEPOSITS, TOTAL_DEPOSITS update
+
+    if let Some(mut user_deposits) =
+        USER_DEPOSITS.may_load(deps.storage, info.sender.to_string())?
+    {
+        user_deposits = user_deposits.checked_add(coin.amount).unwrap();
+        USER_DEPOSITS.save(deps.storage, info.sender.to_string(), &user_deposits)?;
+    } else {
+        USER_DEPOSITS.save(deps.storage, info.sender.to_string(), &coin.amount)?;
+    }
+    let mut total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
+    total_deposits = total_deposits.checked_add(coin.amount).unwrap();
+    TOTAL_DEPOSITS.save(deps.storage, &total_deposits)?;
+
     update_user_reward_debt(deps.storage, info.sender.to_string())?;
 
     Ok(Response::new().add_attribute("action", "deposit_native_token"))
@@ -232,13 +271,14 @@ pub fn exit_pool(
 }
 
 pub fn create_lockup(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
     msg: CreateLockupMsg,
     sender: Addr,
+    port_id: String,
 ) -> Result<Response, ContractError> {
     let lockup_key = (msg.channel.as_str(), sender.as_str());
-    if LOCKUP.has(deps.storage, lockup_key) {
+    if LOCKUP.has(store, lockup_key) {
         return Err(ContractError::LockupAccountFound {});
     }
 
@@ -250,12 +290,13 @@ pub fn create_lockup(
     };
 
     execute_only_action(
-        deps,
+        store,
         env,
         transfer_msg,
         sender,
         gamm_packet,
         "create_lockup",
+        port_id,
     )
 }
 
@@ -289,12 +330,13 @@ pub fn lock_tokens(
 }
 
 pub fn claim_tokens(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
     msg: ClaimTokensMsg,
     sender: Addr,
+    port_id: String,
 ) -> Result<Response, ContractError> {
-    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
+    assert_lockup_owner(store, msg.channel.as_str(), sender.as_str())?;
 
     let gamm_packet = OsmoPacket::Claim(ClaimPacket { denom: msg.denom });
     let transfer_msg = TransferMsg {
@@ -303,16 +345,25 @@ pub fn claim_tokens(
         timeout: msg.timeout,
     };
 
-    execute_only_action(deps, env, transfer_msg, sender, gamm_packet, "claim_tokens")
+    execute_only_action(
+        store,
+        env,
+        transfer_msg,
+        sender,
+        gamm_packet,
+        "claim_tokens",
+        port_id,
+    )
 }
 
 pub fn execute_unlock_tokens(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
     msg: UnlockTokensMsg,
     sender: Addr,
+    port_id: String,
 ) -> Result<Response, ContractError> {
-    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
+    assert_lockup_owner(store, msg.channel.as_str(), sender.as_str())?;
 
     let gamm_packet = OsmoPacket::Unlock(UnlockPacket { id: msg.lock_id });
     let transfer_msg = TransferMsg {
@@ -322,12 +373,13 @@ pub fn execute_unlock_tokens(
     };
 
     execute_only_action(
-        deps,
+        store,
         env,
         transfer_msg,
         sender,
         gamm_packet,
         "begin_unlock_tokens",
+        port_id,
     )
 }
 
@@ -344,29 +396,34 @@ pub fn assert_lockup_owner(
     Ok(())
 }
 
-pub fn get_ibc_full_denom(deps: Deps, channel: &str, denom: &str) -> StdResult<String> {
+pub fn get_ibc_port_id(deps: Deps) -> StdResult<String> {
     let query = IbcQuery::PortId {}.into();
     let PortIdResponse { port_id } = deps.querier.query(&query)?;
 
+    Ok(port_id)
+}
+
+pub fn get_ibc_full_denom(port_id: String, channel: &str, denom: &str) -> StdResult<String> {
     let ibc_prefix = join_ibc_paths(port_id.as_str(), channel);
 
     Ok(join_ibc_paths(ibc_prefix.as_str(), denom))
 }
 
 pub fn execute_only_action(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
     msg: TransferMsg,
     sender: Addr,
     action: OsmoPacket,
     action_label: &str,
+    port_id: String,
 ) -> Result<Response, ContractError> {
     // ensure the requested channel is registered
-    if !CHANNEL_INFO.has(deps.storage, &msg.channel) {
+    if !CHANNEL_INFO.has(store, &msg.channel) {
         return Err(ContractError::NoSuchChannel { id: msg.channel });
     }
 
-    let config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(store)?;
     if config.default_remote_denom.is_none() {
         return Err(ContractError::NoSuchChannel { id: msg.channel });
     }
@@ -380,7 +437,7 @@ pub fn execute_only_action(
     let timeout = env.block.time.plus_seconds(timeout_delta);
 
     let denom = get_ibc_full_denom(
-        deps.as_ref(),
+        port_id,
         msg.channel.as_str(),
         config.default_remote_denom.unwrap().as_str(),
     )?;
@@ -530,8 +587,29 @@ pub fn execute_auto_compound_rewards(
     Ok(Response::new().add_attribute("action", "execute_auto_compound_rewards"))
 }
 
-pub fn update_pool(store: &mut dyn Storage, env: Env) -> StdResult<()> {
-    // claim reward from the osmosis pool
+pub fn update_pool(
+    store: &mut dyn Storage,
+    env: Env,
+    channel: String,
+    timeout: Option<u64>,
+    sender: Addr,
+    denom: String,
+    port_id: String,
+) -> StdResult<()> {
+    // add returned message method
+    // retrieve claimed token amount
+    claim_tokens(
+        store,
+        env.clone(),
+        ClaimTokensMsg {
+            channel,
+            timeout,
+            denom,
+        },
+        sender,
+        port_id,
+    );
+
     let reward_pools = REWARD_POOLS.load(store)?;
     let mut new_reward_pools: Vec<RewardPool> = vec![];
     let total_deposits = TOTAL_DEPOSITS.load(store)?;
