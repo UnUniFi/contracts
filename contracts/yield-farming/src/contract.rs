@@ -73,6 +73,7 @@ pub fn execute(
         ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
         ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
         ExecuteMsg::ClaimUnbond {} => execute_claim_unbond(deps, env, info),
+        ExecuteMsg::UpdatePool {} => execute_update_pool(deps, env),
         ExecuteMsg::SwapReward {
             source_token,
             dest_token,
@@ -542,6 +543,7 @@ pub fn execute_claim_reward(
     _info: MessageInfo,
     _amount: Amount,
 ) -> Result<Response, ContractError> {
+    // claim_tokens(deps.storage, env, msg, info.sender, port_id)
     Ok(Response::new().add_attribute("action", "execute_claim_reward"))
 }
 
@@ -596,38 +598,58 @@ pub fn update_pool(
     denom: String,
     port_id: String,
 ) -> StdResult<()> {
-    // add returned message method
-    // retrieve claimed token amount
-    claim_tokens(
-        store,
-        env.clone(),
-        ClaimTokensMsg {
-            channel,
-            timeout,
-            denom,
-        },
-        sender,
-        port_id,
-    );
+    // let res = claim_tokens(
+    //     store,
+    //     env.clone(),
+    //     ClaimTokensMsg {
+    //         channel,
+    //         timeout,
+    //         denom,
+    //     },
+    //     sender,
+    //     port_id,
+    // )
+    // .unwrap();
+    // Ok(Response::new().add_messages(res.messages))
+    //     let reward_pools = REWARD_POOLS.load(deps.storage)?;
+    //     let mut new_reward_pools: Vec<RewardPool> = vec![];
+    //     let total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
 
-    let reward_pools = REWARD_POOLS.load(store)?;
-    let mut new_reward_pools: Vec<RewardPool> = vec![];
-    let total_deposits = TOTAL_DEPOSITS.load(store)?;
+    //     for mut reward_pool in reward_pools {
+    //         if total_deposits.is_zero() {
+    //             reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
+    //         } else {
+    //             let new_rewards = Uint128::zero(); // claimed reward of selected pool
+    //             reward_pool.acc_reward_per_share += new_rewards
+    //                 .checked_mul(Uint128::from(1_000_000_000_000u128))?
+    //                 .checked_div(total_deposits)?;
+    //         }
+    //         new_reward_pools.push(reward_pool);
+    //     }
 
-    for mut reward_pool in reward_pools {
-        if total_deposits.is_zero() {
-            reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
-        } else {
-            let new_rewards = Uint128::zero(); // claimed reward of selected pool
-            reward_pool.acc_reward_per_share += new_rewards
-                .checked_mul(Uint128::from(1_000_000_000_000u128))?
-                .checked_div(total_deposits)?;
-        }
-        new_reward_pools.push(reward_pool);
-    }
-
-    REWARD_POOLS.save(store, &new_reward_pools)?;
+    //     REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
     Ok(())
+}
+
+pub fn execute_update_pool(_deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+    //     let reward_pools = REWARD_POOLS.load(deps.storage)?;
+    //     let mut new_reward_pools: Vec<RewardPool> = vec![];
+    //     let total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
+
+    //     for mut reward_pool in reward_pools {
+    //         if total_deposits.is_zero() {
+    //             reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
+    //         } else {
+    //             let new_rewards = Uint128::zero(); // claimed reward of selected pool
+    //             reward_pool.acc_reward_per_share += new_rewards
+    //                 .checked_mul(Uint128::from(1_000_000_000_000u128))?
+    //                 .checked_div(total_deposits)?;
+    //         }
+    //         new_reward_pools.push(reward_pool);
+    //     }
+
+    //     REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
+    Ok(Response::new())
 }
 
 pub fn withdraw_reward(store: &mut dyn Storage, wallet: String) -> StdResult<()> {

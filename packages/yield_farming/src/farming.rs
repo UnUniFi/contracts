@@ -32,6 +32,7 @@ pub enum ExecuteMsg {
     ClaimAllRewards {},
     StartUnbond {},
     ClaimUnbond {},
+    UpdatePool {},
     SwapReward {
         source_token: String, // denom or contract addr
         dest_token: String,   // denom or contract addr
