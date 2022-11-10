@@ -588,7 +588,7 @@ mod test {
     use super::*;
     use crate::test_helpers::*;
 
-    use crate::contract::{query_channel, transfer_with_action};
+    use crate::contract::{execute_transfer_with_action, query_channel};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, to_vec, IbcEndpoint, Timestamp, Uint128, Uint64};
     use cw_utils::one_coin;
@@ -712,8 +712,8 @@ mod test {
             timeout: None,
         };
         let info = mock_info("local-sender", &coins(987654321, denom));
-        transfer_with_action(
-            deps.as_mut().storage,
+        execute_transfer_with_action(
+            deps.as_mut(),
             mock_env(),
             msg,
             Amount::Native(one_coin(&info).unwrap()),

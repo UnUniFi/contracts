@@ -64,6 +64,18 @@ pub fn execute(
         ExecuteMsg::UpdateFreezeFlag { freeze_flag } => {
             execute_update_freeze_flag(deps, env, info, freeze_flag)
         }
+        ExecuteMsg::Swap(msg) => {
+            let coin = one_coin(&info)?;
+            execute_swap(deps, env, msg, Amount::Native(coin), info.sender)
+        }
+        ExecuteMsg::JoinPool(pool) => {
+            let coin = one_coin(&info)?;
+            execute_join_pool(deps, env, pool, Amount::Native(coin), info.sender)
+        }
+        ExecuteMsg::ExitPool(pool) => {
+            let coin = one_coin(&info)?;
+            execute_exit_pool(deps, env, pool, Amount::Native(coin), info.sender)
+        }
         ExecuteMsg::DepositNativeToken {
             channel,
             timeout,
@@ -128,6 +140,93 @@ pub fn execute_update_freeze_flag(
     Ok(Response::new().add_attribute("action", "update_freeze_flag"))
 }
 
+pub fn execute_swap(
+    deps: DepsMut,
+    env: Env,
+    msg: SwapMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let swap_packet = SwapPacket {
+        routes: vec![SwapAmountInRoute {
+            pool_id: msg.pool,
+            token_out_denom: msg.token_out,
+        }],
+        token_out_min_amount: msg.min_amount_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_transfer_with_action(
+        deps,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::Swap(swap_packet)),
+        "swap",
+    )
+}
+
+pub fn execute_join_pool(
+    deps: DepsMut,
+    env: Env,
+    msg: JoinPoolMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let gamm_packet = JoinPoolPacket {
+        pool_id: msg.pool,
+        share_out_min_amount: msg.share_min_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_transfer_with_action(
+        deps,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::JoinPool(gamm_packet)),
+        "join_pool",
+    )
+}
+
+pub fn execute_exit_pool(
+    deps: DepsMut,
+    env: Env,
+    msg: ExitPoolMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let gamm_packet = ExitPoolPacket {
+        token_out_denom: msg.token_out,
+        token_out_min_amount: msg.min_amount_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel,
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    execute_transfer_with_action(
+        deps,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::ExitPool(gamm_packet)),
+        "exit_pool",
+    )
+}
+
 pub fn execute_deposit_native_token(
     deps: DepsMut,
     env: Env,
@@ -144,18 +243,6 @@ pub fn execute_deposit_native_token(
     let coin = one_coin(&info)?;
     let port_id = get_ibc_port_id(deps.as_ref())?;
 
-    // users need to add liquidity before call this function
-    lock_tokens(
-        deps.storage,
-        env.clone(),
-        LockTokensMsg {
-            channel: channel.clone(),
-            timeout,
-            duration,
-        },
-        Amount::Native(coin.clone()),
-        info.sender.clone(),
-    )?;
     update_pool(
         deps.storage,
         env,
@@ -181,94 +268,19 @@ pub fn execute_deposit_native_token(
 
     update_user_reward_debt(deps.storage, info.sender.to_string())?;
 
+    // lock_tokens(
+    //     deps,
+    //     env.clone(),
+    //     LockTokensMsg {
+    //         channel: channel.clone(),
+    //         timeout,
+    //         duration,
+    //     },
+    //     Amount::Native(coin.clone()),
+    //     info.sender.clone(),
+    // )?;
+
     Ok(Response::new().add_attribute("action", "deposit_native_token"))
-}
-
-pub fn swap(
-    store: &mut dyn Storage,
-    env: Env,
-    msg: SwapMsg,
-    amount: Amount,
-    sender: Addr,
-) -> Result<Response, ContractError> {
-    let swap_packet = SwapPacket {
-        routes: vec![SwapAmountInRoute {
-            pool_id: msg.pool,
-            token_out_denom: msg.token_out,
-        }],
-        token_out_min_amount: msg.min_amount_out,
-    };
-    let transfer_msg = TransferMsg {
-        channel: msg.channel,
-        remote_address: String::new(),
-        timeout: msg.timeout,
-    };
-
-    transfer_with_action(
-        store,
-        env,
-        transfer_msg,
-        amount,
-        sender,
-        Some(OsmoPacket::Swap(swap_packet)),
-        "swap",
-    )
-}
-
-pub fn join_pool(
-    store: &mut dyn Storage,
-    env: Env,
-    msg: JoinPoolMsg,
-    amount: Amount,
-    sender: Addr,
-) -> Result<Response, ContractError> {
-    let gamm_packet = JoinPoolPacket {
-        pool_id: msg.pool,
-        share_out_min_amount: msg.share_min_out,
-    };
-    let transfer_msg = TransferMsg {
-        channel: msg.channel,
-        remote_address: String::new(),
-        timeout: msg.timeout,
-    };
-
-    transfer_with_action(
-        store,
-        env,
-        transfer_msg,
-        amount,
-        sender,
-        Some(OsmoPacket::JoinPool(gamm_packet)),
-        "join_pool",
-    )
-}
-
-pub fn exit_pool(
-    store: &mut dyn Storage,
-    env: Env,
-    msg: ExitPoolMsg,
-    amount: Amount,
-    sender: Addr,
-) -> Result<Response, ContractError> {
-    let gamm_packet = ExitPoolPacket {
-        token_out_denom: msg.token_out,
-        token_out_min_amount: msg.min_amount_out,
-    };
-    let transfer_msg = TransferMsg {
-        channel: msg.channel,
-        remote_address: String::new(),
-        timeout: msg.timeout,
-    };
-
-    transfer_with_action(
-        store,
-        env,
-        transfer_msg,
-        amount,
-        sender,
-        Some(OsmoPacket::ExitPool(gamm_packet)),
-        "exit_pool",
-    )
 }
 
 pub fn create_lockup(
@@ -302,13 +314,13 @@ pub fn create_lockup(
 }
 
 pub fn lock_tokens(
-    store: &mut dyn Storage,
+    deps: DepsMut,
     env: Env,
     msg: LockTokensMsg,
     amount: Amount,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    assert_lockup_owner(store, msg.channel.as_str(), sender.as_str())?;
+    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
 
     let gamm_packet = OsmoPacket::Lock(LockPacket {
         duration: msg.duration,
@@ -319,8 +331,8 @@ pub fn lock_tokens(
         timeout: msg.timeout,
     };
 
-    transfer_with_action(
-        store,
+    execute_transfer_with_action(
+        deps,
         env,
         transfer_msg,
         amount,
@@ -469,8 +481,8 @@ pub fn execute_only_action(
     Ok(res)
 }
 
-pub fn transfer_with_action(
-    store: &mut dyn Storage,
+pub fn execute_transfer_with_action(
+    deps: DepsMut,
     env: Env,
     msg: TransferMsg,
     amount: Amount,
@@ -483,7 +495,7 @@ pub fn transfer_with_action(
     }
 
     // ensure the requested channel is registered
-    if !CHANNEL_INFO.has(store, &msg.channel) {
+    if !CHANNEL_INFO.has(deps.storage, &msg.channel) {
         return Err(ContractError::NoSuchChannel { id: msg.channel });
     }
 
@@ -493,7 +505,7 @@ pub fn transfer_with_action(
     // delta from user is in seconds
     let timeout_delta = match msg.timeout {
         Some(t) => t,
-        None => CONFIG.load(store)?.default_timeout,
+        None => CONFIG.load(deps.storage)?.default_timeout,
     };
     // timeout is in nanoseconds
     let timeout = env.block.time.plus_seconds(timeout_delta);
@@ -508,7 +520,7 @@ pub fn transfer_with_action(
     );
 
     if our_chain {
-        increase_channel_balance(store, &msg.channel, &amount.denom(), amount.amount())?;
+        increase_channel_balance(deps.storage, &msg.channel, &amount.denom(), amount.amount())?;
     }
 
     // prepare ibc message

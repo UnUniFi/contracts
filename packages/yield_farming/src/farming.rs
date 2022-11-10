@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
     UpdateFreezeFlag {
         freeze_flag: bool,
     },
+    Swap(SwapMsg),
+    JoinPool(JoinPoolMsg),
+    ExitPool(ExitPoolMsg),
     DepositNativeToken {
         channel: String,
         timeout: Option<u64>,
