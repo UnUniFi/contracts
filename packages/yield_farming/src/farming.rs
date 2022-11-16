@@ -24,18 +24,14 @@ pub enum ExecuteMsg {
     Swap(SwapMsg),
     JoinPool(JoinPoolMsg),
     ExitPool(ExitPoolMsg),
-    DepositNativeToken {
-        channel: String,
-        timeout: Option<u64>,
-        duration: Uint64,
-    },
+    CreateLockup(CreateLockupMsg),
+    LockTokens(LockTokensMsg),
     ClaimReward {
         asset: Amount,
     },
     ClaimAllRewards {},
     StartUnbond {},
     ClaimUnbond {},
-    UpdatePool {},
     SwapReward {
         source_token: String, // denom or contract addr
         dest_token: String,   // denom or contract addr

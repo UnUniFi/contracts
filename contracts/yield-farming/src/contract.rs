@@ -1,16 +1,15 @@
 use crate::state::{
-    increase_channel_balance, join_ibc_paths, Config, RewardPool, CHANNEL_INFO, CHANNEL_STATE,
-    CONFIG, LOCKUP, REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS,
-    USER_REWARD_DEBTS,
+    increase_channel_balance, join_ibc_paths, Config, CHANNEL_INFO, CHANNEL_STATE, CONFIG, LOCKUP,
+    REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS, USER_REWARD_DEBTS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo,
-    Order, PortIdResponse, Response, StdResult, Storage, Uint128, Uint64,
+    Order, PortIdResponse, Response, StdResult, Storage, Uint128,
 };
 
-use cw_utils::one_coin;
+use cw_utils::{nonpayable, one_coin};
 use yield_farming::{
     amount::Amount,
     error::ContractError,
@@ -76,16 +75,18 @@ pub fn execute(
             let coin = one_coin(&info)?;
             execute_exit_pool(deps, env, pool, Amount::Native(coin), info.sender)
         }
-        ExecuteMsg::DepositNativeToken {
-            channel,
-            timeout,
-            duration,
-        } => execute_deposit_native_token(deps, env, info, channel, timeout, duration),
+        ExecuteMsg::CreateLockup(msg) => {
+            nonpayable(&info)?;
+            execute_create_lockup(deps, env, msg, info.sender)
+        }
+        ExecuteMsg::LockTokens(msg) => {
+            let coin = one_coin(&info)?;
+            execute_lock_tokens(deps, env, msg, Amount::Native(coin), info.sender)
+        }
         ExecuteMsg::ClaimReward { asset } => execute_claim_reward(deps, env, info, asset),
         ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
         ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
         ExecuteMsg::ClaimUnbond {} => execute_claim_unbond(deps, env, info),
-        ExecuteMsg::UpdatePool {} => execute_update_pool(deps, env),
         ExecuteMsg::SwapReward {
             source_token,
             dest_token,
@@ -94,7 +95,7 @@ pub fn execute(
     }
 }
 
-/// Only owner can execute it. To update the owner address
+/// Only owner can execute it.
 pub fn execute_update_config(
     deps: DepsMut,
     _env: Env,
@@ -120,7 +121,7 @@ pub fn execute_update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-/// Only owner can execute it. To update the owner address
+/// Only owner can execute it.
 pub fn execute_update_freeze_flag(
     deps: DepsMut,
     _env: Env,
@@ -227,71 +228,22 @@ pub fn execute_exit_pool(
     )
 }
 
-pub fn execute_deposit_native_token(
+/// Only owner can execute it. To update the owner address
+pub fn execute_create_lockup(
     deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    channel: String,
-    timeout: Option<u64>,
-    duration: Uint64,
-) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.is_freeze {
-        return Err(ContractError::ContractFreezed {});
-    }
-
-    let coin = one_coin(&info)?;
-    let port_id = get_ibc_port_id(deps.as_ref())?;
-
-    update_pool(
-        deps.storage,
-        env,
-        channel,
-        timeout,
-        info.sender.clone(),
-        coin.denom,
-        port_id,
-    )?;
-    withdraw_reward(deps.storage, info.sender.to_string())?;
-
-    if let Some(mut user_deposits) =
-        USER_DEPOSITS.may_load(deps.storage, info.sender.to_string())?
-    {
-        user_deposits = user_deposits.checked_add(coin.amount).unwrap();
-        USER_DEPOSITS.save(deps.storage, info.sender.to_string(), &user_deposits)?;
-    } else {
-        USER_DEPOSITS.save(deps.storage, info.sender.to_string(), &coin.amount)?;
-    }
-    let mut total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
-    total_deposits = total_deposits.checked_add(coin.amount).unwrap();
-    TOTAL_DEPOSITS.save(deps.storage, &total_deposits)?;
-
-    update_user_reward_debt(deps.storage, info.sender.to_string())?;
-
-    // lock_tokens(
-    //     deps,
-    //     env.clone(),
-    //     LockTokensMsg {
-    //         channel: channel.clone(),
-    //         timeout,
-    //         duration,
-    //     },
-    //     Amount::Native(coin.clone()),
-    //     info.sender.clone(),
-    // )?;
-
-    Ok(Response::new().add_attribute("action", "deposit_native_token"))
-}
-
-pub fn create_lockup(
-    store: &mut dyn Storage,
     env: Env,
     msg: CreateLockupMsg,
     sender: Addr,
-    port_id: String,
 ) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    // Permission check
+    if sender != config.owner {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let lockup_key = (msg.channel.as_str(), sender.as_str());
-    if LOCKUP.has(store, lockup_key) {
+    if LOCKUP.has(deps.storage, lockup_key) {
         return Err(ContractError::LockupAccountFound {});
     }
 
@@ -301,26 +253,59 @@ pub fn create_lockup(
         remote_address: String::new(),
         timeout: msg.timeout,
     };
+    let port_id = get_ibc_port_id(deps.as_ref())?;
 
     execute_only_action(
-        store,
-        env,
+        deps.storage,
+        env.clone(),
         transfer_msg,
-        sender,
+        env.contract.address,
         gamm_packet,
         "create_lockup",
         port_id,
     )
 }
 
-pub fn lock_tokens(
+pub fn execute_lock_tokens(
     deps: DepsMut,
     env: Env,
     msg: LockTokensMsg,
     amount: Amount,
     sender: Addr,
 ) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if config.is_freeze {
+        return Err(ContractError::ContractFreezed {});
+    }
+
     assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
+
+    let port_id = get_ibc_port_id(deps.as_ref())?;
+
+    claim_tokens(
+        deps.storage,
+        env.clone(),
+        ClaimTokensMsg {
+            channel: msg.channel.clone(),
+            timeout: msg.timeout,
+            denom: amount.denom(),
+        },
+        sender.clone(),
+        port_id,
+    )?;
+    withdraw_reward(deps.storage, sender.to_string())?;
+
+    if let Some(mut user_deposits) = USER_DEPOSITS.may_load(deps.storage, sender.to_string())? {
+        user_deposits = user_deposits.checked_add(amount.amount()).unwrap();
+        USER_DEPOSITS.save(deps.storage, sender.to_string(), &user_deposits)?;
+    } else {
+        USER_DEPOSITS.save(deps.storage, sender.to_string(), &amount.amount())?;
+    }
+    let mut total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
+    total_deposits = total_deposits.checked_add(amount.amount()).unwrap();
+    TOTAL_DEPOSITS.save(deps.storage, &total_deposits)?;
+
+    update_user_reward_debt(deps.storage, sender.to_string())?;
 
     let gamm_packet = OsmoPacket::Lock(LockPacket {
         duration: msg.duration,
@@ -333,10 +318,10 @@ pub fn lock_tokens(
 
     execute_transfer_with_action(
         deps,
-        env,
+        env.clone(),
         transfer_msg,
         amount,
-        sender,
+        env.contract.address,
         Some(gamm_packet),
         "lock_tokens",
     )
@@ -599,69 +584,6 @@ pub fn execute_auto_compound_rewards(
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "execute_auto_compound_rewards"))
-}
-
-pub fn update_pool(
-    store: &mut dyn Storage,
-    env: Env,
-    channel: String,
-    timeout: Option<u64>,
-    sender: Addr,
-    denom: String,
-    port_id: String,
-) -> StdResult<()> {
-    // let res = claim_tokens(
-    //     store,
-    //     env.clone(),
-    //     ClaimTokensMsg {
-    //         channel,
-    //         timeout,
-    //         denom,
-    //     },
-    //     sender,
-    //     port_id,
-    // )
-    // .unwrap();
-    // Ok(Response::new().add_messages(res.messages))
-    //     let reward_pools = REWARD_POOLS.load(deps.storage)?;
-    //     let mut new_reward_pools: Vec<RewardPool> = vec![];
-    //     let total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
-
-    //     for mut reward_pool in reward_pools {
-    //         if total_deposits.is_zero() {
-    //             reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
-    //         } else {
-    //             let new_rewards = Uint128::zero(); // claimed reward of selected pool
-    //             reward_pool.acc_reward_per_share += new_rewards
-    //                 .checked_mul(Uint128::from(1_000_000_000_000u128))?
-    //                 .checked_div(total_deposits)?;
-    //         }
-    //         new_reward_pools.push(reward_pool);
-    //     }
-
-    //     REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
-    Ok(())
-}
-
-pub fn execute_update_pool(_deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
-    //     let reward_pools = REWARD_POOLS.load(deps.storage)?;
-    //     let mut new_reward_pools: Vec<RewardPool> = vec![];
-    //     let total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
-
-    //     for mut reward_pool in reward_pools {
-    //         if total_deposits.is_zero() {
-    //             reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
-    //         } else {
-    //             let new_rewards = Uint128::zero(); // claimed reward of selected pool
-    //             reward_pool.acc_reward_per_share += new_rewards
-    //                 .checked_mul(Uint128::from(1_000_000_000_000u128))?
-    //                 .checked_div(total_deposits)?;
-    //         }
-    //         new_reward_pools.push(reward_pool);
-    //     }
-
-    //     REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
-    Ok(Response::new())
 }
 
 pub fn withdraw_reward(store: &mut dyn Storage, wallet: String) -> StdResult<()> {

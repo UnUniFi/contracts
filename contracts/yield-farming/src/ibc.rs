@@ -2,13 +2,13 @@ use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, BankMsg, Binary, CosmosMsg, DepsMut, Env,
     IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
     IbcEndpoint, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Reply, Response, Storage, SubMsg, SubMsgResult, WasmMsg,
+    IbcReceiveResponse, Reply, Response, Storage, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
 use yield_farming::farming::ChannelInfo;
 
 use crate::state::{
-    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ReplyArgs, CHANNEL_INFO,
-    CONFIG, LOCKUP, REPLY_ARGS,
+    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ReplyArgs, RewardPool,
+    CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS, REWARD_POOLS, TOTAL_DEPOSITS,
 };
 use cw20::Cw20ExecuteMsg;
 use yield_farming::amount::Amount;
@@ -264,7 +264,7 @@ fn do_ibc_packet_receive(
 /// check if success or failure and update balance, or return funds
 pub fn ibc_packet_ack(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     let packet_data: Ics20Packet = from_binary(&msg.original_packet.data)?;
@@ -301,6 +301,7 @@ pub fn ibc_packet_ack(
             }
             OsmoPacket::Claim(_) => on_claim_tokens_packet(
                 deps,
+                env,
                 msg,
                 packet_data.sender,
                 ics20msg,
@@ -501,6 +502,7 @@ fn on_lock_packet(
 
 fn on_claim_tokens_packet(
     deps: DepsMut,
+    env: Env,
     msg: IbcPacketAckMsg,
     sender: String,
     ics20msg: Ics20Ack,
@@ -519,6 +521,25 @@ fn on_claim_tokens_packet(
 
                 return Ok(IbcBasicResponse::new().add_attributes(attributes));
             }
+
+            let reward_pools = REWARD_POOLS.load(deps.storage)?;
+            let mut new_reward_pools: Vec<RewardPool> = vec![];
+            let total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
+
+            for mut reward_pool in reward_pools {
+                if total_deposits.is_zero() {
+                    reward_pool.acc_reward_per_share = Uint128::from(env.block.time.seconds());
+                } else if reward_pool.reward_token == res.denom {
+                    reward_pool.acc_reward_per_share += res
+                        .amount
+                        .checked_mul(Uint128::from(1_000_000_000_000u128))
+                        .unwrap()
+                        .checked_div(total_deposits)
+                        .unwrap();
+                }
+                new_reward_pools.push(reward_pool);
+            }
+            REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
 
             on_gamm_packet_success(deps, msg.original_packet, sender, res, action_label)
         }
