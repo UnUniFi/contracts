@@ -26,9 +26,7 @@ pub enum ExecuteMsg {
     ExitPool(ExitPoolMsg),
     CreateLockup(CreateLockupMsg),
     LockTokens(LockTokensMsg),
-    ClaimReward {
-        asset: Amount,
-    },
+    ClaimReward(ClaimTokensMsg),
     ClaimAllRewards {},
     StartUnbond {},
     ClaimUnbond {},

@@ -5,8 +5,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery, MessageInfo,
-    Order, PortIdResponse, Response, StdResult, Storage, Uint128,
+    attr, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery,
+    MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128,
 };
 
 use cw_utils::{nonpayable, one_coin};
@@ -83,7 +83,7 @@ pub fn execute(
             let coin = one_coin(&info)?;
             execute_lock_tokens(deps, env, msg, Amount::Native(coin), info.sender)
         }
-        ExecuteMsg::ClaimReward { asset } => execute_claim_reward(deps, env, info, asset),
+        ExecuteMsg::ClaimReward(msg) => execute_claim_reward(deps, env, info, msg),
         ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
         ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
         ExecuteMsg::ClaimUnbond {} => execute_claim_unbond(deps, env, info),
@@ -535,13 +535,48 @@ pub fn execute_transfer_with_action(
 }
 
 pub fn execute_claim_reward(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _amount: Amount,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ClaimTokensMsg,
 ) -> Result<Response, ContractError> {
-    // claim_tokens(deps.storage, env, msg, info.sender, port_id)
-    Ok(Response::new().add_attribute("action", "execute_claim_reward"))
+    let port_id = get_ibc_port_id(deps.as_ref())?;
+    claim_tokens(
+        deps.storage,
+        env,
+        ClaimTokensMsg {
+            channel: msg.channel,
+            timeout: msg.timeout,
+            denom: msg.denom,
+        },
+        info.sender.clone(),
+        port_id,
+    )?;
+    withdraw_reward(deps.storage, info.sender.to_string())?;
+
+    let mut total_coins: Vec<Coin> = vec![];
+    let reward_pools = REWARD_POOLS.load(deps.storage)?;
+    for reward_pool in reward_pools {
+        let key = reward_pool.reward_token.to_string() + &info.sender.to_string();
+        if let Some(claim_amount) = USER_PENDING_REWARDS.may_load(deps.storage, key.clone())? {
+            if !claim_amount.is_zero() {
+                total_coins.push(Coin {
+                    denom: reward_pool.reward_token,
+                    amount: claim_amount,
+                });
+                USER_PENDING_REWARDS.save(deps.storage, key, &Uint128::zero())?;
+            }
+        }
+    }
+
+    update_user_reward_debt(deps.storage, info.sender.to_string())?;
+
+    Ok(Response::new()
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: total_coins,
+        }))
+        .add_attribute("action", "execute_claim_reward"))
 }
 
 pub fn execute_claim_all_rewards(
@@ -689,4 +724,114 @@ fn query_lockup(deps: Deps, channel_id: String, owner: String) -> StdResult<Lock
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::default())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::test_helpers::*;
+
+    use cosmwasm_std::testing::{mock_env, mock_info};
+    use cosmwasm_std::{coins, from_binary, StdError};
+
+    #[test]
+    fn setup_and_query() {
+        let deps = setup(&["channel-3"]);
+
+        let raw_list = query(deps.as_ref(), mock_env(), QueryMsg::ListChannels {}).unwrap();
+        let list_res: ListChannelsResponse = from_binary(&raw_list).unwrap();
+        assert_eq!(1, list_res.channels.len());
+        assert_eq!(mock_channel_info("channel-3"), list_res.channels[0]);
+        // assert_eq!(mock_channel_info("channel-7"), list_res.channels[1]);
+
+        let raw_channel = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Channel {
+                id: "channel-3".to_string(),
+            },
+        )
+        .unwrap();
+        let chan_res: ChannelResponse = from_binary(&raw_channel).unwrap();
+        assert_eq!(chan_res.info, mock_channel_info("channel-3"));
+        assert_eq!(0, chan_res.total_sent.len());
+        assert_eq!(0, chan_res.balances.len());
+
+        let err = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Channel {
+                id: "channel-10".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            StdError::not_found("yield_farming::farming::ChannelInfo")
+        );
+    }
+
+    #[test]
+    fn proper_checks_on_execute_native() {
+        let send_channel = "channel-5";
+        let mut deps = setup(&[send_channel]);
+
+        let mut msg = TransferMsg {
+            channel: send_channel.to_string(),
+            remote_address: "foreign-address".to_string(),
+            timeout: None,
+        };
+
+        // works with proper funds
+        let info = mock_info("foobar", &coins(1234567, "ucosm"));
+        let res = execute_transfer_with_action(
+            deps.as_mut(),
+            mock_env(),
+            msg.clone(),
+            Amount::Native(one_coin(&info).unwrap()),
+            info.sender,
+            None,
+            "transfer",
+        )
+        .unwrap();
+        assert_eq!(1, res.messages.len());
+        if let CosmosMsg::Ibc(IbcMsg::SendPacket {
+            channel_id,
+            data,
+            timeout,
+        }) = &res.messages[0].msg
+        {
+            let expected_timeout = mock_env().block.time.plus_seconds(DEFAULT_TIMEOUT);
+            assert_eq!(timeout, &expected_timeout.into());
+            assert_eq!(channel_id.as_str(), send_channel);
+            let msg: Ics20Packet = from_binary(data).unwrap();
+
+            assert_eq!(msg.amount, Uint128::new(1234567));
+            assert_eq!(msg.denom.as_str(), "ucosm");
+            assert_eq!(msg.sender.as_str(), "foobar");
+            assert_eq!(msg.receiver.as_str(), "foreign-address");
+        } else {
+            panic!("Unexpected return message: {:?}", res.messages[0]);
+        }
+
+        // reject with bad channel id
+        msg.channel = "channel-45".to_string();
+        let info = mock_info("foobar", &coins(1234567, "ucosm"));
+        let err = execute_transfer_with_action(
+            deps.as_mut(),
+            mock_env(),
+            msg,
+            Amount::Native(one_coin(&info).unwrap()),
+            info.sender,
+            None,
+            "transfer",
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::NoSuchChannel {
+                id: "channel-45".to_string()
+            }
+        );
+    }
 }
