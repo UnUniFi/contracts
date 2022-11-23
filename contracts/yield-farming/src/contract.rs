@@ -1,12 +1,13 @@
 use crate::state::{
-    increase_channel_balance, join_ibc_paths, Config, CHANNEL_INFO, CHANNEL_STATE, CONFIG, LOCKUP,
-    REWARD_POOLS, TOTAL_DEPOSITS, USER_DEPOSITS, USER_PENDING_REWARDS, USER_REWARD_DEBTS,
+    increase_channel_balance, join_ibc_paths, Config, UnlockInfo, CHANNEL_INFO, CHANNEL_STATE,
+    CONFIG, LOCKUP, REWARD_POOLS, TEMP_SENDER, TOTAL_DEPOSITS, USER_DEPOSITS, USER_LOCKS,
+    USER_PENDING_REWARDS, USER_REWARD_DEBTS, USER_UNLOCKS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcQuery,
-    MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128,
+    attr, coin, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg,
+    IbcQuery, MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128,
 };
 
 use cw_utils::{nonpayable, one_coin};
@@ -34,7 +35,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let config = Config {
         owner: info.sender,
-        unbond_period: msg.unbond_period,
+        unlock_period: msg.unlock_period,
         is_freeze: false,
         default_timeout: msg.default_timeout,
         init_channel: false,
@@ -58,8 +59,8 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig {
             owner,
-            unbond_period,
-        } => execute_update_config(deps, env, info, owner, unbond_period),
+            unlock_period,
+        } => execute_update_config(deps, env, info, owner, unlock_period),
         ExecuteMsg::UpdateFreezeFlag { freeze_flag } => {
             execute_update_freeze_flag(deps, env, info, freeze_flag)
         }
@@ -85,8 +86,8 @@ pub fn execute(
         }
         ExecuteMsg::ClaimReward(msg) => execute_claim_reward(deps, env, info, msg),
         ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
-        ExecuteMsg::StartUnbond {} => execute_start_unbond(deps, env, info),
-        ExecuteMsg::ClaimUnbond {} => execute_claim_unbond(deps, env, info),
+        ExecuteMsg::StartUnlockTokens(msg) => execute_start_unlock_tokens(deps, env, info, msg),
+        ExecuteMsg::ClaimUnlockedTokens {} => execute_claim_unlocked_tokens(deps, env, info),
         ExecuteMsg::SwapReward {
             source_token,
             dest_token,
@@ -101,7 +102,7 @@ pub fn execute_update_config(
     _env: Env,
     info: MessageInfo,
     owner: Option<String>,
-    unbond_period: Option<u64>,
+    unlock_period: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
@@ -112,8 +113,8 @@ pub fn execute_update_config(
     if let Some(owner) = owner {
         config.owner = deps.api.addr_validate(&owner)?;
     }
-    if let Some(unbond_period) = unbond_period {
-        config.unbond_period = unbond_period;
+    if let Some(unlock_period) = unlock_period {
+        config.unlock_period = unlock_period;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -316,6 +317,8 @@ pub fn execute_lock_tokens(
         timeout: msg.timeout,
     };
 
+    TEMP_SENDER.save(deps.storage, &sender.to_string())?;
+
     execute_transfer_with_action(
         deps,
         env.clone(),
@@ -354,7 +357,7 @@ pub fn claim_tokens(
     )
 }
 
-pub fn execute_unlock_tokens(
+pub fn unlock_tokens(
     store: &mut dyn Storage,
     env: Env,
     msg: UnlockTokensMsg,
@@ -362,6 +365,23 @@ pub fn execute_unlock_tokens(
     port_id: String,
 ) -> Result<Response, ContractError> {
     assert_lockup_owner(store, msg.channel.as_str(), sender.as_str())?;
+
+    if let Some(mut user_unlocks) = USER_UNLOCKS.may_load(store, sender.to_string())? {
+        user_unlocks.push(UnlockInfo {
+            lock_id: msg.lock_id.u64(),
+            start_time: env.block.time.seconds(),
+        });
+        USER_UNLOCKS.save(store, sender.to_string(), &user_unlocks)?;
+    } else {
+        USER_UNLOCKS.save(
+            store,
+            sender.to_string(),
+            &vec![UnlockInfo {
+                lock_id: msg.lock_id.u64(),
+                start_time: env.block.time.seconds(),
+            }],
+        )?;
+    }
 
     let gamm_packet = OsmoPacket::Unlock(UnlockPacket { id: msg.lock_id });
     let transfer_msg = TransferMsg {
@@ -587,20 +607,78 @@ pub fn execute_claim_all_rewards(
     Ok(Response::new().add_attribute("action", "execute_claim_all_rewards"))
 }
 
-pub fn execute_start_unbond(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+pub fn execute_start_unlock_tokens(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: UnlockTokensMsg,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "execute_start_unbond"))
+    let port_id = get_ibc_port_id(deps.as_ref())?;
+    claim_tokens(
+        deps.storage,
+        env.clone(),
+        ClaimTokensMsg {
+            channel: msg.channel.clone(),
+            timeout: msg.timeout.clone(),
+            denom: msg.denom.clone(),
+        },
+        info.sender.clone(),
+        port_id.clone(),
+    )?;
+    withdraw_reward(deps.storage, info.sender.to_string())?;
+
+    unlock_tokens(deps.storage, env, msg, info.sender.clone(), port_id)?;
+
+    update_user_reward_debt(deps.storage, info.sender.to_string())?;
+    Ok(Response::new().add_attribute("action", "execute_start_unlock_tokens"))
 }
 
-pub fn execute_claim_unbond(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+pub fn execute_claim_unlocked_tokens(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "execute_claim_unbond"))
+    let config = CONFIG.load(deps.storage)?;
+    let mut messages: Vec<CosmosMsg> = vec![];
+
+    if let Some(user_unlocks) = USER_UNLOCKS.may_load(deps.storage, info.sender.to_string())? {
+        let user_locks = USER_LOCKS
+            .may_load(deps.storage, info.sender.to_string())?
+            .unwrap();
+        let mut new_user_unlocks = vec![];
+        for item in user_unlocks {
+            if item.start_time + config.unlock_period < env.block.time.seconds() {
+                let mut new_user_locks = user_locks.clone();
+                let lock_info_index = user_locks
+                    .iter()
+                    .position(|user_lock| user_lock.lock_id == item.lock_id)
+                    .unwrap();
+                let lock_info = user_locks.get(lock_info_index).unwrap();
+                new_user_locks.remove(lock_info_index);
+                USER_LOCKS.save(deps.storage, info.sender.to_string(), &new_user_locks)?;
+
+                let mut user_deposit = USER_DEPOSITS
+                    .may_load(deps.storage, info.sender.to_string())?
+                    .unwrap();
+                user_deposit = user_deposit.checked_sub(lock_info.amount).unwrap();
+                USER_DEPOSITS.save(deps.storage, info.sender.to_string(), &user_deposit)?;
+
+                messages.push(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: info.sender.to_string(),
+                    amount: vec![coin(
+                        lock_info.clone().amount.u128(),
+                        lock_info.clone().denom,
+                    )],
+                }));
+            } else {
+                new_user_unlocks.push(item);
+            }
+        }
+        USER_UNLOCKS.save(deps.storage, info.sender.to_string(), &new_user_unlocks)?;
+    } else {
+        return Err(ContractError::NoUnlockedTokens {});
+    }
+    Ok(Response::new().add_attribute("action", "execute_claim_unlocked_tokens"))
 }
 
 pub fn execute_swap_reward(
@@ -672,7 +750,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config: Config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
-        unbond_period: config.unbond_period,
+        unlock_period: config.unlock_period,
         is_freeze: config.is_freeze,
         default_timeout: config.default_timeout,
     })

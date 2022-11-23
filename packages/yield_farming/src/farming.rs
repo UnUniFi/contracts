@@ -6,7 +6,7 @@ use crate::amount::Amount;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub unbond_period: u64,
+    pub unlock_period: u64,
     /// Default timeout for ics20 packets, specified in seconds
     pub default_timeout: u64,
 }
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateConfig {
         owner: Option<String>,
-        unbond_period: Option<u64>,
+        unlock_period: Option<u64>,
     },
     UpdateFreezeFlag {
         freeze_flag: bool,
@@ -28,8 +28,8 @@ pub enum ExecuteMsg {
     LockTokens(LockTokensMsg),
     ClaimReward(ClaimTokensMsg),
     ClaimAllRewards {},
-    StartUnbond {},
-    ClaimUnbond {},
+    StartUnlockTokens(UnlockTokensMsg),
+    ClaimUnlockedTokens {},
     SwapReward {
         source_token: String, // denom or contract addr
         dest_token: String,   // denom or contract addr
@@ -87,6 +87,7 @@ pub struct UnlockTokensMsg {
     pub channel: String,
     pub timeout: Option<u64>,
     pub lock_id: Uint64,
+    pub denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -124,7 +125,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub unbond_period: u64,
+    pub unlock_period: u64,
     pub is_freeze: bool,
     pub default_timeout: u64,
 }

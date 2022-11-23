@@ -7,8 +7,9 @@ use cosmwasm_std::{
 use yield_farming::farming::ChannelInfo;
 
 use crate::state::{
-    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, ReplyArgs, RewardPool,
-    CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS, REWARD_POOLS, TOTAL_DEPOSITS,
+    join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, LockInfo, ReplyArgs,
+    RewardPool, CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS, REWARD_POOLS, TEMP_SENDER,
+    TOTAL_DEPOSITS, USER_LOCKS,
 };
 use cw20::Cw20ExecuteMsg;
 use yield_farming::amount::Amount;
@@ -478,6 +479,27 @@ fn on_lock_packet(
     match ics20msg {
         Ics20Ack::Result(data) => {
             let ack: LockResultAck = from_binary(&data)?;
+
+            let sender = TEMP_SENDER.load(deps.storage)?;
+
+            if let Some(mut user_locks) = USER_LOCKS.may_load(deps.storage, sender.clone())? {
+                user_locks.push(LockInfo {
+                    lock_id: ack.lock_id.u64(),
+                    denom: ics20_packet.denom.clone(),
+                    amount: ics20_packet.amount,
+                });
+                USER_LOCKS.save(deps.storage, sender.to_string(), &user_locks)?;
+            } else {
+                USER_LOCKS.save(
+                    deps.storage,
+                    sender.to_string(),
+                    &vec![LockInfo {
+                        lock_id: ack.lock_id.u64(),
+                        denom: ics20_packet.denom.clone(),
+                        amount: ics20_packet.amount,
+                    }],
+                )?;
+            }
 
             // similar event messages like ibctransfer module
             let attributes = vec![

@@ -58,7 +58,7 @@ pub fn setup(channels: &[&str]) -> OwnedDeps<MockStorage, MockApi, MockQuerier> 
     // instantiate an empty contract
     let instantiate_msg = InstantiateMsg {
         default_timeout: DEFAULT_TIMEOUT,
-        unbond_period: 3600 * 24 * 21,
+        unlock_period: 3600 * 24 * 21,
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();

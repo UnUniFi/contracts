@@ -73,6 +73,9 @@ pub enum ContractError {
 
     #[error("Lockup account already create")]
     LockupAccountFound,
+
+    #[error("No unlocked tokens available")]
+    NoUnlockedTokens {},
 }
 
 impl From<FromUtf8Error> for ContractError {

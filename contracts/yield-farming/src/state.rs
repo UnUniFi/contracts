@@ -8,7 +8,7 @@ use yield_farming::{error::ContractError, farming::ChannelInfo};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-    pub unbond_period: u64,
+    pub unlock_period: u64,
     pub is_freeze: bool,
     pub default_timeout: u64,
     pub init_channel: bool,
@@ -51,6 +51,23 @@ pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");
 
 /// indexed by (channel_id, denom) maintaining the balance of the channel in that currency
 pub const CHANNEL_STATE: Map<(&str, &str), ChannelState> = Map::new("channel_state");
+
+pub const TEMP_SENDER: Item<String> = Item::new("TEMP_SENDER");
+pub const USER_LOCKS: Map<String, Vec<LockInfo>> = Map::new("USER_LOCKS");
+pub const USER_UNLOCKS: Map<String, Vec<UnlockInfo>> = Map::new("USER_UNLOCKS");
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct LockInfo {
+    pub lock_id: u64,
+    pub denom: String,
+    pub amount: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct UnlockInfo {
+    pub lock_id: u64,
+    pub start_time: u64,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ChannelState {
