@@ -27,14 +27,9 @@ pub enum ExecuteMsg {
     CreateLockup(CreateLockupMsg),
     LockTokens(LockTokensMsg),
     ClaimReward(ClaimTokensMsg),
-    ClaimAllRewards {},
+    ClaimAllRewards(ClaimAllTokensMsg),
     StartUnlockTokens(UnlockTokensMsg),
     ClaimUnlockedTokens {},
-    SwapReward {
-        source_token: String, // denom or contract addr
-        dest_token: String,   // denom or contract addr
-    },
-    AutoCompoundRewards {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -83,6 +78,12 @@ pub struct ClaimTokensMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ClaimAllTokensMsg {
+    pub channel: String,
+    pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnlockTokensMsg {
     pub channel: String,
     pub timeout: Option<u64>,
@@ -117,6 +118,12 @@ pub enum QueryMsg {
     /// Return type: LockupResponse.
     Lockup {
         channel: String,
+        owner: String,
+    },
+    UserLocks {
+        owner: String,
+    },
+    UserUnlocks {
         owner: String,
     },
 }

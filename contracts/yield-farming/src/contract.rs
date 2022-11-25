@@ -1,13 +1,13 @@
 use crate::state::{
-    increase_channel_balance, join_ibc_paths, Config, UnlockInfo, CHANNEL_INFO, CHANNEL_STATE,
-    CONFIG, LOCKUP, REWARD_POOLS, TEMP_SENDER, TOTAL_DEPOSITS, USER_DEPOSITS, USER_LOCKS,
-    USER_PENDING_REWARDS, USER_REWARD_DEBTS, USER_UNLOCKS,
+    increase_channel_balance, join_ibc_paths, Config, LockInfo, UnlockInfo, CHANNEL_INFO,
+    CHANNEL_STATE, CONFIG, LOCKUP, REWARD_POOLS, TEMP_SENDER, TOTAL_DEPOSITS, USER_DEPOSITS,
+    USER_LOCKS, USER_PENDING_REWARDS, USER_REWARD_DEBTS, USER_UNLOCKS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg,
-    IbcQuery, MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128,
+    IbcQuery, MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128, WasmMsg,
 };
 
 use cw_utils::{nonpayable, one_coin};
@@ -15,9 +15,9 @@ use yield_farming::{
     amount::Amount,
     error::ContractError,
     farming::{
-        ChannelResponse, ClaimTokensMsg, ConfigResponse, CreateLockupMsg, ExecuteMsg, ExitPoolMsg,
-        InstantiateMsg, JoinPoolMsg, ListChannelsResponse, LockTokensMsg, LockupResponse,
-        MigrateMsg, QueryMsg, SwapMsg, TransferMsg, UnlockTokensMsg,
+        ChannelResponse, ClaimAllTokensMsg, ClaimTokensMsg, ConfigResponse, CreateLockupMsg,
+        ExecuteMsg, ExitPoolMsg, InstantiateMsg, JoinPoolMsg, ListChannelsResponse, LockTokensMsg,
+        LockupResponse, MigrateMsg, QueryMsg, SwapMsg, TransferMsg, UnlockTokensMsg,
     },
     ibc::{
         ClaimPacket, ExitPoolPacket, Ics20Packet, JoinPoolPacket, LockPacket, OsmoPacket,
@@ -78,21 +78,16 @@ pub fn execute(
         }
         ExecuteMsg::CreateLockup(msg) => {
             nonpayable(&info)?;
-            execute_create_lockup(deps, env, msg, info.sender)
+            execute_create_lockup(deps, env, msg)
         }
         ExecuteMsg::LockTokens(msg) => {
             let coin = one_coin(&info)?;
             execute_lock_tokens(deps, env, msg, Amount::Native(coin), info.sender)
         }
         ExecuteMsg::ClaimReward(msg) => execute_claim_reward(deps, env, info, msg),
-        ExecuteMsg::ClaimAllRewards {} => execute_claim_all_rewards(deps, env, info),
+        ExecuteMsg::ClaimAllRewards(msg) => execute_claim_all_rewards(deps, env, info, msg),
         ExecuteMsg::StartUnlockTokens(msg) => execute_start_unlock_tokens(deps, env, info, msg),
         ExecuteMsg::ClaimUnlockedTokens {} => execute_claim_unlocked_tokens(deps, env, info),
-        ExecuteMsg::SwapReward {
-            source_token,
-            dest_token,
-        } => execute_swap_reward(deps, env, info, source_token, dest_token),
-        ExecuteMsg::AutoCompoundRewards {} => execute_auto_compound_rewards(deps, env, info),
     }
 }
 
@@ -229,21 +224,12 @@ pub fn execute_exit_pool(
     )
 }
 
-/// Only owner can execute it. To update the owner address
 pub fn execute_create_lockup(
     deps: DepsMut,
     env: Env,
     msg: CreateLockupMsg,
-    sender: Addr,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-
-    // Permission check
-    if sender != config.owner {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let lockup_key = (msg.channel.as_str(), sender.as_str());
+    let lockup_key = (msg.channel.as_str(), env.contract.address.as_str());
     if LOCKUP.has(deps.storage, lockup_key) {
         return Err(ContractError::LockupAccountFound {});
     }
@@ -291,7 +277,7 @@ pub fn execute_lock_tokens(
             timeout: msg.timeout,
             denom: amount.denom(),
         },
-        sender.clone(),
+        env.contract.address.clone(),
         port_id,
     )?;
     withdraw_reward(deps.storage, sender.to_string())?;
@@ -563,13 +549,13 @@ pub fn execute_claim_reward(
     let port_id = get_ibc_port_id(deps.as_ref())?;
     claim_tokens(
         deps.storage,
-        env,
+        env.clone(),
         ClaimTokensMsg {
             channel: msg.channel,
             timeout: msg.timeout,
             denom: msg.denom,
         },
-        info.sender.clone(),
+        env.contract.address,
         port_id,
     )?;
     withdraw_reward(deps.storage, info.sender.to_string())?;
@@ -600,11 +586,36 @@ pub fn execute_claim_reward(
 }
 
 pub fn execute_claim_all_rewards(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ClaimAllTokensMsg,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "execute_claim_all_rewards"))
+    let mut messages: Vec<CosmosMsg> = vec![];
+    let mut denoms: Vec<String> = vec![];
+    if let Some(user_locks) = USER_LOCKS.may_load(deps.storage, info.sender.to_string())? {
+        for user_lock in user_locks {
+            if !denoms.contains(&user_lock.denom) {
+                denoms.push(user_lock.denom);
+            }
+        }
+    }
+
+    for denom in denoms {
+        messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: env.contract.address.to_string(),
+            msg: to_binary(&ExecuteMsg::ClaimReward(ClaimTokensMsg {
+                channel: msg.channel.clone(),
+                timeout: msg.timeout,
+                denom,
+            }))?,
+            funds: vec![],
+        }));
+    }
+
+    Ok(Response::new()
+        .add_messages(messages)
+        .add_attribute("action", "execute_claim_all_rewards"))
 }
 
 pub fn execute_start_unlock_tokens(
@@ -622,12 +633,18 @@ pub fn execute_start_unlock_tokens(
             timeout: msg.timeout.clone(),
             denom: msg.denom.clone(),
         },
-        info.sender.clone(),
+        env.contract.address.clone(),
         port_id.clone(),
     )?;
     withdraw_reward(deps.storage, info.sender.to_string())?;
 
-    unlock_tokens(deps.storage, env, msg, info.sender.clone(), port_id)?;
+    unlock_tokens(
+        deps.storage,
+        env.clone(),
+        msg,
+        env.contract.address,
+        port_id,
+    )?;
 
     update_user_reward_debt(deps.storage, info.sender.to_string())?;
     Ok(Response::new().add_attribute("action", "execute_start_unlock_tokens"))
@@ -681,24 +698,6 @@ pub fn execute_claim_unlocked_tokens(
     Ok(Response::new().add_attribute("action", "execute_claim_unlocked_tokens"))
 }
 
-pub fn execute_swap_reward(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _source_token: String,
-    _dest_token: String,
-) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "execute_swap_reward"))
-}
-
-pub fn execute_auto_compound_rewards(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "execute_auto_compound_rewards"))
-}
-
 pub fn withdraw_reward(store: &mut dyn Storage, wallet: String) -> StdResult<()> {
     let reward_pools = REWARD_POOLS.load(store)?;
 
@@ -743,6 +742,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListChannels {} => to_binary(&query_list(deps)?),
         QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
         QueryMsg::Lockup { channel, owner } => to_binary(&query_lockup(deps, channel, owner)?),
+        QueryMsg::UserLocks { owner } => to_binary(&query_user_locks(deps, owner)?),
+        QueryMsg::UserUnlocks { owner } => to_binary(&query_user_unlocks(deps, owner)?),
     }
 }
 
@@ -797,6 +798,20 @@ fn query_lockup(deps: Deps, channel_id: String, owner: String) -> StdResult<Lock
         address: lockup_address,
     };
     Ok(res)
+}
+
+pub fn query_user_locks(deps: Deps, owner: String) -> StdResult<Vec<LockInfo>> {
+    if let Some(user_locks) = USER_LOCKS.may_load(deps.storage, owner)? {
+        return Ok(user_locks);
+    }
+    Ok(vec![])
+}
+
+pub fn query_user_unlocks(deps: Deps, owner: String) -> StdResult<Vec<UnlockInfo>> {
+    if let Some(user_unlocks) = USER_UNLOCKS.may_load(deps.storage, owner)? {
+        return Ok(user_unlocks);
+    }
+    Ok(vec![])
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
