@@ -96,6 +96,7 @@ pub enum OsmoPacket {
     Lock(LockPacket),
     Claim(ClaimPacket),
     Unlock(UnlockPacket),
+    DepositPool(JoinPoolPacket),
 }
 
 impl Ics20Packet {

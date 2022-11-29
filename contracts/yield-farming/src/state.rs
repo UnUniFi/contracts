@@ -1,9 +1,9 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, StdResult, Storage, Uint128, Uint64};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::{Item, Map};
-use yield_farming::{error::ContractError, farming::ChannelInfo};
+use yield_farming::{amount::Amount, error::ContractError, farming::ChannelInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -53,8 +53,18 @@ pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");
 pub const CHANNEL_STATE: Map<(&str, &str), ChannelState> = Map::new("channel_state");
 
 pub const TEMP_SENDER: Item<String> = Item::new("TEMP_SENDER");
+pub const TEMP_DEPOSIT: Item<DepositInfo> = Item::new("TEMP_DEPOSIT");
 pub const USER_LOCKS: Map<String, Vec<LockInfo>> = Map::new("USER_LOCKS");
 pub const USER_UNLOCKS: Map<String, Vec<UnlockInfo>> = Map::new("USER_UNLOCKS");
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositInfo {
+    pub channel: String,
+    pub timeout: Option<u64>,
+    pub duration: Uint64,
+    pub amount: Amount,
+    pub sender: Addr,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct LockInfo {

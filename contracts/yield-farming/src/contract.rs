@@ -1,7 +1,8 @@
 use crate::state::{
-    increase_channel_balance, join_ibc_paths, Config, LockInfo, UnlockInfo, CHANNEL_INFO,
-    CHANNEL_STATE, CONFIG, LOCKUP, REWARD_POOLS, TEMP_SENDER, TOTAL_DEPOSITS, USER_DEPOSITS,
-    USER_LOCKS, USER_PENDING_REWARDS, USER_REWARD_DEBTS, USER_UNLOCKS,
+    increase_channel_balance, join_ibc_paths, Config, DepositInfo, LockInfo, UnlockInfo,
+    CHANNEL_INFO, CHANNEL_STATE, CONFIG, LOCKUP, REWARD_POOLS, TEMP_DEPOSIT, TEMP_SENDER,
+    TOTAL_DEPOSITS, USER_DEPOSITS, USER_LOCKS, USER_PENDING_REWARDS, USER_REWARD_DEBTS,
+    USER_UNLOCKS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -16,8 +17,8 @@ use yield_farming::{
     error::ContractError,
     farming::{
         ChannelResponse, ClaimAllTokensMsg, ClaimTokensMsg, ConfigResponse, CreateLockupMsg,
-        ExecuteMsg, ExitPoolMsg, InstantiateMsg, JoinPoolMsg, ListChannelsResponse, LockTokensMsg,
-        LockupResponse, MigrateMsg, QueryMsg, SwapMsg, TransferMsg, UnlockTokensMsg,
+        DepositMsg, ExecuteMsg, ExitPoolMsg, InstantiateMsg, JoinPoolMsg, ListChannelsResponse,
+        LockTokensMsg, LockupResponse, MigrateMsg, QueryMsg, SwapMsg, TransferMsg, UnlockTokensMsg,
     },
     ibc::{
         ClaimPacket, ExitPoolPacket, Ics20Packet, JoinPoolPacket, LockPacket, OsmoPacket,
@@ -88,6 +89,10 @@ pub fn execute(
         ExecuteMsg::ClaimAllRewards(msg) => execute_claim_all_rewards(deps, env, info, msg),
         ExecuteMsg::StartUnlockTokens(msg) => execute_start_unlock_tokens(deps, env, info, msg),
         ExecuteMsg::ClaimUnlockedTokens {} => execute_claim_unlocked_tokens(deps, env, info),
+        ExecuteMsg::Deposit(msg) => {
+            let coin = one_coin(&info)?;
+            execute_deposit(deps, env, msg, Amount::Native(coin), info.sender)
+        }
     }
 }
 
@@ -158,7 +163,7 @@ pub fn execute_swap(
     };
 
     execute_transfer_with_action(
-        deps,
+        deps.storage,
         env,
         transfer_msg,
         amount,
@@ -186,7 +191,7 @@ pub fn execute_join_pool(
     };
 
     execute_transfer_with_action(
-        deps,
+        deps.storage,
         env,
         transfer_msg,
         amount,
@@ -214,7 +219,7 @@ pub fn execute_exit_pool(
     };
 
     execute_transfer_with_action(
-        deps,
+        deps.storage,
         env,
         transfer_msg,
         amount,
@@ -260,17 +265,27 @@ pub fn execute_lock_tokens(
     amount: Amount,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let port_id = get_ibc_port_id(deps.as_ref())?;
+    lock_tokens(deps.storage, env, msg, amount, sender, port_id)
+}
+
+pub fn lock_tokens(
+    store: &mut dyn Storage,
+    env: Env,
+    msg: LockTokensMsg,
+    amount: Amount,
+    sender: Addr,
+    port_id: String,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(store)?;
     if config.is_freeze {
         return Err(ContractError::ContractFreezed {});
     }
 
-    assert_lockup_owner(deps.storage, msg.channel.as_str(), sender.as_str())?;
-
-    let port_id = get_ibc_port_id(deps.as_ref())?;
+    assert_lockup_owner(store, msg.channel.as_str(), env.contract.address.as_str())?;
 
     claim_tokens(
-        deps.storage,
+        store,
         env.clone(),
         ClaimTokensMsg {
             channel: msg.channel.clone(),
@@ -280,19 +295,19 @@ pub fn execute_lock_tokens(
         env.contract.address.clone(),
         port_id,
     )?;
-    withdraw_reward(deps.storage, sender.to_string())?;
+    withdraw_reward(store, sender.to_string())?;
 
-    if let Some(mut user_deposits) = USER_DEPOSITS.may_load(deps.storage, sender.to_string())? {
+    if let Some(mut user_deposits) = USER_DEPOSITS.may_load(store, sender.to_string())? {
         user_deposits = user_deposits.checked_add(amount.amount()).unwrap();
-        USER_DEPOSITS.save(deps.storage, sender.to_string(), &user_deposits)?;
+        USER_DEPOSITS.save(store, sender.to_string(), &user_deposits)?;
     } else {
-        USER_DEPOSITS.save(deps.storage, sender.to_string(), &amount.amount())?;
+        USER_DEPOSITS.save(store, sender.to_string(), &amount.amount())?;
     }
-    let mut total_deposits = TOTAL_DEPOSITS.load(deps.storage)?;
+    let mut total_deposits = TOTAL_DEPOSITS.load(store)?;
     total_deposits = total_deposits.checked_add(amount.amount()).unwrap();
-    TOTAL_DEPOSITS.save(deps.storage, &total_deposits)?;
+    TOTAL_DEPOSITS.save(store, &total_deposits)?;
 
-    update_user_reward_debt(deps.storage, sender.to_string())?;
+    update_user_reward_debt(store, sender.to_string())?;
 
     let gamm_packet = OsmoPacket::Lock(LockPacket {
         duration: msg.duration,
@@ -303,10 +318,10 @@ pub fn execute_lock_tokens(
         timeout: msg.timeout,
     };
 
-    TEMP_SENDER.save(deps.storage, &sender.to_string())?;
+    TEMP_SENDER.save(store, &sender.to_string())?;
 
     execute_transfer_with_action(
-        deps,
+        store,
         env.clone(),
         transfer_msg,
         amount,
@@ -473,7 +488,7 @@ pub fn execute_only_action(
 }
 
 pub fn execute_transfer_with_action(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
     msg: TransferMsg,
     amount: Amount,
@@ -486,7 +501,7 @@ pub fn execute_transfer_with_action(
     }
 
     // ensure the requested channel is registered
-    if !CHANNEL_INFO.has(deps.storage, &msg.channel) {
+    if !CHANNEL_INFO.has(store, &msg.channel) {
         return Err(ContractError::NoSuchChannel { id: msg.channel });
     }
 
@@ -496,7 +511,7 @@ pub fn execute_transfer_with_action(
     // delta from user is in seconds
     let timeout_delta = match msg.timeout {
         Some(t) => t,
-        None => CONFIG.load(deps.storage)?.default_timeout,
+        None => CONFIG.load(store)?.default_timeout,
     };
     // timeout is in nanoseconds
     let timeout = env.block.time.plus_seconds(timeout_delta);
@@ -511,7 +526,7 @@ pub fn execute_transfer_with_action(
     );
 
     if our_chain {
-        increase_channel_balance(deps.storage, &msg.channel, &amount.denom(), amount.amount())?;
+        increase_channel_balance(store, &msg.channel, &amount.denom(), amount.amount())?;
     }
 
     // prepare ibc message
@@ -698,6 +713,45 @@ pub fn execute_claim_unlocked_tokens(
     Ok(Response::new().add_attribute("action", "execute_claim_unlocked_tokens"))
 }
 
+pub fn execute_deposit(
+    deps: DepsMut,
+    env: Env,
+    msg: DepositMsg,
+    amount: Amount,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let gamm_packet = JoinPoolPacket {
+        pool_id: msg.pool,
+        share_out_min_amount: msg.share_min_out,
+    };
+    let transfer_msg = TransferMsg {
+        channel: msg.channel.clone(),
+        remote_address: String::new(),
+        timeout: msg.timeout,
+    };
+
+    TEMP_DEPOSIT.save(
+        deps.storage,
+        &DepositInfo {
+            channel: msg.channel,
+            timeout: msg.timeout,
+            duration: msg.duration,
+            amount: amount.clone(),
+            sender: sender.clone(),
+        },
+    )?;
+
+    execute_transfer_with_action(
+        deps.storage,
+        env,
+        transfer_msg,
+        amount,
+        sender,
+        Some(OsmoPacket::DepositPool(gamm_packet)),
+        "deposit_pool",
+    )
+}
+
 pub fn withdraw_reward(store: &mut dyn Storage, wallet: String) -> StdResult<()> {
     let reward_pools = REWARD_POOLS.load(store)?;
 
@@ -878,7 +932,7 @@ mod test {
         // works with proper funds
         let info = mock_info("foobar", &coins(1234567, "ucosm"));
         let res = execute_transfer_with_action(
-            deps.as_mut(),
+            &mut deps.storage,
             mock_env(),
             msg.clone(),
             Amount::Native(one_coin(&info).unwrap()),
@@ -911,7 +965,7 @@ mod test {
         msg.channel = "channel-45".to_string();
         let info = mock_info("foobar", &coins(1234567, "ucosm"));
         let err = execute_transfer_with_action(
-            deps.as_mut(),
+            &mut deps.storage,
             mock_env(),
             msg,
             Amount::Native(one_coin(&info).unwrap()),

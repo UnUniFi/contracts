@@ -4,11 +4,12 @@ use cosmwasm_std::{
     IbcEndpoint, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
     IbcReceiveResponse, Reply, Response, Storage, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
-use yield_farming::farming::ChannelInfo;
+use yield_farming::farming::{ChannelInfo, LockTokensMsg};
 
+use crate::contract::{get_ibc_port_id, lock_tokens};
 use crate::state::{
     join_ibc_paths, reduce_channel_balance, undo_reduce_channel_balance, LockInfo, ReplyArgs,
-    RewardPool, CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS, REWARD_POOLS, TEMP_SENDER,
+    RewardPool, CHANNEL_INFO, CONFIG, LOCKUP, REPLY_ARGS, REWARD_POOLS, TEMP_DEPOSIT, TEMP_SENDER,
     TOTAL_DEPOSITS, USER_LOCKS,
 };
 use cw20::Cw20ExecuteMsg;
@@ -35,9 +36,10 @@ fn ack_fail(err: String) -> Binary {
 
 const RECEIVE_ID: u64 = 1337;
 const ACK_TRANSFER_ID: u64 = 0xfa17;
+const ACK_DEPOSIT_ID: u64 = 0xfa18;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, ContractError> {
     match reply.id {
         RECEIVE_ID => match reply.result {
             SubMsgResult::Ok(_) => Ok(Response::new()),
@@ -58,6 +60,25 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
         },
         ACK_TRANSFER_ID => match reply.result {
             SubMsgResult::Ok(_) => Ok(Response::new()),
+            SubMsgResult::Err(err) => Ok(Response::new().set_data(ack_fail(err))),
+        },
+        ACK_DEPOSIT_ID => match reply.result {
+            SubMsgResult::Ok(_) => {
+                let temp_deposit = TEMP_DEPOSIT.load(deps.storage)?;
+                let port_id = get_ibc_port_id(deps.as_ref())?;
+                lock_tokens(
+                    deps.storage,
+                    env,
+                    LockTokensMsg {
+                        channel: temp_deposit.channel,
+                        timeout: temp_deposit.timeout,
+                        duration: temp_deposit.duration,
+                    },
+                    temp_deposit.amount,
+                    temp_deposit.sender,
+                    port_id,
+                )
+            }
             SubMsgResult::Err(err) => Ok(Response::new().set_data(ack_fail(err))),
         },
         _ => Err(ContractError::UnknownReplyId { id: reply.id }),
@@ -273,11 +294,17 @@ pub fn ibc_packet_ack(
 
     if let Some(ref action) = packet_data.action {
         match action {
-            OsmoPacket::Swap(_) => {
-                on_gamm_packet(deps, msg, packet_data.sender, ics20msg, "acknowledge_swap")
-            }
+            OsmoPacket::Swap(_) => on_gamm_packet(
+                deps,
+                env,
+                msg,
+                packet_data.sender,
+                ics20msg,
+                "acknowledge_swap",
+            ),
             OsmoPacket::JoinPool(_) => on_gamm_packet(
                 deps,
+                env,
                 msg,
                 packet_data.sender,
                 ics20msg,
@@ -285,6 +312,7 @@ pub fn ibc_packet_ack(
             ),
             OsmoPacket::ExitPool(_) => on_gamm_packet(
                 deps,
+                env,
                 msg,
                 packet_data.sender,
                 ics20msg,
@@ -311,6 +339,14 @@ pub fn ibc_packet_ack(
             OsmoPacket::Unlock(_) => {
                 on_unlock_packet(packet_data.sender, ics20msg, "acknowledge_unlock")
             }
+            OsmoPacket::DepositPool(_) => on_gamm_packet(
+                deps,
+                env,
+                msg,
+                packet_data.sender,
+                ics20msg,
+                "acknowledge_deposit_pool",
+            ),
         }
     } else {
         match ics20msg {
@@ -391,6 +427,7 @@ fn on_packet_failure(
 
 fn on_gamm_packet(
     deps: DepsMut,
+    env: Env,
     msg: IbcPacketAckMsg,
     sender: String,
     ics20msg: Ics20Ack,
@@ -399,7 +436,7 @@ fn on_gamm_packet(
     match ics20msg {
         Ics20Ack::Result(data) => {
             let res: SwapAmountInAck = from_binary(&data)?;
-            on_gamm_packet_success(deps, msg.original_packet, sender, res, action_label)
+            on_gamm_packet_success(deps, env, msg.original_packet, sender, res, action_label)
         }
         Ics20Ack::Error(err) => on_packet_failure(
             deps,
@@ -412,6 +449,7 @@ fn on_gamm_packet(
 
 fn on_gamm_packet_success(
     deps: DepsMut,
+    env: Env,
     packet: IbcPacket,
     sender: String,
     res: SwapAmountInAck,
@@ -435,9 +473,21 @@ fn on_gamm_packet_success(
     }
 
     let to_send = Amount::from_parts(denom.to_string(), res.amount);
-    let send = send_amount(to_send, sender, voucher.our_chain);
-    let mut submsg = SubMsg::reply_on_error(send, ACK_TRANSFER_ID);
-    submsg.gas_limit = None;
+    let mut submsg: SubMsg;
+
+    if action_label == "acknowledge_deposit_pool" {
+        let send = send_amount(
+            to_send.clone(),
+            env.contract.address.to_string(),
+            voucher.our_chain,
+        );
+        submsg = SubMsg::reply_on_success(send, ACK_DEPOSIT_ID);
+        submsg.gas_limit = None;
+    } else {
+        let send = send_amount(to_send.clone(), sender, voucher.our_chain);
+        submsg = SubMsg::reply_on_error(send, ACK_TRANSFER_ID);
+        submsg.gas_limit = None;
+    }
 
     Ok(IbcBasicResponse::new()
         .add_submessage(submsg)
@@ -563,7 +613,7 @@ fn on_claim_tokens_packet(
             }
             REWARD_POOLS.save(deps.storage, &new_reward_pools)?;
 
-            on_gamm_packet_success(deps, msg.original_packet, sender, res, action_label)
+            on_gamm_packet_success(deps, env, msg.original_packet, sender, res, action_label)
         }
         Ics20Ack::Error(err) => Ok(result_ack_error(action_label, sender, err)),
     }
@@ -756,7 +806,7 @@ mod test {
         };
         let info = mock_info("local-sender", &coins(987654321, denom));
         execute_transfer_with_action(
-            deps.as_mut(),
+            &mut deps.storage,
             mock_env(),
             msg,
             Amount::Native(one_coin(&info).unwrap()),

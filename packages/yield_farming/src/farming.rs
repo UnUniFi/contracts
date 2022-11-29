@@ -30,6 +30,7 @@ pub enum ExecuteMsg {
     ClaimAllRewards(ClaimAllTokensMsg),
     StartUnlockTokens(UnlockTokensMsg),
     ClaimUnlockedTokens {},
+    Deposit(DepositMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -47,6 +48,15 @@ pub struct JoinPoolMsg {
     pub pool: Uint64,
     pub share_min_out: Uint128,
     pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositMsg {
+    pub channel: String,
+    pub pool: Uint64,
+    pub share_min_out: Uint128,
+    pub timeout: Option<u64>,
+    pub duration: Uint64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
