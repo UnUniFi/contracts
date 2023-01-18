@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("Failed SwapJoin: {reason:?}")]
     FailedSwapJoin { reason: String },
+
+    #[error("Failed ExitSwap: {reason:?}")]
+    FailedExitSwap { reason: String },
 }

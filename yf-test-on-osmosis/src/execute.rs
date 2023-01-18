@@ -8,13 +8,18 @@ use cosmwasm_std::{
     IbcMsg, IbcQuery, MessageInfo, Order, PortIdResponse, Reply, Response, StdResult, Storage,
     SubMsg, SubMsgResponse, SubMsgResult, Uint128, Uint64, WasmMsg,
 };
-use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountInResponse;
+use osmosis_std::types::osmosis::gamm::v1beta1::{
+    MsgExitSwapShareAmountInResponse, MsgSwapExactAmountInResponse,
+};
 
 // use crate::contract::SWAP_REPLY_ID;
-use crate::contract::JOIN_SWAP_REPLY_ID;
+use crate::contract::{EXIT_SWAP_REPLY_ID, JOIN_SWAP_REPLY_ID};
 use crate::error::ContractError;
 use crate::helpers::{generate_exit_swap_share_amount_in, generate_join_swap_extern_msg};
-use crate::state::{SwapMsgReplyState, DEPOSITOR_SHARE, SWAP_REPLY_STATES};
+use crate::state::{
+    ExitSwapMsgReplyState, SwapJoinMsgReplyState, DEPOSITOR_SHARE, EXIT_SWAP_REPLY_STATES,
+    SWAP_JOIN_REPLY_STATES,
+};
 
 pub fn execute_join_swap_extern(
     deps: DepsMut,
@@ -40,10 +45,10 @@ pub fn execute_join_swap_extern(
 
     // record original sender in the state for the information of the later recording
     // of share amount for sender
-    SWAP_REPLY_STATES.save(
+    SWAP_JOIN_REPLY_STATES.save(
         deps.storage,
         JOIN_SWAP_REPLY_ID,
-        &SwapMsgReplyState {
+        &SwapJoinMsgReplyState {
             original_sender: info.sender,
         },
     )?;
@@ -54,8 +59,7 @@ pub fn execute_join_swap_extern(
         .add_submessage(SubMsg::reply_on_success(
             join_swap_extern_amount_in_msg,
             JOIN_SWAP_REPLY_ID,
-        ))
-    )
+        )))
 }
 
 pub fn execute_exit_swap_share(
@@ -71,9 +75,25 @@ pub fn execute_exit_swap_share(
         env.contract.address,
         pool_id,
         token_out_denom,
-        share_in_amount,
+        share_in_amount.clone(),
         token_out_min_amount,
     )?;
+
+    // record original sender in the state for the information of the later recording
+    // of share amount for sender
+    EXIT_SWAP_REPLY_STATES.save(
+        deps.storage,
+        EXIT_SWAP_REPLY_ID,
+        &ExitSwapMsgReplyState {
+            original_sender: info.sender.clone(),
+        },
+    )?;
+
+    DEPOSITOR_SHARE.update(deps.storage, &info.sender, |share| -> StdResult<_> {
+        let share = share.unwrap_or_default();
+
+        Ok(share - Uint128::from_str(&share_in_amount).unwrap())
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", "exit_swap_share_amount_in")
@@ -83,7 +103,7 @@ pub fn execute_exit_swap_share(
 pub fn handle_join_swap_reply(
     deps: DepsMut,
     msg: Reply,
-    swap_msg_reply_state: SwapMsgReplyState,
+    swap_join_msg_reply_state: SwapJoinMsgReplyState,
 ) -> Result<Response, ContractError> {
     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
         let res: MsgSwapExactAmountInResponse = b.try_into().map_err(ContractError::Std)?;
@@ -91,14 +111,21 @@ pub fn handle_join_swap_reply(
         // TODO: better form
         // record share out amount with the original sender for the proper retrieve
         let added_share: Uint128 = res.token_out_amount.parse().unwrap();
-        DEPOSITOR_SHARE.update(deps.storage, &swap_msg_reply_state.original_sender, |share| -> StdResult<_> {
-            let share = share.unwrap_or_default();
-                        
-            Ok(share + added_share)
-        })?;
+        DEPOSITOR_SHARE.update(
+            deps.storage,
+            &swap_join_msg_reply_state.original_sender,
+            |share| -> StdResult<_> {
+                let share = share.unwrap_or_default();
+
+                Ok(share + added_share)
+            },
+        )?;
 
         return Ok(Response::new()
-            .add_attribute("original_sender", &swap_msg_reply_state.original_sender)
+            .add_attribute(
+                "original_sender",
+                &swap_join_msg_reply_state.original_sender,
+            )
             .add_attribute("share_out_amount", res.token_out_amount));
     }
 
@@ -107,9 +134,20 @@ pub fn handle_join_swap_reply(
     })
 }
 
-// pub fn handle_exit_swap_reply(s
+// pub fn handle_exit_swap_reply(
 //     _deps: DepsMut,
 //     msg: Reply,
+//     exit_swap_msg_reply_state: ExitSwapMsgReplyState,
 // ) -> Result<Response, ContractError> {
-//     Ok(Response::new())
+//     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+//         let res: MsgExitSwapShareAmountInResponse = b.try_into().map_err(ContractError::Std)?;
+
+//         return Ok(Response::new()
+//             .add_attribute("original_sender", &exit_swap_msg_reply_state.original_sender)
+//             .add_attribute("token_out_amount", res.token_out_amount));
+//     }
+
+//     Err(ContractError::FailedExitSwap {
+//         reason: msg.result.unwrap_err(),
+//     })
 // }

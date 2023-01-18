@@ -6,10 +6,13 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::execute::{execute_exit_swap_share, execute_join_swap_extern, handle_join_swap_reply};
+use crate::execute::{
+    execute_exit_swap_share, execute_join_swap_extern,
+    handle_join_swap_reply, /*handle_exit_swap_reply*/
+};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::query_depositor_share_amount;
-use crate::state::SWAP_REPLY_STATES;
+use crate::state::{EXIT_SWAP_REPLY_STATES, SWAP_JOIN_REPLY_STATES};
 // use crate::state::{State, STATE, SWAP_REPLY_STATES};
 
 // version info for migration info
@@ -65,7 +68,7 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::DepositorShareAmount { depositor } => {
             to_binary(&query_depositor_share_amount(deps, &depositor)?)
@@ -78,17 +81,19 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.id == JOIN_SWAP_REPLY_ID {
         // get intermediate swap reply state. Error if not found.
-        let swap_msg_reply_state = SWAP_REPLY_STATES.load(deps.storage, msg.id)?;
+        let swap_join_msg_reply_state = SWAP_JOIN_REPLY_STATES.load(deps.storage, msg.id)?;
 
         // prune intermedate state since it's no longer necessary
-        SWAP_REPLY_STATES.remove(deps.storage, msg.id);
+        SWAP_JOIN_REPLY_STATES.remove(deps.storage, msg.id);
 
-        handle_join_swap_reply(deps, msg, swap_msg_reply_state)
-    }
-    // else if msg.id == EXIT_SWAP_REPLY_ID {
-    // handle_exit_swap_reply(deps, msg)
-    // }
-    else {
+        handle_join_swap_reply(deps, msg, swap_join_msg_reply_state)
+    // } else if msg.id == EXIT_SWAP_REPLY_ID {
+    //     let exit_swap_msg_reply_state = EXIT_SWAP_REPLY_STATES.load(deps.storage, msg.id)?;
+    //     // prune intermedate state since it's no longer necessary
+    //     EXIT_SWAP_REPLY_STATES.remove(deps.storage, msg.id);
+
+    //     handle_exit_swap_reply(deps, msg, exit_swap_msg_reply_state)
+    } else {
         Ok(Response::new())
     }
 }
