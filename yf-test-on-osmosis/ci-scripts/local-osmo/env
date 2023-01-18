@@ -1,0 +1,4 @@
+CHAIN_ID="osmo-testing"
+NODE="http://localhost:26653"
+OSMO_HOME="$HOME/.osmosisd/validator1"
+RELATIVE_SCRIPT_PATH_FROM_TEST="../ci-scripts/local-osmo/"

@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "depositor_share_amount"
+      ],
+      "properties": {
+        "depositor_share_amount": {
+          "type": "object",
+          "required": [
+            "depositor"
+          ],
+          "properties": {
+            "depositor": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

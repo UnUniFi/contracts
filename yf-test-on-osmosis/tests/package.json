@@ -1,0 +1,50 @@
+{
+  "name": "yf-test-on-osmosis",
+  "version": "0.1.0",
+  "browserslist": [
+    "maintained node versions"
+  ],
+  "license": "Apache-2.0",
+  "private": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "fix": "run-s fix:*",
+    "fix:prettier": "prettier \"**/*.{ts,md}\" --write",
+    "fix:lint": "eslint src --ext .ts --fix",
+    "test": "run-s build test:*",
+    "test:unit": "../ci-scripts/local-osmo/start.sh && nyc --silent ava --serial && ../ci-scripts/local-osmo/stop.sh"
+  },
+  "dependencies": {
+    "@confio/relayer": "^0.5.1"
+  },
+  "devDependencies": {
+    "@ava/typescript": "^3.0.1",
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/node": "^18.11.10",
+    "@types/sinon": "^10.0.13",
+    "@typescript-eslint/eslint-plugin": "^5.30.7",
+    "@typescript-eslint/parser": "^5.30.7",
+    "ava": "^4.3.1",
+    "npm-run-all": "^4.1.5",
+    "nyc": "^15.1.0",
+    "prettier": "^2.7.1",
+    "sinon": "^14.0.0",
+    "typescript": "^4.7.4"
+  },
+  "ava": {
+    "failFast": true,
+    "timeout": "120s",
+    "typescript": {
+      "rewritePaths": {
+        "src/": "build/"
+      },
+      "compile": false
+    }
+  },
+  "nyc": {
+    "extends": "@istanbuljs/nyc-config-typescript",
+    "exclude": [
+      "**/*.spec.js"
+    ]
+  }
+}
