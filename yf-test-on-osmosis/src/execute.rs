@@ -95,6 +95,8 @@ pub fn execute_exit_swap_share(
 
         Ok(share - Uint128::from_str(&share_in_amount).unwrap())
     })?;
+    // TODO: check the validity of the input amount of "share_in_amount" by comparing
+    // with the amount of the sender's share
 
     Ok(Response::new()
         .add_attribute("action", "exit_swap_share_amount_in")
@@ -151,6 +153,7 @@ pub fn handle_exit_swap_reply(
             amount: Uint128::from_str(&res.token_out_amount).unwrap(),
         }];
 
+        // send back `token_out` to the original sender
         let return_deposit_msg: CosmosMsg = BankMsg::Send {
             to_address: exit_swap_msg_reply_state.original_sender.to_string(),
             amount: token_out.clone(),
@@ -159,10 +162,10 @@ pub fn handle_exit_swap_reply(
 
         return Ok(Response::new()
             .add_attribute(
-                "original_sender",
+                "send_to",
                 &exit_swap_msg_reply_state.original_sender,
             )
-            .add_attribute("token_out_amount", res.token_out_amount)
+            .add_attribute("amount", res.token_out_amount)
             .add_message(return_deposit_msg));
     }
 
