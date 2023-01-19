@@ -10,8 +10,7 @@ TXFLAG="--gas=auto --gas-prices 0.1uosmo --gas-adjustment 1.3 -b block --keyring
 LABEL="yf_test_on_osmosis"
 
 # store bytecode and acquire code id of it
-RES=$(osmosisd tx wasm store "./artifacts/$CONTRACT_NAME.wasm" --from validator1 \
-    -y --output json $TXFLAG)
+RES=$(osmosisd tx wasm store "./artifacts/$CONTRACT_NAME.wasm" --from validator1 -y --output json $TXFLAG)
 # echo $RES
 CODE_ID=$(echo $RES | jq -r '.logs[0].events[-1].attributes[1].value')
 echo $CODE_ID
@@ -20,6 +19,5 @@ echo $CODE_ID
 # write instance state in josn 
 INIT='{}'
 
-osmosisd tx wasm instantiate $CODE_ID "$INIT" --from validator1 \
-    $TXFLAG -y --no-admin --label $LABEL
+osmosisd tx wasm instantiate $CODE_ID "$INIT" --from validator1 $TXFLAG -y --no-admin --label $LABEL
 

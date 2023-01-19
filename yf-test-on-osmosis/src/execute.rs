@@ -74,7 +74,7 @@ pub fn execute_exit_swap_share(
     let exit_swap_share_amount_in_msg = generate_exit_swap_share_amount_in(
         env.contract.address,
         pool_id,
-        token_out_denom,
+        token_out_denom.clone(),
         share_in_amount.clone(),
         token_out_min_amount,
     )?;
@@ -86,6 +86,7 @@ pub fn execute_exit_swap_share(
         EXIT_SWAP_REPLY_ID,
         &ExitSwapMsgReplyState {
             original_sender: info.sender.clone(),
+            token_out_denom: token_out_denom,
         },
     )?;
 
@@ -97,7 +98,10 @@ pub fn execute_exit_swap_share(
 
     Ok(Response::new()
         .add_attribute("action", "exit_swap_share_amount_in")
-        .add_message(exit_swap_share_amount_in_msg))
+        .add_submessage(SubMsg::reply_on_success(
+            exit_swap_share_amount_in_msg,
+            EXIT_SWAP_REPLY_ID,
+        )))
 }
 
 pub fn handle_join_swap_reply(
@@ -134,20 +138,35 @@ pub fn handle_join_swap_reply(
     })
 }
 
-// pub fn handle_exit_swap_reply(
-//     _deps: DepsMut,
-//     msg: Reply,
-//     exit_swap_msg_reply_state: ExitSwapMsgReplyState,
-// ) -> Result<Response, ContractError> {
-//     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
-//         let res: MsgExitSwapShareAmountInResponse = b.try_into().map_err(ContractError::Std)?;
+pub fn handle_exit_swap_reply(
+    _deps: DepsMut,
+    msg: Reply,
+    exit_swap_msg_reply_state: ExitSwapMsgReplyState,
+) -> Result<Response, ContractError> {
+    if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+        let res: MsgExitSwapShareAmountInResponse = b.try_into().map_err(ContractError::Std)?;
 
-//         return Ok(Response::new()
-//             .add_attribute("original_sender", &exit_swap_msg_reply_state.original_sender)
-//             .add_attribute("token_out_amount", res.token_out_amount));
-//     }
+        let token_out = vec![Coin {
+            denom: exit_swap_msg_reply_state.token_out_denom,
+            amount: Uint128::from_str(&res.token_out_amount).unwrap(),
+        }];
 
-//     Err(ContractError::FailedExitSwap {
-//         reason: msg.result.unwrap_err(),
-//     })
-// }
+        let return_deposit_msg: CosmosMsg = BankMsg::Send {
+            to_address: exit_swap_msg_reply_state.original_sender.to_string(),
+            amount: token_out.clone(),
+        }
+        .into();
+
+        return Ok(Response::new()
+            .add_attribute(
+                "original_sender",
+                &exit_swap_msg_reply_state.original_sender,
+            )
+            .add_attribute("token_out_amount", res.token_out_amount)
+            .add_message(return_deposit_msg));
+    }
+
+    Err(ContractError::FailedExitSwap {
+        reason: msg.result.unwrap_err(),
+    })
+}
