@@ -19,4 +19,4 @@ echo $CODE_ID
 # write instance state in josn 
 INIT='{}'
 
-osmosisd tx wasm instantiate $CODE_ID "$INIT" --from validator1 $TXFLAG -y --no-admin --label $LABEL | jq -r .raw_log
+osmosisd tx wasm instantiate $CODE_ID "$INIT" --from validator1 $TXFLAG -y --no-admin --label $LABEL -o json | jq -r '.raw_log'
