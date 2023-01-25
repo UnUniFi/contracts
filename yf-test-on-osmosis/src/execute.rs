@@ -5,8 +5,8 @@ use std::str::FromStr;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, coin, has_coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    IbcMsg, IbcQuery, MessageInfo, Order, PortIdResponse, Reply, Response, StdResult, Storage,
-    SubMsg, SubMsgResponse, SubMsgResult, Uint128, Uint64, WasmMsg,
+    IbcMsg, IbcQuery, MessageInfo, Order, PortIdResponse, Reply, Response, StdError, StdResult,
+    Storage, SubMsg, SubMsgResponse, SubMsgResult, Uint128, Uint64, WasmMsg,
 };
 use osmosis_std::types::osmosis::gamm::v1beta1::{
     MsgExitSwapShareAmountInResponse, MsgSwapExactAmountInResponse,
@@ -90,13 +90,24 @@ pub fn execute_exit_swap_share(
         },
     )?;
 
-    DEPOSITOR_SHARE.update(deps.storage, &info.sender, |share| -> StdResult<_> {
-        let share = share.unwrap_or_default();
+    //
+    DEPOSITOR_SHARE.update::<_, ContractError>(deps.storage, &info.sender, |share| {
+        match share {
+            // return error using ContractError::InsufficientShareAmount if the share amount is not enough
+            Some(share) => {
+                share
+                    .checked_sub(Uint128::from_str(&share_in_amount).unwrap())
+                    .map_err(|_| ContractError::InsufficientShareAmount {
+                        share_amount: share.to_string(),
+                    })?;
 
-        Ok(share - Uint128::from_str(&share_in_amount).unwrap())
+                Ok(share)
+            }
+            None => Err(ContractError::NoShareForSender {
+                sender: info.sender.to_string(),
+            }),
+        }
     })?;
-    // TODO: check the validity of the input amount of "share_in_amount" by comparing
-    // with the amount of the sender's share
 
     Ok(Response::new()
         .add_attribute("action", "exit_swap_share_amount_in")
@@ -114,7 +125,6 @@ pub fn handle_join_swap_reply(
     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
         let res: MsgSwapExactAmountInResponse = b.try_into().map_err(ContractError::Std)?;
 
-        // TODO: better form
         // record share out amount with the original sender for the proper retrieve
         let added_share: Uint128 = res.token_out_amount.parse().unwrap();
         DEPOSITOR_SHARE.update(
@@ -161,10 +171,7 @@ pub fn handle_exit_swap_reply(
         .into();
 
         return Ok(Response::new()
-            .add_attribute(
-                "send_to",
-                &exit_swap_msg_reply_state.original_sender,
-            )
+            .add_attribute("send_to", &exit_swap_msg_reply_state.original_sender)
             .add_attribute("amount", res.token_out_amount)
             .add_message(return_deposit_msg));
     }

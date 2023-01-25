@@ -20,4 +20,10 @@ pub enum ContractError {
 
     #[error("Failed ExitSwap: {reason:?}")]
     FailedExitSwap { reason: String },
+
+    #[error("No share for the sender: {sender:?}")]
+    NoShareForSender { sender: String },
+
+    #[error("Sender's share_in_amont is insufficient. Actual share amount is: {share_amount:?}")]
+    InsufficientShareAmount { share_amount: String },
 }

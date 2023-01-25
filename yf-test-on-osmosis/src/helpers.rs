@@ -1,10 +1,10 @@
 use cosmwasm_std::{Addr, Coin, Decimal, Deps, Timestamp, Uint128};
-use osmosis_std::shim::Timestamp as OsmosisTimestamp;
+// use osmosis_std::shim::Timestamp as OsmosisTimestamp;
 use osmosis_std::types::osmosis::gamm::v1beta1::{
     MsgExitSwapShareAmountIn, MsgJoinSwapExternAmountIn, QueryTotalPoolLiquidityRequest,
     SwapAmountInRoute,
 };
-use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
+// use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
 
 use crate::error::ContractError;
 
