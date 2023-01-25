@@ -11,16 +11,10 @@
         "join_swap_extern": {
           "type": "object",
           "required": [
-            "pool_id",
             "share_out_min_amount",
             "token_in"
           ],
           "properties": {
-            "pool_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
             "share_out_min_amount": {
               "type": "string"
             },
@@ -41,17 +35,11 @@
         "exit_swap_share": {
           "type": "object",
           "required": [
-            "pool_id",
             "share_in_amount",
             "token_out_denom",
             "token_out_min_amount"
           ],
           "properties": {
-            "pool_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
             "share_in_amount": {
               "type": "string"
             },

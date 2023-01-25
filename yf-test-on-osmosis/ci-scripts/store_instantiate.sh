@@ -17,6 +17,6 @@ echo $CODE_ID
 
 # instantiate contract out of the uploaded code using that code id
 # write instance state in josn 
-INIT='{}'
+INIT='{"pool_id":1, "deposit_token_denom": "stake"}'
 
 osmosisd tx wasm instantiate $CODE_ID "$INIT" --from validator1 $TXFLAG -y --no-admin --label $LABEL -o json | jq -r '.raw_log'

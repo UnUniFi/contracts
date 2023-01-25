@@ -10,9 +10,10 @@ use crate::execute::{
     execute_exit_swap_share, execute_join_swap_extern, handle_exit_swap_reply,
     handle_join_swap_reply,
 };
+use crate::helpers::addr_opt_validate;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::query_depositor_share_amount;
-use crate::state::{EXIT_SWAP_REPLY_STATES, SWAP_JOIN_REPLY_STATES};
+use crate::state::{Config, CONFIG, EXIT_SWAP_REPLY_STATES, SWAP_JOIN_REPLY_STATES};
 // use crate::state::{State, STATE, SWAP_REPLY_STATES};
 
 // version info for migration info
@@ -28,10 +29,19 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     // set contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let config = Config {
+        owner: addr_opt_validate(deps.api, &msg.owner)?,
+        pool_id: msg.pool_id,
+        deposit_token_denom: msg.deposit_token_denom,
+    };
+
+    // store config
+    CONFIG.save(deps.storage, &config)?;
 
     // return OK
     Ok(Response::new().add_attribute("method", "instantiate"))
@@ -46,24 +56,13 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::JoinSwapExtern {
-            pool_id,
             token_in,
             share_out_min_amount,
-        } => execute_join_swap_extern(deps, env, info, pool_id, token_in, share_out_min_amount),
+        } => execute_join_swap_extern(deps, env, info, token_in, share_out_min_amount),
         ExecuteMsg::ExitSwapShare {
-            pool_id,
-            token_out_denom,
             share_in_amount,
             token_out_min_amount,
-        } => execute_exit_swap_share(
-            deps,
-            env,
-            info,
-            pool_id,
-            token_out_denom,
-            share_in_amount,
-            token_out_min_amount,
-        ),
+        } => execute_exit_swap_share(deps, env, info, share_in_amount, token_out_min_amount),
     }
 }
 
