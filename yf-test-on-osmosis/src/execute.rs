@@ -108,7 +108,6 @@ pub fn execute_exit_swap_share(
         EXIT_SWAP_REPLY_ID,
         &ExitSwapMsgReplyState {
             original_sender: info.sender.clone(),
-            share_in_amount: share_in_amount_uint128,
         },
     )?;
 

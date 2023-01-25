@@ -29,7 +29,6 @@ pub struct SwapJoinMsgReplyState {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExitSwapMsgReplyState {
     pub original_sender: Addr,
-    pub share_in_amount: Uint128,
 }
 
 // TODO: better struct
