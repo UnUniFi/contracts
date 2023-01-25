@@ -6,8 +6,8 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Insufficient Funds")]
-    InsufficientFunds { coins: Vec<Coin> },
+    #[error("Insufficient Fund")]
+    InsufficientFund { coin: Coin },
 
     #[error("Invalid Pool Route: {reason:?}")]
     InvalidPoolRoute { reason: String },
@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("Sender's share_in_amont is insufficient. Actual share amount is: {share_amount:?}")]
     InsufficientShareAmount { share_amount: String },
+
+    #[error("Invalid deposit denom: {true_denom:?}")]
+    InvalidDepositDenom { true_denom: String },
 }

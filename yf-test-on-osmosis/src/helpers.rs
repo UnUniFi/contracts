@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Deps, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Api, Coin, Decimal, Deps, StdResult, Timestamp, Uint128};
 // use osmosis_std::shim::Timestamp as OsmosisTimestamp;
 use osmosis_std::types::osmosis::gamm::v1beta1::{
     MsgExitSwapShareAmountIn, MsgJoinSwapExternAmountIn, QueryTotalPoolLiquidityRequest,
@@ -6,7 +6,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::{
 };
 // use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
 
-use crate::error::ContractError;
+use crate::{error::ContractError, state::CONFIG};
 
 pub fn generate_join_swap_extern_msg(
     // deps: Deps,
@@ -43,6 +43,25 @@ pub fn generate_exit_swap_share_amount_in(
         share_in_amount: share_amount_in,
         token_out_min_amount: token_out_min_amount,
     })
+}
+
+// Returns a lowercased, validated address upon success if present.
+pub fn addr_opt_validate(api: &dyn Api, addr: &Option<String>) -> StdResult<Option<Addr>> {
+    addr.as_ref()
+        .map(|addr| api.addr_validate(addr))
+        .transpose()
+}
+
+// check the denom of the config matches the deposited token
+pub fn check_deposit_denom(deps: Deps, token: &str) -> Result<(), ContractError> {
+    let deposit_token_denom = CONFIG.load(deps.storage)?.deposit_token_denom;
+    if token != deposit_token_denom {
+        return Err(ContractError::InvalidDepositDenom {
+            true_denom: deposit_token_denom,
+        });
+    };
+
+    Ok(())
 }
 
 // pub fn calculate_min_output_from_twap(

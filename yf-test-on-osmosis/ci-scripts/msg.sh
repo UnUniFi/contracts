@@ -15,20 +15,20 @@ DEPOSITOR=$(osmosisd keys show -a validator1 --keyring-backend=test --home $OSMO
 BALANCE_INI=$(osmosisd q bank balances $DEPOSITOR $QFLAG | jq -r '.balances[] | select(.denom == "stake") | .amount')
 # echo $BALANCE_INI
 # execute join swap msg
-EXECUTE_JOIN_SWAP_MSG='{"join_swap_extern" : {"pool_id":1, "token_in": {"denom": "stake", "amount":"10"}, "share_out_min_amount":"1"}}'
+EXECUTE_JOIN_SWAP_MSG='{"join_swap_extern" : {"token_in": {"denom": "stake", "amount":"10"}, "share_out_min_amount":"1"}}'
 osmosisd tx wasm execute $CONTRACT_ADDR "$EXECUTE_JOIN_SWAP_MSG" --from $DEPOSITOR $TXFLAG -y \
     --amount 10stake -o json | jq  -r .raw_log
 
 # query for the share amount of the depositor
 EXECUTE_DEPOSITOR_SHARE_QUERY='{"depositor_share_amount": {"depositor": "'$DEPOSITOR'"}}'
 DEPOSITED_SHARE=$(osmosisd q wasm contract-state smart $CONTRACT_ADDR "$EXECUTE_DEPOSITOR_SHARE_QUERY" $QFLAG | jq -r .data.share_amount)
-
+echo "deposited share '$DEPOSITED_SHARE'"
 echo "contract balance $(osmosisd q bank balances $CONTRACT_ADDR $QFLAG)"
 
 BALANCE_BEF=$(osmosisd q bank balances $DEPOSITOR $QFLAG | jq -r '.balances[] | select(.denom == "stake") | .amount')
 # echo $BALANCE_BEF
 # execute exit swap msg
-EXECUTE_EXIT_SWAP_MSG='{"exit_swap_share" : {"pool_id":1, "token_out_denom": "stake", "share_in_amount": "'$DEPOSITED_SHARE'", "token_out_min_amount":"1"}}'
+EXECUTE_EXIT_SWAP_MSG='{"exit_swap_share" : {"share_in_amount": "'$DEPOSITED_SHARE'", "token_out_min_amount":"1"}}'
 AMOUNT=$DEPOSITED_SHARE'gamm/pool/1'
 osmosisd tx wasm execute $CONTRACT_ADDR "$EXECUTE_EXIT_SWAP_MSG" --from validator1 $TXFLAG -y -o json | jq -r .raw_log
 
@@ -39,6 +39,7 @@ echo "Difference between before and after '$BALANCE_DIF'"
 
 echo "contract balance $(osmosisd q bank balances $CONTRACT_ADDR $QFLAG)"
 
+osmosisd q wasm contract-state smart $CONTRACT_ADDR "$EXECUTE_DEPOSITOR_SHARE_QUERY" $QFLAG | jq -r .data.share_amount
 # query for the pool assets
 # osmosisd q gamm pool 1 $QFLAG | jq .
 
