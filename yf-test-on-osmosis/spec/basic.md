@@ -8,6 +8,9 @@ One of the remaining concerns is how to distribute (calculate) reward in proport
 
 2. make users sign txs to instantiate contract which has join, exit fund and retrieve reward on Osmosis and create ibc-channel for each contract with one original contract (?) on UnUniFi 
 
+Also, the other one is how to treat lockup duration ux.   
+If the LPT isn't locked, it doesn't earn incentives aside trading fee. If it's locked, user have to send two txs to withdraw deposit because LPT has to wait for the unbonding period. First one is for unbonding LPT and second one is to exit pool.   
+
 ## Unbonding from lockup
 
 There's lockup system in Osmosis, which users lockup the LP token to earn additional reward aside the trading fee.   
