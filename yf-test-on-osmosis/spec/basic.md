@@ -11,6 +11,11 @@ One of the remaining concerns is how to distribute (calculate) reward in proport
 Also, the other one is how to treat lockup duration ux.   
 If the LPT isn't locked, it doesn't earn incentives aside trading fee. If it's locked, user have to send two txs to withdraw deposit because LPT has to wait for the unbonding period. First one is for unbonding LPT and second one is to exit pool.   
 
+## Reward
+
+Without lockup, there's only trading fee reward for LPT.   
+The trading fee is directory reflected to the LPT into its value by structure. So, withdrawing trading fee reward requires to resolve some of the LPT. It doesn't take any time to do it.
+
 ## Unbonding from lockup
 
 There's lockup system in Osmosis, which users lockup the LP token to earn additional reward aside the trading fee.   
