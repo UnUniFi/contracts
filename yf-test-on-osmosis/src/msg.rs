@@ -24,10 +24,7 @@ pub enum ExecuteMsg {
     ExitSwapShare {
         share_in_amount: String,
         token_out_min_amount: String,
-    }, // Lockup {
-       //     timeout: Option<u64>,
-       //     duration: Uint64,
-       // }
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

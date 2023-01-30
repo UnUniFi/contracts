@@ -2,10 +2,13 @@
 
 set -o errexit -o nounset
 
-./ci-scripts/compile_and_optimize.sh
+export SCRIPT_DIR=$(cd $(dirname $0); pwd)
+source $SCRIPT_DIR/env
 
-./ci-scripts/store_instantiate.sh
+$SCRIPT_DIR/compile_and_optimize.sh
 
-./ci-scripts/local-osmo/pool-creation.sh
+$SCRIPT_DIR/store_instantiate.sh
 
-./ci-scripts/msg.sh
+$SCRIPT_DIR/pool-creation.sh
+
+$SCRIPT_DIR/msg.sh

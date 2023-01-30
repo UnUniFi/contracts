@@ -4,12 +4,11 @@ set -e
 # this script would do basic setup that has to be achieved to actual superfluid staking
 # prior to running this script, have the following json file in the directory running this script
 
-NODE=http://localhost:26653
-CHAIN_ID=osmo-testing
-OSMO_HOME=$HOME/.osmosisd/validator1
+echo "creating pool"
 
+CREATION_POOL=$SCRIPT_DIR/stake-uosmo.json
 # create pool
-osmosisd tx gamm create-pool --pool-file=./ci-scripts/local-osmo/stake-uosmo.json --pool-type=stableswap --from=validator1 --keyring-backend=test --chain-id=$CHAIN_ID --yes --home=$OSMO_HOME --node=$NODE -b block
+osmosisd tx gamm create-pool --pool-file=$CREATION_POOL --pool-type=stableswap --from=$DEPOSITOR --keyring-backend=test --chain-id=$CHAIN_ID --yes --home=$OSMO_HOME --node=$NODE -b block -o json | jq '.height'
 # sleep 7
 
 # create a lock up with lockable duration 360h

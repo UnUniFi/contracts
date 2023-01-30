@@ -1,0 +1,9 @@
+export CHAIN_ID="osmo-testing"
+export NODE="tcp://127.0.0.1:26657"
+export OSMO_HOME="$HOME/.osmosisd"
+export CONTRACT_NAME="yf_test_on_osmosis-aarch64"
+export TXFLAG="--gas=auto --gas-prices 0.1uosmo --gas-adjustment 1.3 -b block --keyring-backend=test --home=$OSMO_HOME --node $NODE --chain-id $CHAIN_ID"
+export LABEL="yf_test_on_osmosis"
+export QFLAG="--home $OSMO_HOME --node $NODE -o json"
+export DEPOSITOR=$(osmosisd keys show -a validator1 --keyring-backend=test --home $OSMO_HOME)
+export CONTRACT_ADDR="osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9"

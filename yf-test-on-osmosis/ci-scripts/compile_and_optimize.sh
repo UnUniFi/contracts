@@ -2,8 +2,6 @@
 
 set -o errexit -o nounset
 
-# First source .env file to set env variables
-
 # compile stuff
 cargo wasm
 
@@ -12,6 +10,8 @@ RUSTFLAGS='-C link-arg=-s'
 
 RUST_BACKTRACE=1
 
+cd $SCRIPT_DIR/../
+
 # optimize to reduce code size. need docker installed for arm cpu.
 # docker run --rm -v "$(pwd)":/code \
 #   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
@@ -19,7 +19,7 @@ RUST_BACKTRACE=1
 #   cosmwasm/rust-optimizer:0.12.10
   
 # incase for m1
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer-arm64:0.12.8
+# docker run --rm -v "$(pwd)":/code \
+#   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+#   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+#   cosmwasm/rust-optimizer-arm64:0.12.8

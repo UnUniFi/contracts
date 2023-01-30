@@ -4,9 +4,9 @@ use std::str::FromStr;
 use cosmwasm_std::coins;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
-    attr, coin, has_coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    IbcMsg, IbcQuery, MessageInfo, Order, PortIdResponse, Reply, Response, StdError, StdResult,
-    Storage, SubMsg, SubMsgResponse, SubMsgResult, Uint128, Uint64, WasmMsg,
+    coin, has_coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, SubMsgResponse,
+    SubMsgResult, Uint128, Uint64, WasmMsg,
 };
 use osmosis_std::types::osmosis::gamm::v1beta1::{
     MsgExitSwapShareAmountInResponse, MsgSwapExactAmountInResponse,
