@@ -31,7 +31,6 @@ pub struct ExitSwapMsgReplyState {
     pub original_sender: Addr,
 }
 
-// TODO: better struct
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const DEPOSITOR_SHARE: Map<&Addr, Uint128> = Map::new("depositor_share");
 pub const SWAP_JOIN_REPLY_STATES: Map<u64, SwapJoinMsgReplyState> =
