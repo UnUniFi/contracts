@@ -30,5 +30,5 @@ And then, it's ready to actually test contract on chain using Osmosis by running
 
 ```shell
 cd ci-scripts/contract
-./start.sh
+./exec.sh
 ```
