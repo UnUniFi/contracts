@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -o errexit -o nounset
+cd $SCRIPT_DIR/../../
 
 # compile stuff
 cargo wasm
@@ -9,8 +10,6 @@ cargo wasm
 RUSTFLAGS='-C link-arg=-s'
 
 RUST_BACKTRACE=1
-
-cd $SCRIPT_DIR/../../
 
 # optimize to reduce code size. need docker installed for arm cpu.
 # docker run --rm -v "$(pwd)":/code \

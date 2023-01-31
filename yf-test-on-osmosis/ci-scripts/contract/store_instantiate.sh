@@ -4,7 +4,7 @@ set -e
 echo "Storing and instantiating contract"
 
 # store bytecode and acquire code id of it
-RES=$(osmosisd tx wasm store "$SCRIPT_DIR/../artifacts/$CONTRACT_NAME.wasm" --from=$DEPOSITOR -y --output json $TXFLAG)
+RES=$(osmosisd tx wasm store "$SCRIPT_DIR/../../artifacts/$CONTRACT_NAME.wasm" --from=$DEPOSITOR -y --output json $TXFLAG)
 # echo $RES
 CODE_ID=$(echo $RES | jq -r '.logs[0].events[-1].attributes[1].value')
 echo $CODE_ID
