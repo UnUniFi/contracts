@@ -4,7 +4,7 @@ set -o errexit -o nounset -u
 
 echo "msg and quereis"
 
-BALANCE_INI=$(osmosisd q bank balances $DEPOSITOR $QFLAG | jq -r '.balances[] | select(.denom == "stake") | .amount')
+# BALANCE_INI=$(osmosisd q bank balances $DEPOSITOR $QFLAG | jq -r '.balances[] | select(.denom == "stake") | .amount')
 # execute join swap msg
 EXECUTE_JOIN_SWAP_MSG='{"join_swap_extern" : {"token_in": {"denom": "stake", "amount":"100"}, "share_out_min_amount":"1"}}'
 osmosisd tx wasm execute $CONTRACT_ADDR "$EXECUTE_JOIN_SWAP_MSG" --from=$DEPOSITOR $TXFLAG -y \
@@ -31,11 +31,11 @@ osmosisd tx wasm execute $CONTRACT_ADDR "$EXECUTE_EXIT_SWAP_MSG" --from=$DEPOSIT
 BALANCE_AFT=$(osmosisd q bank balances $DEPOSITOR $QFLAG | jq -r '.balances[] | select(.denom == "stake") | .amount')
 # echo $BALANCE_AFT
 BALANCE_DIF=$(($BALANCE_AFT - $BALANCE_BEF))
-echo "Difference between before and after '$BALANCE_DIF'"
+echo "Difference between before and after, expected => 99, got: '$BALANCE_DIF'"
 
-echo "contract balance $(osmosisd q bank balances $CONTRACT_ADDR $QFLAG)"
+echo "contract balance expected: 0 ([]), got: $(osmosisd q bank balances $CONTRACT_ADDR $QFLAG)"
 
-osmosisd q wasm contract-state smart $CONTRACT_ADDR "$EXECUTE_DEPOSITOR_SHARE_QUERY" $QFLAG | jq -r .data.share_amount
+echo "Depositor share in contract, expected: 0, got: $(osmosisd q wasm contract-state smart $CONTRACT_ADDR "$EXECUTE_DEPOSITOR_SHARE_QUERY" $QFLAG | jq -r .data.share_amount)"
 # query for the pool assets
 # osmosisd q gamm pool 1 $QFLAG | jq .
 
