@@ -1,3 +1,4 @@
 CHAIN_ID="osmo-testing"
+# If you want to use in ts test case, set tcp://127.0.0.1:26653
 NODE="tcp://127.0.0.1:26657"
 OSMO_HOME="$HOME/.osmosisd"
