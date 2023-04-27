@@ -1,4 +1,4 @@
-use crate::state::{Config, LockInfo, UnlockInfo, CONFIG};
+use crate::state::{Config, CONFIG};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -9,11 +9,7 @@ use cosmwasm_std::{
 use cw_utils::{nonpayable, one_coin};
 use strategy::{
     error::ContractError,
-    strategy::{
-        ClaimAllTokensMsg, ClaimTokensMsg, ConfigResponse, CreateLockupMsg, DepositMsg, ExecuteMsg,
-        ExitPoolMsg, InstantiateMsg, JoinPoolMsg, LockTokensMsg, MigrateMsg, QueryMsg, SwapMsg,
-        TransferMsg, UnlockTokensMsg,
-    },
+    strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakeMsg, UnstakeMsg},
 };
 
 //Initialize the contract.
@@ -26,11 +22,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let config = Config {
         owner: info.sender,
-        unlock_period: msg.unlock_period,
-        is_freeze: false,
-        default_timeout: msg.default_timeout,
-        init_channel: false,
-        default_remote_denom: None,
+        unbond_period: msg.unbond_period,
+        deposit_denom: msg.deposit_denom,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -48,11 +41,16 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig {
             owner,
-            unlock_period,
-        } => execute_update_config(deps, env, info, owner, unlock_period),
-        ExecuteMsg::Deposit(msg) => {
+            unbond_period,
+            deposit_denom,
+        } => execute_update_config(deps, env, info, owner, unbond_period, deposit_denom),
+        ExecuteMsg::Stake(msg) => {
             let coin = one_coin(&info)?;
-            execute_deposit(deps, env, msg, coin.amount, info.sender)
+            execute_stake(deps, env, msg, coin.amount, info.sender)
+        }
+        ExecuteMsg::Unstake(msg) => {
+            let coin = one_coin(&info)?;
+            execute_unstake(deps, env, msg, coin.amount, info.sender)
         }
     }
 }
@@ -63,7 +61,8 @@ pub fn execute_update_config(
     _env: Env,
     info: MessageInfo,
     owner: Option<String>,
-    unlock_period: Option<u64>,
+    unbond_period: Option<u64>,
+    deposit_denom: Option<String>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
@@ -71,22 +70,41 @@ pub fn execute_update_config(
     if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
+
     if let Some(owner) = owner {
         config.owner = deps.api.addr_validate(&owner)?;
     }
-    if let Some(unlock_period) = unlock_period {
-        config.unlock_period = unlock_period;
+    if let Some(unbond_period) = unbond_period {
+        config.unbond_period = unbond_period;
+    }
+    if let Some(deposit_denom) = deposit_denom {
+        config.deposit_denom = deposit_denom;
     }
 
     CONFIG.save(deps.storage, &config)?;
+    let resp = Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("owner", config.owner.to_string())
+        .add_attribute("unbond_period", config.unbond_period.to_string())
+        .add_attribute("deposit_denom", config.deposit_denom.to_string());
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(resp)
 }
 
-pub fn execute_deposit(
+pub fn execute_stake(
     deps: DepsMut,
     env: Env,
-    msg: DepositMsg,
+    msg: StakeMsg,
+    amount: Uint128,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    panic!("not implemented!")
+}
+
+pub fn execute_unstake(
+    deps: DepsMut,
+    env: Env,
+    msg: UnstakeMsg,
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
@@ -97,17 +115,24 @@ pub fn execute_deposit(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
+        QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config: Config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        owner: config.owner.to_string(),
-        unlock_period: config.unlock_period,
-        is_freeze: config.is_freeze,
-        default_timeout: config.default_timeout,
-    })
+    Ok(config)
+}
+
+pub fn query_unbonding(deps: Deps, addr: String) -> StdResult<Uint128> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    Ok(Uint128::from(0u128))
+}
+
+pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    Ok(Uint128::from(0u128))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
