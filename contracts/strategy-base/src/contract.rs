@@ -1,11 +1,10 @@
-use crate::state::{Config, CONFIG};
+use crate::state::{Config, DepositInfo, CONFIG, DEPOSITS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg,
-    IbcQuery, MessageInfo, Order, PortIdResponse, Response, StdResult, Storage, Uint128, WasmMsg,
+    attr, coin, coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Uint128,
 };
-
 use cw_utils::{nonpayable, one_coin};
 use strategy::{
     error::ContractError,
@@ -20,10 +19,12 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let redemption_rate_multiplier = Uint128::from(1000000u128);
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
         deposit_denom: msg.deposit_denom,
+        redemption_rate: redemption_rate_multiplier,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -44,14 +45,12 @@ pub fn execute(
             unbond_period,
             deposit_denom,
         } => execute_update_config(deps, env, info, owner, unbond_period, deposit_denom),
-        ExecuteMsg::Stake(msg) => {
+        ExecuteMsg::Stake(_) => {
             let coin = one_coin(&info)?;
-            execute_stake(deps, env, msg, coin.amount, info.sender)
+            execute_stake(deps, coin.amount, info.sender)
         }
-        ExecuteMsg::Unstake(msg) => {
-            let coin = one_coin(&info)?;
-            execute_unstake(deps, env, msg, coin.amount, info.sender)
-        }
+        ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
+        // TODO: add a way to update redemption rate automatically or manually by sending tokens
     }
 }
 
@@ -93,22 +92,65 @@ pub fn execute_update_config(
 
 pub fn execute_stake(
     deps: DepsMut,
-    env: Env,
-    msg: StakeMsg,
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    panic!("not implemented!")
+    let redemption_rate_multiplier = Uint128::from(1000000u128);
+    let config = CONFIG.load(deps.storage)?;
+    DEPOSITS.update(
+        deps.storage,
+        sender.to_string(),
+        |deposit: Option<DepositInfo>| -> StdResult<_> {
+            if let Some(unwrapped) = deposit {
+                let stake_amount = amount * redemption_rate_multiplier / config.redemption_rate;
+                return Ok(DepositInfo {
+                    sender: sender,
+                    amount: unwrapped.amount.checked_add(stake_amount)?,
+                });
+            }
+            Ok(DepositInfo {
+                sender: sender,
+                amount: amount,
+            })
+        },
+    )?;
+    let rsp = Response::default();
+    // TODO: event emission
+    Ok(rsp)
 }
 
 pub fn execute_unstake(
     deps: DepsMut,
-    env: Env,
-    msg: UnstakeMsg,
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    panic!("not implemented!")
+    let config = CONFIG.load(deps.storage)?;
+    let redemption_rate_multiplier = Uint128::from(1000000u128);
+    DEPOSITS.update(
+        deps.storage,
+        sender.to_string(),
+        |deposit: Option<DepositInfo>| -> StdResult<_> {
+            if let Some(unwrapped) = deposit {
+                let unstake_amount = amount * redemption_rate_multiplier / config.redemption_rate;
+                return Ok(DepositInfo {
+                    sender: sender.clone(),
+                    amount: unwrapped.amount.checked_sub(unstake_amount)?,
+                });
+            }
+            Ok(DepositInfo {
+                sender: sender.clone(),
+                amount: amount,
+            })
+        },
+    )?;
+
+    let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+        to_address: sender.to_string(),
+        amount: coins(amount.u128(), &config.deposit_denom),
+    });
+    let rsp = Response::new().add_message(bank_send_msg);
+    // TODO: event emission
+    Ok(rsp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -125,14 +167,15 @@ pub fn query_config(deps: Deps) -> StdResult<Config> {
     Ok(config)
 }
 
-pub fn query_unbonding(deps: Deps, addr: String) -> StdResult<Uint128> {
-    let config: Config = CONFIG.load(deps.storage)?;
+pub fn query_unbonding(_: Deps, _: String) -> StdResult<Uint128> {
     Ok(Uint128::from(0u128))
 }
 
 pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(deps.storage)?;
-    Ok(Uint128::from(0u128))
+    let deposit = DEPOSITS.load(deps.storage, addr)?;
+    let redemption_rate_multiplier = Uint128::from(1000000u128);
+    Ok(deposit.amount * config.redemption_rate / redemption_rate_multiplier)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -149,5 +192,17 @@ mod test {
     use cosmwasm_std::{coins, from_binary, StdError};
 
     #[test]
-    fn proper_deposit() {}
+    fn execute_update_config() {}
+
+    #[test]
+    fn execute_stake() {}
+
+    #[test]
+    fn execute_unstake() {}
+
+    #[test]
+    fn query_unbonding() {}
+
+    #[test]
+    fn query_bonded() {}
 }

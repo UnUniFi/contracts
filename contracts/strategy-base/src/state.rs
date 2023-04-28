@@ -9,6 +9,7 @@ pub struct Config {
     pub owner: Addr,
     pub unbond_period: u64,
     pub deposit_denom: String,
+    pub redemption_rate: Uint128,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -19,4 +20,5 @@ pub struct DepositInfo {
     pub amount: Uint128,
 }
 
-pub const DEPOSITS: Map<Addr, DepositInfo> = Map::new("deposits");
+pub const DEPOSITS: Map<String, DepositInfo> = Map::new("deposits");
+// TODO: add field for total deposit
