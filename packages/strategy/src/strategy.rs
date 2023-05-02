@@ -18,6 +18,7 @@ pub enum ExecuteMsg {
     },
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
+    AddRewards(AddRewardsMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -27,6 +28,9 @@ pub struct StakeMsg {}
 pub struct UnstakeMsg {
     pub amount: Uint128,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AddRewardsMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

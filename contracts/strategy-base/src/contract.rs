@@ -25,6 +25,7 @@ pub fn instantiate(
         unbond_period: msg.unbond_period,
         deposit_denom: msg.deposit_denom,
         redemption_rate: redemption_rate_multiplier,
+        total_deposit: Uint128::from(0u128),
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -50,7 +51,10 @@ pub fn execute(
             execute_stake(deps, coin.amount, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        // TODO: add a way to update redemption rate automatically or manually by sending tokens
+        ExecuteMsg::AddRewards(msg) => {
+            let coin = one_coin(&info)?;
+            execute_add_rewards(deps, coin.amount)
+        }
     }
 }
 
@@ -96,13 +100,14 @@ pub fn execute_stake(
     sender: Addr,
 ) -> Result<Response, ContractError> {
     let redemption_rate_multiplier = Uint128::from(1000000u128);
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+    let redemption_rate = config.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let stake_amount = amount * redemption_rate_multiplier / config.redemption_rate;
+                let stake_amount = amount * redemption_rate_multiplier / redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender,
                     amount: unwrapped.amount.checked_add(stake_amount)?,
@@ -114,6 +119,9 @@ pub fn execute_stake(
             })
         },
     )?;
+    config.total_deposit += amount;
+    CONFIG.save(deps.storage, &config)?;
+
     let rsp = Response::default();
     // TODO: event emission
     Ok(rsp)
@@ -124,7 +132,7 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
     let redemption_rate_multiplier = Uint128::from(1000000u128);
     DEPOSITS.update(
         deps.storage,
@@ -144,11 +152,24 @@ pub fn execute_unstake(
         },
     )?;
 
+    config.total_deposit -= amount;
+    CONFIG.save(deps.storage, &config)?;
     let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender.to_string(),
         amount: coins(amount.u128(), &config.deposit_denom),
     });
     let rsp = Response::new().add_message(bank_send_msg);
+    // TODO: event emission
+    Ok(rsp)
+}
+
+pub fn execute_add_rewards(deps: DepsMut, amount: Uint128) -> Result<Response, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+    let old_total_deposit = config.total_deposit;
+    config.total_deposit += amount;
+    config.redemption_rate = config.redemption_rate * config.total_deposit / old_total_deposit;
+    CONFIG.save(deps.storage, &config)?;
+    let rsp = Response::default();
     // TODO: event emission
     Ok(rsp)
 }
