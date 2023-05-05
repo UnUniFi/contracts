@@ -16,4 +16,7 @@ ununifid genesis add-genesis-account $(ununifid keys show user1 -a --keyring-bac
 ununifid genesis gentx validator 500000000stake --keyring-backend=test --home=$HOME/.ununifi --chain-id=$chain_id
 ununifid genesis collect-gentxs --home=$HOME/.ununifi
 
+jq '.app_state.gov.voting_params.voting_period = "20s"'  $HOME/.ununifi/config/genesis.json > temp.json ; mv temp.json $HOME/.ununifi/config/genesis.json;
+jq '.app_state.gov.params.voting_period = "20s"' $HOME/.ununifi/config/genesis.json > temp.json ; mv temp.json $HOME/.ununifi/config/genesis.json;
+
 ununifid start --home=$HOME/.ununifi
