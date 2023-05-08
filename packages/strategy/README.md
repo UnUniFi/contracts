@@ -35,7 +35,6 @@ On `Unstake`, unstaking amount is put Uint128 variable on `UnstakeMsg`
         Unbonding { addr: String },
         Fee {},
     }
-    ```
 ````
 
 ### Bonded
