@@ -5,10 +5,10 @@ use cosmwasm_std::{
     coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, Uint128,
 };
-use cw_utils::{nonpayable, one_coin};
+use cw_utils::one_coin;
 use strategy::{
     error::ContractError,
-    strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    strategy::{ExecuteMsg, FeeInfo, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 
 //Initialize the contract.
@@ -190,12 +190,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
         QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
+        QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
     }
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config: Config = CONFIG.load(deps.storage)?;
     Ok(config)
+}
+
+pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
+    Ok(FeeInfo {
+        deposit_fee_rate: Uint128::from(0u128),
+        withdraw_fee_rate: Uint128::from(0u128),
+        interest_fee_rate: Uint128::from(0u128),
+    })
 }
 
 pub fn query_unbonding(_: Deps, _: String) -> StdResult<Uint128> {

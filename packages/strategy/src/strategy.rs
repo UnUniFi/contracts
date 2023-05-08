@@ -38,6 +38,14 @@ pub enum QueryMsg {
     Config {},
     Bonded { addr: String },
     Unbonding { addr: String },
+    Fee {},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct FeeInfo {
+    pub deposit_fee_rate: Uint128,
+    pub withdraw_fee_rate: Uint128,
+    pub interest_fee_rate: Uint128,
 }
 
 /// We currently take no arguments for migrations

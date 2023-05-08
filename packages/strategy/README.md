@@ -33,6 +33,7 @@ On `Unstake`, unstaking amount is put Uint128 variable on `UnstakeMsg`
     pub enum QueryMsg {
         Bonded { addr: String },
         Unbonding { addr: String },
+        Fee {},
     }
     ```
 ````
@@ -40,7 +41,21 @@ On `Unstake`, unstaking amount is put Uint128 variable on `UnstakeMsg`
 ### Bonded
 
 `Bonded` returns the value of `addr`'s bonded tokens.
+Here `addr` is the address of vault, or individual addresses that deposit funds to the strategy.
 
 ### Unbonding
 
 `Unbonding` returns the value of `addr`'s unbonding tokens.
+Here `addr` is the address of vault, or individual addresses that deposit funds to the strategy.
+
+### Fee
+
+`Fee` returns `FeeInfo` object that has configuration of fees.
+
+```rs
+pub struct FeeInfo {
+    pub deposit_fee_rate: Uint128,
+    pub withdraw_fee_rate: Uint128,
+    pub interest_fee_rate: Uint128,
+}
+```
