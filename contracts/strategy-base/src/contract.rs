@@ -2,8 +2,8 @@ use crate::state::{Config, DepositInfo, CONFIG, DEPOSITS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, Uint128,
+    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
 use strategy::{
@@ -201,9 +201,9 @@ pub fn query_config(deps: Deps) -> StdResult<Config> {
 
 pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
     Ok(FeeInfo {
-        deposit_fee_rate: Uint128::from(0u128),
-        withdraw_fee_rate: Uint128::from(0u128),
-        interest_fee_rate: Uint128::from(0u128),
+        deposit_fee_rate: Decimal::zero(),
+        withdraw_fee_rate: Decimal::zero(),
+        interest_fee_rate: Decimal::zero(),
     })
 }
 

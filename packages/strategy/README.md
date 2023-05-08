@@ -54,8 +54,8 @@ Here `addr` is the address of vault, or individual addresses that deposit funds 
 
 ```rs
 pub struct FeeInfo {
-    pub deposit_fee_rate: Uint128,
-    pub withdraw_fee_rate: Uint128,
-    pub interest_fee_rate: Uint128,
+    pub deposit_fee_rate: Decimal,
+    pub withdraw_fee_rate: Decimal,
+    pub interest_fee_rate: Decimal,
 }
 ```

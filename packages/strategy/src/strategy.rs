@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint128, Uint64};
+use cosmwasm_std::{Decimal, Uint128, Uint64};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -43,9 +43,9 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct FeeInfo {
-    pub deposit_fee_rate: Uint128,
-    pub withdraw_fee_rate: Uint128,
-    pub interest_fee_rate: Uint128,
+    pub deposit_fee_rate: Decimal,
+    pub withdraw_fee_rate: Decimal,
+    pub interest_fee_rate: Decimal,
 }
 
 /// We currently take no arguments for migrations
