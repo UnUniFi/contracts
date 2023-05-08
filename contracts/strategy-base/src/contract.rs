@@ -2,13 +2,13 @@ use crate::state::{Config, DepositInfo, CONFIG, DEPOSITS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Uint128,
+    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, Uint128,
 };
 use cw_utils::{nonpayable, one_coin};
 use strategy::{
     error::ContractError,
-    strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakeMsg, UnstakeMsg},
+    strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 
 //Initialize the contract.
@@ -47,13 +47,13 @@ pub fn execute(
             deposit_denom,
         } => execute_update_config(deps, env, info, owner, unbond_period, deposit_denom),
         ExecuteMsg::Stake(_) => {
-            let coin = one_coin(&info)?;
-            execute_stake(deps, coin.amount, info.sender)
+            let coin: Coin = one_coin(&info)?;
+            execute_stake(deps, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        ExecuteMsg::AddRewards(msg) => {
+        ExecuteMsg::AddRewards(_) => {
             let coin = one_coin(&info)?;
-            execute_add_rewards(deps, coin.amount)
+            execute_add_rewards(deps, coin)
         }
     }
 }
@@ -94,13 +94,13 @@ pub fn execute_update_config(
     Ok(resp)
 }
 
-pub fn execute_stake(
-    deps: DepsMut,
-    amount: Uint128,
-    sender: Addr,
-) -> Result<Response, ContractError> {
-    let redemption_rate_multiplier = Uint128::from(1000000u128);
+pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
+    if config.deposit_denom != coin.denom {
+        return Err(ContractError::NoAllowedToken {});
+    }
+    let amount = coin.amount;
+    let redemption_rate_multiplier = Uint128::from(1000000u128);
     let redemption_rate = config.redemption_rate;
     DEPOSITS.update(
         deps.storage,
@@ -109,12 +109,12 @@ pub fn execute_stake(
             if let Some(unwrapped) = deposit {
                 let stake_amount = amount * redemption_rate_multiplier / redemption_rate;
                 return Ok(DepositInfo {
-                    sender: sender,
+                    sender: sender.clone(),
                     amount: unwrapped.amount.checked_add(stake_amount)?,
                 });
             }
             Ok(DepositInfo {
-                sender: sender,
+                sender: sender.clone(),
                 amount: amount,
             })
         },
@@ -122,8 +122,10 @@ pub fn execute_stake(
     config.total_deposit += amount;
     CONFIG.save(deps.storage, &config)?;
 
-    let rsp = Response::default();
-    // TODO: event emission
+    let rsp = Response::default()
+        .add_attribute("action", "stake")
+        .add_attribute("sender", sender)
+        .add_attribute("amount", amount);
     Ok(rsp)
 }
 
@@ -158,19 +160,27 @@ pub fn execute_unstake(
         to_address: sender.to_string(),
         amount: coins(amount.u128(), &config.deposit_denom),
     });
-    let rsp = Response::new().add_message(bank_send_msg);
-    // TODO: event emission
+    let rsp = Response::new()
+        .add_message(bank_send_msg)
+        .add_attribute("action", "unstake")
+        .add_attribute("sender", sender)
+        .add_attribute("amount", amount);
     Ok(rsp)
 }
 
-pub fn execute_add_rewards(deps: DepsMut, amount: Uint128) -> Result<Response, ContractError> {
+pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
+    if config.deposit_denom != coin.denom {
+        return Err(ContractError::NoAllowedToken {});
+    }
+    let amount = coin.amount;
     let old_total_deposit = config.total_deposit;
     config.total_deposit += amount;
     config.redemption_rate = config.redemption_rate * config.total_deposit / old_total_deposit;
     CONFIG.save(deps.storage, &config)?;
-    let rsp = Response::default();
-    // TODO: event emission
+    let rsp = Response::default()
+        .add_attribute("action", "add_rewards")
+        .add_attribute("amount", amount);
     Ok(rsp)
 }
 
