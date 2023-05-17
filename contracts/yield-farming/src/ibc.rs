@@ -1,3 +1,5 @@
+use core::panic;
+
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, BankMsg, Binary, CosmosMsg, DepsMut, Env,
     IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
@@ -291,71 +293,71 @@ pub fn ibc_packet_ack(
 ) -> Result<IbcBasicResponse, ContractError> {
     let packet_data: Ics20Packet = from_binary(&msg.original_packet.data)?;
     let ics20msg: Ics20Ack = from_binary(&msg.acknowledgement.data)?;
-
-    if let Some(ref action) = packet_data.action {
-        match action {
-            OsmoPacket::Swap(_) => on_gamm_packet(
-                deps,
-                env,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_swap",
-            ),
-            OsmoPacket::JoinPool(_) => on_gamm_packet(
-                deps,
-                env,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_join_pool",
-            ),
-            OsmoPacket::ExitPool(_) => on_gamm_packet(
-                deps,
-                env,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_exit_pool",
-            ),
-            OsmoPacket::LockupAccount {} => on_create_lockup_packet(
-                deps,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_create_lockup",
-            ),
-            OsmoPacket::Lock(_) => {
-                on_lock_packet(deps, msg, &packet_data, ics20msg, "acknowledge_lock")
-            }
-            OsmoPacket::Claim(_) => on_claim_tokens_packet(
-                deps,
-                env,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_claim_tokens",
-            ),
-            OsmoPacket::Unlock(_) => {
-                on_unlock_packet(packet_data.sender, ics20msg, "acknowledge_unlock")
-            }
-            OsmoPacket::DepositPool(_) => on_gamm_packet(
-                deps,
-                env,
-                msg,
-                packet_data.sender,
-                ics20msg,
-                "acknowledge_deposit_pool",
-            ),
-        }
-    } else {
-        match ics20msg {
-            Ics20Ack::Result(_) => on_packet_success(packet_data),
-            Ics20Ack::Error(err) => {
-                on_packet_failure(deps, msg.original_packet, "acknowledge", err)
-            }
-        }
-    }
+    panic!("not implemented")
+    // if let Some(ref action) = packet_data.action {
+    //     match action {
+    //         OsmoPacket::Swap(_) => on_gamm_packet(
+    //             deps,
+    //             env,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_swap",
+    //         ),
+    //         OsmoPacket::JoinPool(_) => on_gamm_packet(
+    //             deps,
+    //             env,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_join_pool",
+    //         ),
+    //         OsmoPacket::ExitPool(_) => on_gamm_packet(
+    //             deps,
+    //             env,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_exit_pool",
+    //         ),
+    //         OsmoPacket::LockupAccount {} => on_create_lockup_packet(
+    //             deps,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_create_lockup",
+    //         ),
+    //         OsmoPacket::Lock(_) => {
+    //             on_lock_packet(deps, msg, &packet_data, ics20msg, "acknowledge_lock")
+    //         }
+    //         OsmoPacket::Claim(_) => on_claim_tokens_packet(
+    //             deps,
+    //             env,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_claim_tokens",
+    //         ),
+    //         OsmoPacket::Unlock(_) => {
+    //             on_unlock_packet(packet_data.sender, ics20msg, "acknowledge_unlock")
+    //         }
+    //         OsmoPacket::DepositPool(_) => on_gamm_packet(
+    //             deps,
+    //             env,
+    //             msg,
+    //             packet_data.sender,
+    //             ics20msg,
+    //             "acknowledge_deposit_pool",
+    //         ),
+    //     }
+    // } else {
+    //     match ics20msg {
+    //         Ics20Ack::Result(_) => on_packet_success(packet_data),
+    //         Ics20Ack::Error(err) => {
+    //             on_packet_failure(deps, msg.original_packet, "acknowledge", err)
+    //         }
+    //     }
+    // }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -761,7 +763,7 @@ mod test {
             amount: amount.into(),
             sender: "remote-sender".to_string(),
             receiver: receiver.to_string(),
-            action: None,
+            // action: None,
         };
         print!("Packet denom: {}", &data.denom);
         IbcPacket::new(

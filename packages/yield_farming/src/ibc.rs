@@ -80,10 +80,9 @@ pub struct Ics20Packet {
     pub receiver: String,
     /// the sender address
     pub sender: String,
-
     // Comment from Taiki.F
     // This Action attribute can not be added to ICS20 packet due to the restriction of the
-    // protocol itself. 
+    // protocol itself.
     // Hence, This causes problem in a msg including this for a ICS20 transfer msg
     // /// Action packet
     // #[serde(skip_serializing_if = "Option::is_none")]
@@ -116,7 +115,6 @@ impl Ics20Packet {
             amount,
             sender: sender.to_string(),
             receiver: receiver.to_string(),
-            action: action_packet,
         }
     }
 }
