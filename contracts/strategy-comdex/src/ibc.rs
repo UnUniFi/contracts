@@ -1,8 +1,10 @@
+// use crate::proto::comdex::Metadata;
+use crate::state::Metadata;
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
     IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
     IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Reply, Response, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
 };
 use cw20::{Balance, Cw20ExecuteMsg};
 use schemars::JsonSchema;
@@ -23,6 +25,9 @@ pub fn ibc_channel_open(
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<(), ContractError> {
+    _deps
+        .api
+        .debug(format!("WASMDEBUG: ibc_channel_open: {:?}", msg).as_str());
     enforce_order_and_version(msg.channel(), msg.counterparty_version())?;
     Ok(())
 }
@@ -34,17 +39,23 @@ pub fn ibc_channel_connect(
     _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    enforce_order_and_version(msg.channel(), msg.counterparty_version())?;
+    deps.api
+        .debug(format!("WASMDEBUG: ibc_channel_connect: {:?}", msg).as_str());
+    let counterparty_version = msg.counterparty_version();
+    if let Some(version) = counterparty_version {
+        let p: Metadata = from_binary(&Binary::from(version.as_bytes().to_vec()))?;
 
-    let channel: IbcChannel = msg.into();
-    let info = ChannelInfo {
-        id: channel.endpoint.channel_id,
-        counterparty_endpoint: channel.counterparty_endpoint,
-        connection_id: channel.connection_id,
-    };
-    CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
-
-    Ok(IbcBasicResponse::default())
+        let channel: IbcChannel = msg.into();
+        let info = ChannelInfo {
+            id: channel.endpoint.channel_id,
+            counterparty_endpoint: channel.counterparty_endpoint,
+            connection_id: channel.connection_id,
+            address: p.address,
+        };
+        CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
+        return Ok(IbcBasicResponse::default());
+    }
+    return Ok(IbcBasicResponse::default());
 }
 
 fn enforce_order_and_version(
@@ -60,6 +71,10 @@ pub fn ibc_channel_close(
     _env: Env,
     _channel: IbcChannelCloseMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
+    _deps
+        .api
+        .debug(format!("WASMDEBUG: ibc_channel_close: {:?}", _channel).as_str());
+
     Ok(IbcBasicResponse::new())
 }
 
@@ -71,6 +86,9 @@ pub fn ibc_packet_receive(
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, Never> {
+    deps.api
+        .debug(format!("WASMDEBUG: ibc_packet_receive: {:?}", msg).as_str());
+
     Ok(IbcReceiveResponse::new())
 }
 
@@ -81,6 +99,8 @@ pub fn ibc_packet_ack(
     _env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
+    deps.api
+        .debug(format!("WASMDEBUG: ibc_packet_ack: {:?}", msg).as_str());
     Ok(IbcBasicResponse::new())
 }
 
@@ -91,11 +111,16 @@ pub fn ibc_packet_timeout(
     _env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
+    deps.api
+        .debug(format!("WASMDEBUG: ibc_packet_timeout: {:?}", msg).as_str());
+
     Ok(IbcBasicResponse::new())
 }
 
 // update the balance stored on this (channel, denom) index
 fn on_packet_success(deps: DepsMut, packet: IbcPacket) -> Result<IbcBasicResponse, ContractError> {
+    deps.api
+        .debug(format!("WASMDEBUG: on_packet_success: {:?}", packet).as_str());
     Ok(IbcBasicResponse::new())
 }
 
@@ -104,5 +129,7 @@ fn on_packet_failure(
     packet: IbcPacket,
     err: String,
 ) -> Result<IbcBasicResponse, ContractError> {
+    deps.api
+        .debug(format!("WASMDEBUG: on_packet_success: {:?}", err).as_str());
     Ok(IbcBasicResponse::new())
 }

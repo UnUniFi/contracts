@@ -1,15 +1,20 @@
-use crate::state::{Config, DepositInfo, CONFIG, DEPOSITS};
+use crate::msg::{
+    ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
+    QueryMsg,
+};
+use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
+// use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
+// use proto::cosmos::staking::v1beta1::MsgDelegate;
+// use cosmrs::proto::cosmos::staking::v1beta1::MsgDelegate;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Uint128,
+    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg,
+    IbcTimeout, MessageInfo, Order, Response, StdResult, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::{
-    error::ContractError,
-    strategy::{ExecuteMsg, FeeInfo, InstantiateMsg, MigrateMsg, QueryMsg},
-};
+// use prost::Message;
+use strategy::error::ContractError;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -54,6 +59,9 @@ pub fn execute(
         ExecuteMsg::AddRewards(_) => {
             let coin = one_coin(&info)?;
             execute_add_rewards(deps, coin)
+        }
+        ExecuteMsg::IcaAddLiquidity(msg) => {
+            execute_ica_add_liquidity(deps, msg.channel_id, msg.timeout)
         }
     }
 }
@@ -184,6 +192,50 @@ pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, Contra
     Ok(rsp)
 }
 
+// TODO: add endpoint for ibc transfer initiated by yieldaggregator module endblocker
+// TODO: add endpoint for initiating stake, unstake, claim rewards + autocompound for each epoch yieldaggregator trigger
+
+pub fn execute_ica_add_liquidity(
+    deps: DepsMut,
+    channel_id: String,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // let ibc_packet = MsgDeposit {
+    //     /// depositor specifies the bech32-encoded address that makes a deposit to the pool
+    //     depositor: "".to_string(),
+    //     /// pool_id specifies the pool id
+    //     pool_id: 1,
+    //     /// deposit_coins specifies the amount of coins to deposit.
+    //     deposit_coins: vec![coins(1000u128, "uatom")],
+    //     app_id: 1,
+    // };
+    // let ibc_packet = MsgDelegate {
+    //     delegator_address: "".to_string(),
+    //     validator_address: "".to_string(),
+    //     amount: Some(ProtoCoin {
+    //         denom: "uatom".to_string(),
+    //         amount: "1".to_string(),
+    //     }),
+    // };
+    // let mut buf = vec![];
+    // ibc_packet.encode(&mut buf).unwrap();
+
+    // let decoded: MsgDeposit = Message::decode(&buf[..]).unwrap();
+    // println!("serialized: {:?}\noriginal: {:?}", buf, decoded)
+
+    let timestamp = Timestamp::from_seconds(timeout);
+    // let ibc_msg = IbcMsg::SendPacket {
+    //     channel_id: channel_id,
+    //     data: to_binary(&buf[..])?,
+    //     timeout: IbcTimeout::from(timestamp),
+    // };
+
+    let res = Response::new()
+        // .add_message(ibc_msg)
+        .add_attribute("action", "ica_add_liquidity");
+    Ok(res)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -191,12 +243,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
         QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
         QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
+        QueryMsg::ListChannels {} => to_binary(&query_list_channels(deps)?),
+        QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
     }
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config: Config = CONFIG.load(deps.storage)?;
     Ok(config)
+}
+
+fn query_list_channels(deps: Deps) -> StdResult<ListChannelsResponse> {
+    let channels = CHANNEL_INFO
+        .range_raw(deps.storage, None, None, Order::Ascending)
+        .map(|r| r.map(|(_, v)| v))
+        .collect::<StdResult<_>>()?;
+    Ok(ListChannelsResponse { channels: channels })
+}
+
+// make public for ibc tests
+pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
+    let info = CHANNEL_INFO.load(deps.storage, &id)?;
+    Ok(ChannelResponse { info })
 }
 
 pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
