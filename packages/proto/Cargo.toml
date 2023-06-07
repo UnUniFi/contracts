@@ -19,9 +19,7 @@ prost-types = "0.11"
 tonic = { version = "0.9", optional = true, default-features = false, features = ["codegen", "prost"] }
 
 [features]
-default = ["grpc-transport"]
-grpc = ["tonic"]
-grpc-transport = ["grpc", "tonic/transport"]
+default = []
 cosmwasm = []
 
 [package.metadata.docs.rs]

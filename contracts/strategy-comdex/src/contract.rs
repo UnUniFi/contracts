@@ -3,9 +3,6 @@ use crate::msg::{
     QueryMsg,
 };
 use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
-// use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
-// use proto::cosmos::staking::v1beta1::MsgDelegate;
-// use cosmrs::proto::cosmos::staking::v1beta1::MsgDelegate;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -13,7 +10,9 @@ use cosmwasm_std::{
     IbcTimeout, MessageInfo, Order, Response, StdResult, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
-// use prost::Message;
+use prost::Message;
+use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
+use proto::cosmos::staking::v1beta1::MsgDelegate;
 use strategy::error::ContractError;
 
 //Initialize the contract.
@@ -209,29 +208,29 @@ pub fn execute_ica_add_liquidity(
     //     deposit_coins: vec![coins(1000u128, "uatom")],
     //     app_id: 1,
     // };
-    // let ibc_packet = MsgDelegate {
-    //     delegator_address: "".to_string(),
-    //     validator_address: "".to_string(),
-    //     amount: Some(ProtoCoin {
-    //         denom: "uatom".to_string(),
-    //         amount: "1".to_string(),
-    //     }),
-    // };
-    // let mut buf = vec![];
-    // ibc_packet.encode(&mut buf).unwrap();
+    let ibc_packet = MsgDelegate {
+        delegator_address: "".to_string(),
+        validator_address: "".to_string(),
+        amount: Some(ProtoCoin {
+            denom: "uatom".to_string(),
+            amount: "1".to_string(),
+        }),
+    };
+    let mut buf = vec![];
+    ibc_packet.encode(&mut buf).unwrap();
 
     // let decoded: MsgDeposit = Message::decode(&buf[..]).unwrap();
     // println!("serialized: {:?}\noriginal: {:?}", buf, decoded)
 
     let timestamp = Timestamp::from_seconds(timeout);
-    // let ibc_msg = IbcMsg::SendPacket {
-    //     channel_id: channel_id,
-    //     data: to_binary(&buf[..])?,
-    //     timeout: IbcTimeout::from(timestamp),
-    // };
+    let ibc_msg = IbcMsg::SendPacket {
+        channel_id: channel_id,
+        data: to_binary(&buf[..])?,
+        timeout: IbcTimeout::from(timestamp),
+    };
 
     let res = Response::new()
-        // .add_message(ibc_msg)
+        .add_message(ibc_msg)
         .add_attribute("action", "ica_add_liquidity");
     Ok(res)
 }

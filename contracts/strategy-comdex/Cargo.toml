@@ -34,7 +34,7 @@ protobuf = { version = "2", features = ["with-bytes"] }
 prost = "0.11"
 prost-types = "0.11"
 strategy = { path = "../../packages/strategy" }
-# proto = { path = "../../packages/proto" }
+proto = { path = "../../packages/proto", features = ["cosmwasm"] }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
