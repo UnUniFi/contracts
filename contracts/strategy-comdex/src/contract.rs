@@ -6,8 +6,8 @@ use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg,
-    IbcTimeout, MessageInfo, Order, Response, StdResult, Timestamp, Uint128,
+    coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdResult, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
 use prost::Message;
@@ -59,8 +59,49 @@ pub fn execute(
             let coin = one_coin(&info)?;
             execute_add_rewards(deps, coin)
         }
+        ExecuteMsg::IbcTransferToHost(msg) => {
+            execute_ibc_transfer_to_host(deps, msg.channel_id, msg.denom, msg.amount, msg.timeout)
+        }
+        ExecuteMsg::IbcTransferToController(msg) => execute_ibc_transfer_to_controller(
+            deps,
+            msg.channel_id,
+            msg.denom,
+            msg.amount,
+            msg.timeout,
+        ),
         ExecuteMsg::IcaAddLiquidity(msg) => {
-            execute_ica_add_liquidity(deps, msg.channel_id, msg.timeout)
+            execute_ica_add_liquidity(deps, msg.channel_id, msg.timeout, msg.val_addr)
+        }
+        ExecuteMsg::IcaRemoveLiquidity(msg) => {
+            execute_ica_remove_liquidity(deps, msg.channel_id, msg.denom, msg.amount, msg.timeout)
+        }
+        ExecuteMsg::IcaSwapRewardsToTwoTokens(msg) => execute_ica_swap_rewards_to_two_tokens(
+            deps,
+            msg.channel_id,
+            msg.denom,
+            msg.amount,
+            msg.timeout,
+        ),
+        ExecuteMsg::IcaSwapTwoTokensToDepositToken(msg) => {
+            execute_ica_swap_two_tokens_to_deposit_token(
+                deps,
+                msg.channel_id,
+                msg.denom,
+                msg.amount,
+                msg.timeout,
+            )
+        }
+        ExecuteMsg::IcaSwapDepositTokenToTwoTokens(msg) => {
+            execute_ica_swap_deposit_token_to_two_tokens(
+                deps,
+                msg.channel_id,
+                msg.denom,
+                msg.amount,
+                msg.timeout,
+            )
+        }
+        ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
+            execute_store_ica_unlocked_balances(deps, msg.coins)
         }
     }
 }
@@ -191,6 +232,39 @@ pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, Contra
     Ok(rsp)
 }
 
+pub fn execute_ibc_transfer_to_host(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    let info = CHANNEL_INFO.load(deps.storage, &channel_id)?;
+    let timestamp = Timestamp::from_seconds(timeout);
+    let ibc_msg = IbcMsg::Transfer {
+        channel_id: channel_id,
+        to_address: info.address,
+        amount: coin(amount.u128(), denom),
+        timeout: IbcTimeout::from(timestamp),
+    };
+    let res = Response::new()
+        .add_message(ibc_msg)
+        .add_attribute("action", "ibc_transfer_to_host");
+    Ok(res)
+}
+
+pub fn execute_ibc_transfer_to_controller(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
+    Ok(res)
+}
+
 // TODO: add endpoint for ibc transfer initiated by yieldaggregator module endblocker
 // TODO: add endpoint for initiating stake, unstake, claim rewards + autocompound for each epoch yieldaggregator trigger
 
@@ -198,6 +272,7 @@ pub fn execute_ica_add_liquidity(
     deps: DepsMut,
     channel_id: String,
     timeout: u64,
+    val_addr: String,
 ) -> Result<Response, ContractError> {
     // let ibc_packet = MsgDeposit {
     //     /// depositor specifies the bech32-encoded address that makes a deposit to the pool
@@ -208,12 +283,14 @@ pub fn execute_ica_add_liquidity(
     //     deposit_coins: vec![coins(1000u128, "uatom")],
     //     app_id: 1,
     // };
+
+    let info = CHANNEL_INFO.load(deps.storage, &channel_id)?;
     let ibc_packet = MsgDelegate {
-        delegator_address: "".to_string(),
-        validator_address: "".to_string(),
+        delegator_address: info.address.to_string(),
+        validator_address: val_addr.to_string(),
         amount: Some(ProtoCoin {
-            denom: "uatom".to_string(),
-            amount: "1".to_string(),
+            denom: "stake".to_string(),
+            amount: "100000000".to_string(),
         }),
     };
     let mut buf = vec![];
@@ -232,6 +309,63 @@ pub fn execute_ica_add_liquidity(
     let res = Response::new()
         .add_message(ibc_msg)
         .add_attribute("action", "ica_add_liquidity");
+    Ok(res)
+}
+
+pub fn execute_ica_remove_liquidity(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
+    Ok(res)
+}
+
+pub fn execute_ica_swap_rewards_to_two_tokens(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
+    Ok(res)
+}
+
+pub fn execute_ica_swap_two_tokens_to_deposit_token(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
+    Ok(res)
+}
+
+pub fn execute_ica_swap_deposit_token_to_two_tokens(
+    deps: DepsMut,
+    channel_id: String,
+    denom: String,
+    amount: Uint128,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
+    Ok(res)
+}
+
+pub fn execute_store_ica_unlocked_balances(
+    deps: DepsMut,
+    coins: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    // TODO: implement
+    let res = Response::new();
     Ok(res)
 }
 

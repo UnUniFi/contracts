@@ -1,5 +1,5 @@
 use crate::state::ChannelInfo;
-use cosmwasm_std::{Decimal, Uint128, Uint64};
+use cosmwasm_std::{Coin, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -20,13 +20,76 @@ pub enum ExecuteMsg {
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     AddRewards(AddRewardsMsg),
+    IbcTransferToHost(IbcTransferToHostMsg),
+    IbcTransferToController(IbcTransferToControllerMsg),
     IcaAddLiquidity(IcaAddLiquidityMsg),
+    IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
+    IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
+    IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
+    IcaSwapDepositTokenToTwoTokens(IcaSwapDepositTokenToTwoTokensMsg),
+    StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IbcTransferToHostMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IbcTransferToControllerMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IcaAddLiquidityMsg {
     pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
     pub timeout: u64,
+    pub val_addr: String, // TODO: temporary for MsgDelegate test - should remove
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaRemoveLiquidityMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapRewardsToTwoTokensMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapTwoTokensToDepositTokenMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapDepositTokenToTwoTokensMsg {
+    pub channel_id: String,
+    pub denom: String,
+    pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StoreIcaUnlockedBalancesMsg {
+    pub coins: Vec<Coin>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -57,6 +120,7 @@ pub enum QueryMsg {
     Channel {
         id: String,
     },
+    // TODO: add more queries to get exact state of the contract
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

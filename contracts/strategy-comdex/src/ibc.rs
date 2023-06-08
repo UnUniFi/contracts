@@ -101,6 +101,7 @@ pub fn ibc_packet_ack(
 ) -> Result<IbcBasicResponse, ContractError> {
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_ack: {:?}", msg).as_str());
+    // TODO: handle ICA messages callback for success or failure
     Ok(IbcBasicResponse::new())
 }
 
