@@ -2,6 +2,7 @@ use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg,
 };
+use crate::state::InterchainAccountPacketData;
 use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -13,6 +14,8 @@ use cw_utils::one_coin;
 use prost::Message;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
+use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
+use proto::traits::MessageExt;
 use strategy::error::ContractError;
 
 //Initialize the contract.
@@ -59,9 +62,14 @@ pub fn execute(
             let coin = one_coin(&info)?;
             execute_add_rewards(deps, coin)
         }
-        ExecuteMsg::IbcTransferToHost(msg) => {
-            execute_ibc_transfer_to_host(deps, msg.channel_id, msg.denom, msg.amount, msg.timeout)
-        }
+        ExecuteMsg::IbcTransferToHost(msg) => execute_ibc_transfer_to_host(
+            deps,
+            msg.ica_channel_id,
+            msg.channel_id,
+            msg.denom,
+            msg.amount,
+            msg.timeout,
+        ),
         ExecuteMsg::IbcTransferToController(msg) => execute_ibc_transfer_to_controller(
             deps,
             msg.channel_id,
@@ -234,12 +242,13 @@ pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, Contra
 
 pub fn execute_ibc_transfer_to_host(
     deps: DepsMut,
+    ica_channel_id: String,
     channel_id: String,
     denom: String,
     amount: Uint128,
     timeout: u64,
 ) -> Result<Response, ContractError> {
-    let info = CHANNEL_INFO.load(deps.storage, &channel_id)?;
+    let info = CHANNEL_INFO.load(deps.storage, &ica_channel_id)?;
     let timestamp = Timestamp::from_seconds(timeout);
     let ibc_msg = IbcMsg::Transfer {
         channel_id: channel_id,
@@ -285,7 +294,7 @@ pub fn execute_ica_add_liquidity(
     // };
 
     let info = CHANNEL_INFO.load(deps.storage, &channel_id)?;
-    let ibc_packet = MsgDelegate {
+    let msg = MsgDelegate {
         delegator_address: info.address.to_string(),
         validator_address: val_addr.to_string(),
         amount: Some(ProtoCoin {
@@ -293,23 +302,32 @@ pub fn execute_ica_add_liquidity(
             amount: "100000000".to_string(),
         }),
     };
-    let mut buf = vec![];
-    ibc_packet.encode(&mut buf).unwrap();
+    if let Ok(msg_any) = msg.to_any() {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
 
-    // let decoded: MsgDeposit = Message::decode(&buf[..]).unwrap();
-    // println!("serialized: {:?}\noriginal: {:?}", buf, decoded)
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
 
-    let timestamp = Timestamp::from_seconds(timeout);
-    let ibc_msg = IbcMsg::SendPacket {
-        channel_id: channel_id,
-        data: to_binary(&buf[..])?,
-        timeout: IbcTimeout::from(timestamp),
-    };
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
 
-    let res = Response::new()
-        .add_message(ibc_msg)
-        .add_attribute("action", "ica_add_liquidity");
-    Ok(res)
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_add_liquidity");
+        return Ok(res);
+    }
+    Err(ContractError::Unauthorized)
 }
 
 pub fn execute_ica_remove_liquidity(

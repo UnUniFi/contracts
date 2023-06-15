@@ -57,3 +57,10 @@ pub struct Metadata {
     /// tx_type defines the type of transactions the interchain account can execute
     pub tx_type: String,
 }
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub struct InterchainAccountPacketData {
+    pub r#type: i32,
+    pub data: Vec<u8>,
+    pub memo: String,
+}

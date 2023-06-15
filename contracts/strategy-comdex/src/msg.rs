@@ -32,6 +32,7 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IbcTransferToHostMsg {
+    pub ica_channel_id: String,
     pub channel_id: String,
     pub denom: String,
     pub amount: Uint128,
