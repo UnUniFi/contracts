@@ -35,6 +35,7 @@ prost = "0.11"
 prost-types = "0.11"
 strategy = { path = "../../packages/strategy" }
 proto = { path = "../../packages/proto", features = ["cosmwasm"] }
+osmosis-std	= { version = "0.15.3" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

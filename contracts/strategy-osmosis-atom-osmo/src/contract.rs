@@ -11,13 +11,69 @@ use cosmwasm_std::{
     IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdError, StdResult, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
-use prost::Message;
+use osmosis_std::shim::Duration;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
+use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::{
+    MsgCreateBalancerPool, MsgCreateBalancerPoolResponse,
+};
+use osmosis_std::types::osmosis::gamm::v1beta1::{
+    MsgExitPool, MsgExitPoolResponse, MsgJoinPool, MsgJoinPoolResponse, MsgSwapExactAmountIn,
+    MsgSwapExactAmountInResponse,
+};
+use osmosis_std::types::osmosis::lockup::{
+    MsgBeginUnlocking,
+    MsgBeginUnlockingAll,
+    MsgBeginUnlockingAllResponse,
+    MsgBeginUnlockingResponse,
+    MsgLockTokens,
+    MsgLockTokensResponse,
+    // MsgSetRewardReceiverAddress, MsgSetRewardReceiverAddressResponse,
+};
+use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
+use prost::{EncodeError, Message};
+use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
+use proto::traits::TypeUrl;
 use strategy::error::ContractError;
+
+fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgJoinPool".to_owned(),
+        value: bytes,
+    });
+}
+
+fn exit_pool_to_any(msg: MsgExitPool) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgExitPool".to_owned(),
+        value: bytes,
+    });
+}
+
+fn swap_msg_to_any(msg: MsgSwapExactAmountIn) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn".to_owned(),
+        value: bytes,
+    });
+}
+
+fn lock_tokens_msg_to_any(msg: MsgLockTokens) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.lockup.MsgLockTokens".to_owned(),
+        value: bytes,
+    });
+}
+
+fn begin_unlocking_msg_to_any(msg: MsgBeginUnlocking) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.lockup.MsgBeginUnlocking".to_owned(),
+        value: bytes,
+    });
+}
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -128,6 +184,10 @@ pub fn execute(
                 msg.amount,
                 msg.timeout,
             )
+        }
+        ExecuteMsg::IcaBondLpTokens(msg) => execute_ica_bond_lp_tokens(deps, msg.timeout),
+        ExecuteMsg::IcaBeginUnbondLpTokens(msg) => {
+            execute_ica_begin_unbonding_lp_tokens(deps, msg.timeout)
         }
         ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
             execute_store_ica_unlocked_balances(deps, msg.coins)
@@ -360,26 +420,23 @@ pub fn execute_ica_add_liquidity(
     timeout: u64,
     val_addr: String,
 ) -> Result<Response, ContractError> {
-    // let ibc_packet = MsgDeposit {
-    //     /// depositor specifies the bech32-encoded address that makes a deposit to the pool
-    //     depositor: "".to_string(),
-    //     /// pool_id specifies the pool id
-    //     pool_id: 1,
-    //     /// deposit_coins specifies the amount of coins to deposit.
-    //     deposit_coins: vec![coins(1000u128, "uatom")],
-    //     app_id: 1,
-    // };
-
-    let info = CHANNEL_INFO.load(deps.storage, &channel_id)?;
-    let msg = MsgDelegate {
-        delegator_address: info.address.to_string(),
-        validator_address: val_addr.to_string(),
-        amount: Some(ProtoCoin {
-            denom: "stake".to_string(),
-            amount: "100000000".to_string(),
-        }),
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgJoinPool {
+        sender: config.ica_account.to_string(),
+        share_out_amount: "1".to_string(),
+        pool_id: 1u64,
+        token_in_maxs: vec![
+            OsmosisCoin {
+                denom: config.host_config.osmo_denom,
+                amount: config.host_config.free_osmo_amount.to_string(),
+            },
+            OsmosisCoin {
+                denom: config.host_config.atom_denom.to_string(),
+                amount: config.host_config.free_atom_amount.to_string(),
+            },
+        ],
     };
-    if let Ok(msg_any) = msg.to_any() {
+    if let Ok(msg_any) = join_pool_to_any(msg) {
         let cosmos_tx = CosmosTx {
             messages: vec![msg_any],
         };
@@ -417,9 +474,51 @@ pub fn execute_ica_remove_liquidity(
     amount: Uint128,
     timeout: u64,
 ) -> Result<Response, ContractError> {
-    // TODO: implement
-    let res = Response::new();
-    Ok(res)
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgExitPool {
+        sender: config.ica_account.to_string(),
+        share_in_amount: config.host_config.free_lp_amount.to_string(),
+        pool_id: 1u64,
+        token_out_mins: vec![
+            OsmosisCoin {
+                denom: config.host_config.osmo_denom,
+                amount: "1".to_string(),
+            },
+            OsmosisCoin {
+                denom: config.host_config.atom_denom.to_string(),
+                amount: "1".to_string(),
+            },
+        ],
+    };
+    if let Ok(msg_any) = exit_pool_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_remove_liquidity");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for remove liquidity".to_string(),
+    }))
 }
 
 pub fn execute_ica_swap_rewards_to_two_tokens(
@@ -429,9 +528,48 @@ pub fn execute_ica_swap_rewards_to_two_tokens(
     amount: Uint128,
     timeout: u64,
 ) -> Result<Response, ContractError> {
-    // TODO: implement
-    let res = Response::new();
-    Ok(res)
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgSwapExactAmountIn {
+        sender: config.ica_account.to_string(),
+        token_in: Some(OsmosisCoin {
+            denom: config.host_config.osmo_denom,
+            amount: config.host_config.free_osmo_amount.to_string(),
+        }),
+        token_out_min_amount: "1".to_string(),
+        routes: vec![SwapAmountInRoute {
+            pool_id: 1u64,
+            token_out_denom: config.host_config.atom_denom,
+        }],
+    };
+    if let Ok(msg_any) = swap_msg_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_swap_osmo_atom");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+    }))
 }
 
 pub fn execute_ica_swap_two_tokens_to_deposit_token(
@@ -441,9 +579,48 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
     amount: Uint128,
     timeout: u64,
 ) -> Result<Response, ContractError> {
-    // TODO: implement
-    let res = Response::new();
-    Ok(res)
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgSwapExactAmountIn {
+        sender: config.ica_account.to_string(),
+        token_in: Some(OsmosisCoin {
+            denom: config.host_config.osmo_denom,
+            amount: config.host_config.free_osmo_amount.to_string(),
+        }),
+        token_out_min_amount: "1".to_string(),
+        routes: vec![SwapAmountInRoute {
+            pool_id: 1u64,
+            token_out_denom: config.host_config.atom_denom,
+        }],
+    };
+    if let Ok(msg_any) = swap_msg_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_swap_osmo_atom");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+    }))
 }
 
 pub fn execute_ica_swap_deposit_token_to_two_tokens(
@@ -453,9 +630,136 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
     amount: Uint128,
     timeout: u64,
 ) -> Result<Response, ContractError> {
-    // TODO: implement
-    let res = Response::new();
-    Ok(res)
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgSwapExactAmountIn {
+        sender: config.ica_account.to_string(),
+        token_in: Some(OsmosisCoin {
+            denom: config.host_config.atom_denom,
+            amount: config.host_config.free_atom_amount.to_string(),
+        }),
+        token_out_min_amount: "1".to_string(),
+        routes: vec![SwapAmountInRoute {
+            pool_id: 1u64,
+            token_out_denom: config.host_config.osmo_denom,
+        }],
+    };
+    if let Ok(msg_any) = swap_msg_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_swap_osmo_atom");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+    }))
+}
+
+pub fn execute_ica_bond_lp_tokens(deps: DepsMut, timeout: u64) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgLockTokens {
+        owner: config.ica_account.to_string(),
+        coins: vec![OsmosisCoin {
+            denom: config.host_config.lp_denom,
+            amount: config.host_config.bonded_lp_amount.to_string(),
+        }],
+        duration: Some(Duration {
+            seconds: config.unbond_period as i64,
+            nanos: 0,
+        }),
+    };
+    if let Ok(msg_any) = lock_tokens_msg_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: config.ica_channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_swap_osmo_atom");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+    }))
+}
+
+pub fn execute_ica_begin_unbonding_lp_tokens(
+    deps: DepsMut,
+    timeout: u64,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgBeginUnlocking {
+        owner: config.ica_account.to_string(),
+        id: 1u64,
+        coins: vec![OsmosisCoin {
+            denom: config.host_config.lp_denom,
+            amount: config.host_config.bonded_lp_amount.to_string(),
+        }],
+    };
+    if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: config.ica_channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_swap_osmo_atom");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+    }))
 }
 
 pub fn execute_store_ica_unlocked_balances(

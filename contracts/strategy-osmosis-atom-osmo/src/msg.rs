@@ -26,6 +26,8 @@ pub enum ExecuteMsg {
     IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
     IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
     IcaSwapDepositTokenToTwoTokens(IcaSwapDepositTokenToTwoTokensMsg),
+    IcaBondLpTokens(IcaBondLpTokensMsg),
+    IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
     StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
 }
 
@@ -84,6 +86,16 @@ pub struct IcaSwapDepositTokenToTwoTokensMsg {
     pub channel_id: String,
     pub denom: String,
     pub amount: Uint128,
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaBondLpTokensMsg {
+    pub timeout: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaBeginUnbondLpTokensMsg {
     pub timeout: u64,
 }
 
