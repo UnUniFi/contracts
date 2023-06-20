@@ -1,5 +1,5 @@
 // use crate::proto::comdex::Metadata;
-use crate::state::Metadata;
+use crate::state::{Config, Metadata, CONFIG};
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
     IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
@@ -50,9 +50,14 @@ pub fn ibc_channel_connect(
             id: channel.endpoint.channel_id,
             counterparty_endpoint: channel.counterparty_endpoint,
             connection_id: channel.connection_id,
-            address: p.address,
+            address: p.address.to_string(),
         };
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
+
+        let mut config: Config = CONFIG.load(deps.storage)?;
+        config.ica_account = p.address.to_string();
+        config.ica_channel_id = info.id;
+        CONFIG.save(deps.storage, &config)?;
         return Ok(IbcBasicResponse::default());
     }
     return Ok(IbcBasicResponse::default());

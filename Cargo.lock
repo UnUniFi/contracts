@@ -944,6 +944,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-osmosis-atom-osmo"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils 0.13.4",
+ "cw20 0.13.4",
+ "prost",
+ "prost-types",
+ "proto",
+ "protobuf",
+ "schemars",
+ "serde",
+ "strategy",
+ "thiserror",
+]
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -8,6 +8,7 @@ use cw_storage_plus::{Item, Map};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ControllerConfig {
+    pub transfer_channel_id: String,
     pub deposit_denom: String, // `ibc/xxxxuatom`
     pub free_amount: Uint128,
     pub pending_transfer_amount: Uint128, // TODO: where to get hook for transfer finalization?
@@ -15,6 +16,8 @@ pub struct ControllerConfig {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct HostConfig {
+    pub transfer_channel_id: String,
+
     pub lp_denom: String, // ATOM-OSMO
     pub bonded_lp_amount: Uint128,
     pub unbonding_lp_amount: Uint128,
@@ -44,7 +47,9 @@ pub struct Config {
     pub total_deposit: Uint128,
     pub total_withdrawal: Uint128,
 
-    pub channel_id: String,
+    pub ica_channel_id: String,
+    pub ica_account: String,
+    pub transfer_timeout: u64,
     pub host_config: HostConfig,
     pub controller_config: ControllerConfig,
 }

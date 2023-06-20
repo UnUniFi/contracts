@@ -8,13 +8,14 @@ use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdResult, Timestamp, Uint128,
+    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdError, StdResult, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
 use prost::Message;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
+use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
 
@@ -33,8 +34,11 @@ pub fn instantiate(
         lp_redemption_rate: redemption_rate_multiplier,
         total_deposit: Uint128::from(0u128),
         total_withdrawal: Uint128::from(0u128),
-        channel_id: "channel-0".to_string(),
+        transfer_timeout: 300, // 300s
+        ica_channel_id: "".to_string(),
+        ica_account: "".to_string(),
         host_config: HostConfig {
+            transfer_channel_id: "".to_string(),
             lp_denom: "gamm/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
             unbonding_lp_amount: Uint128::from(0u128),
@@ -53,6 +57,7 @@ pub fn instantiate(
             required_withdrawal_amount: Uint128::from(0u128),
         },
         controller_config: ControllerConfig {
+            transfer_channel_id: "".to_string(),
             deposit_denom: "".to_string(), // `ibc/xxxxuatom`
             free_amount: Uint128::from(0u128),
             pending_transfer_amount: Uint128::from(0u128), // TODO: where to get hook for transfer finalization?
@@ -82,10 +87,6 @@ pub fn execute(
             execute_stake(deps, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        ExecuteMsg::AddRewards(_) => {
-            let coin = one_coin(&info)?;
-            execute_add_rewards(deps, coin)
-        }
         ExecuteMsg::IbcTransferToHost(msg) => execute_ibc_transfer_to_host(
             deps,
             msg.ica_channel_id,
@@ -94,13 +95,9 @@ pub fn execute(
             msg.amount,
             msg.timeout,
         ),
-        ExecuteMsg::IbcTransferToController(msg) => execute_ibc_transfer_to_controller(
-            deps,
-            msg.channel_id,
-            msg.denom,
-            msg.amount,
-            msg.timeout,
-        ),
+        ExecuteMsg::IbcTransferToController(msg) => {
+            execute_ibc_transfer_to_controller(deps, env, msg.amount)
+        }
         ExecuteMsg::IcaAddLiquidity(msg) => {
             execute_ica_add_liquidity(deps, msg.channel_id, msg.timeout, msg.val_addr)
         }
@@ -205,6 +202,15 @@ pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response
     config.total_deposit += amount;
     CONFIG.save(deps.storage, &config)?;
 
+    execute_ibc_transfer_to_host(
+        deps,
+        config.ica_channel_id,
+        config.host_config.transfer_channel_id,
+        config.controller_config.deposit_denom,
+        amount,
+        config.transfer_timeout,
+    )?;
+
     let rsp = Response::default()
         .add_attribute("action", "stake")
         .add_attribute("sender", sender)
@@ -285,6 +291,11 @@ pub fn execute_ibc_transfer_to_host(
         amount: coin(amount.u128(), denom),
         timeout: IbcTimeout::from(timestamp),
     };
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    config.controller_config.pending_transfer_amount += amount;
+    CONFIG.save(deps.storage, &config)?;
+
     let res = Response::new()
         .add_message(ibc_msg)
         .add_attribute("action", "ibc_transfer_to_host");
@@ -293,14 +304,51 @@ pub fn execute_ibc_transfer_to_host(
 
 pub fn execute_ibc_transfer_to_controller(
     deps: DepsMut,
-    channel_id: String,
-    denom: String,
+    env: Env,
     amount: Uint128,
-    timeout: u64,
 ) -> Result<Response, ContractError> {
-    // TODO: implement
-    let res = Response::new();
-    Ok(res)
+    let config: Config = CONFIG.load(deps.storage)?;
+    let msg = MsgTransfer {
+        source_port: "transfer".to_string(),
+        source_channel: config.controller_config.transfer_channel_id,
+        token: Some(ProtoCoin {
+            denom: config.host_config.atom_denom,
+            amount: amount.to_string(),
+        }),
+        sender: config.ica_account,
+        receiver: env.contract.address.to_string(),
+        timeout_height: None,
+        timeout_timestamp: env.block.time.nanos() + config.transfer_timeout * 1000_000_000,
+    };
+    if let Ok(msg_any) = msg.to_any() {
+        let cosmos_tx = CosmosTx {
+            messages: vec![msg_any],
+        };
+        let mut cosmos_tx_buf = vec![];
+        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+        let ibc_packet = InterchainAccountPacketData {
+            r#type: 1,
+            data: cosmos_tx_buf,
+            memo: "".to_string(),
+        };
+
+        let timestamp = Timestamp::from_seconds(config.transfer_timeout);
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: config.ica_channel_id,
+            data: to_binary(&ibc_packet)?,
+            timeout: IbcTimeout::from(timestamp),
+        };
+
+        let res = Response::new()
+            .add_message(ibc_msg)
+            .add_attribute("action", "ica_ibc_transfer_to_controller");
+        return Ok(res);
+    }
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for ibc transfer to controller".to_string(),
+    }))
 }
 
 // TODO: add endpoint for ibc transfer initiated by yieldaggregator module endblocker
@@ -356,7 +404,10 @@ pub fn execute_ica_add_liquidity(
             .add_attribute("action", "ica_add_liquidity");
         return Ok(res);
     }
-    Err(ContractError::Unauthorized)
+    Err(ContractError::Std(StdError::SerializeErr {
+        source_type: "proto_any_conversion".to_string(),
+        msg: "proto msg to any conversion for add liquidity".to_string(),
+    }))
 }
 
 pub fn execute_ica_remove_liquidity(
