@@ -318,21 +318,33 @@ pub fn execute_unstake(
     Ok(rsp)
 }
 
-pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
-    if config.controller_config.deposit_denom != coin.denom {
-        return Err(ContractError::NoAllowedToken {});
-    }
-    let amount = coin.amount;
-    let old_total_deposit = config.total_deposit;
-    config.total_deposit += amount;
-    config.lp_redemption_rate =
-        config.lp_redemption_rate * config.total_deposit / old_total_deposit;
-    CONFIG.save(deps.storage, &config)?;
-    let rsp = Response::default()
-        .add_attribute("action", "add_rewards")
-        .add_attribute("amount", amount);
-    Ok(rsp)
+pub fn send_ica_tx(
+    deps: DepsMut,
+    action: String,
+    msgs: Vec<Any>,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let cosmos_tx = CosmosTx { messages: msgs };
+    let mut cosmos_tx_buf = vec![];
+    cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
+
+    let ibc_packet = InterchainAccountPacketData {
+        r#type: 1,
+        data: cosmos_tx_buf,
+        memo: action.to_string(),
+    };
+
+    let timestamp = Timestamp::from_seconds(config.transfer_timeout);
+    let ibc_msg = IbcMsg::SendPacket {
+        channel_id: config.ica_channel_id,
+        data: to_binary(&ibc_packet)?,
+        timeout: IbcTimeout::from(timestamp),
+    };
+
+    let res = Response::new()
+        .add_message(ibc_msg)
+        .add_attribute("action", action.to_string());
+    return Ok(res);
 }
 
 pub fn execute_ibc_transfer_to_host(
@@ -381,33 +393,11 @@ pub fn execute_ibc_transfer_to_controller(
         timeout_timestamp: env.block.time.nanos() + config.transfer_timeout * 1000_000_000,
     };
     if let Ok(msg_any) = msg.to_any() {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(config.transfer_timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: config.ica_channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_ibc_transfer_to_controller");
-        return Ok(res);
+        return send_ica_tx(deps, "transfer_to_controller".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for ibc transfer to controller".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -437,33 +427,11 @@ pub fn execute_ica_add_liquidity(
         ],
     };
     if let Ok(msg_any) = join_pool_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_add_liquidity");
-        return Ok(res);
+        return send_ica_tx(deps, "add_liquidity".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for add liquidity".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -491,33 +459,11 @@ pub fn execute_ica_remove_liquidity(
         ],
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_remove_liquidity");
-        return Ok(res);
+        return send_ica_tx(deps, "remove_liquidity".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for remove liquidity".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -542,33 +488,11 @@ pub fn execute_ica_swap_rewards_to_two_tokens(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_swap_osmo_atom");
-        return Ok(res);
+        return send_ica_tx(deps, "swap_rewards".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -593,33 +517,11 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_swap_osmo_atom");
-        return Ok(res);
+        return send_ica_tx(deps, "swap_to_atom".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -644,33 +546,11 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_swap_osmo_atom");
-        return Ok(res);
+        return send_ica_tx(deps, "swap_to_lp_underlyings".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -688,33 +568,11 @@ pub fn execute_ica_bond_lp_tokens(deps: DepsMut, timeout: u64) -> Result<Respons
         }),
     };
     if let Ok(msg_any) = lock_tokens_msg_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: config.ica_channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_swap_osmo_atom");
-        return Ok(res);
+        return send_ica_tx(deps, "bond_lp_tokens".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+        msg: "".to_string(),
     }))
 }
 
@@ -732,33 +590,11 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
         }],
     };
     if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {
-        let cosmos_tx = CosmosTx {
-            messages: vec![msg_any],
-        };
-        let mut cosmos_tx_buf = vec![];
-        cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-        let ibc_packet = InterchainAccountPacketData {
-            r#type: 1,
-            data: cosmos_tx_buf,
-            memo: "".to_string(),
-        };
-
-        let timestamp = Timestamp::from_seconds(timeout);
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: config.ica_channel_id,
-            data: to_binary(&ibc_packet)?,
-            timeout: IbcTimeout::from(timestamp),
-        };
-
-        let res = Response::new()
-            .add_message(ibc_msg)
-            .add_attribute("action", "ica_swap_osmo_atom");
-        return Ok(res);
+        return send_ica_tx(deps, "begin_unbonding_lp".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "proto msg to any conversion for swap osmo to atom".to_string(),
+        msg: "".to_string(),
     }))
 }
 
