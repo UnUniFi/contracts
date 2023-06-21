@@ -16,6 +16,7 @@ pub enum ExecuteMsg {
         owner: Option<String>,
         unbond_period: Option<u64>,
         deposit_denom: Option<String>,
+        lp_redemption_rate: Option<Uint128>,
     },
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
@@ -49,13 +50,7 @@ pub struct IbcTransferToControllerMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaAddLiquidityMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-    pub val_addr: String, // TODO: temporary for MsgDelegate test - should remove
-}
+pub struct IcaAddLiquidityMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IcaRemoveLiquidityMsg {
