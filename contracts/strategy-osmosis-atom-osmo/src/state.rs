@@ -25,6 +25,7 @@ pub struct HostConfig {
     pub pending_bond_lp_amount: Uint128,
     pub pending_unbond_lp_amount: Uint128,
     pub pending_swap_lp_amount: Uint128, // pending swap from lp to deposit token amount
+    pub lp_redemption_rate: Uint128,
 
     pub osmo_denom: String, // OSMO
     pub free_osmo_amount: Uint128,
@@ -43,9 +44,11 @@ pub struct HostConfig {
 pub struct Config {
     pub owner: Addr,
     pub unbond_period: u64,
-    pub lp_redemption_rate: Uint128,
+    pub redemption_rate: Uint128,
     pub total_deposit: Uint128,
-    pub total_withdrawal: Uint128,
+    pub total_withdrawn: Uint128,
+    pub total_unbonding_amount: Uint128,
+    pub last_unbonding_id: u64,
 
     pub ica_channel_id: String,
     pub ica_account: String,
@@ -59,9 +62,17 @@ pub const CONFIG: Item<Config> = Item::new("config");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositInfo {
     pub sender: Addr,
-    pub amount: Uint128,
+    pub amount: Uint128, // contract deposit ratio
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Unbonding {
+    pub id: u64,
+    pub sender: Addr,
+    pub amount: Uint128, // atom amount
+}
+
+pub const UNBONDINGS: Map<u64, Unbonding> = Map::new("unbondings");
 pub const DEPOSITS: Map<String, DepositInfo> = Map::new("deposits");
 
 pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");

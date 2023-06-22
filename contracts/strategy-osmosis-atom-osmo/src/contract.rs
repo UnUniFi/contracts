@@ -2,13 +2,14 @@ use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg,
 };
-use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
+use crate::state::{Config, DepositInfo, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, UNBONDINGS};
 use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdError, StdResult, Timestamp, Uint128,
+    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdError, StdResult, Storage, Timestamp,
+    Uint128,
 };
 use cw_utils::one_coin;
 use osmosis_std::shim::Duration;
@@ -83,18 +84,21 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
+    let redemption_rate_multiplier = Uint128::from(1000000u128); // 10^6
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
-        lp_redemption_rate: Uint128::from(2000u128),
         total_deposit: Uint128::from(0u128),
-        total_withdrawal: Uint128::from(0u128),
+        last_unbonding_id: 1u64,
+        redemption_rate: redemption_rate_multiplier,
+        total_withdrawn: Uint128::from(0u128),
+        total_unbonding_amount: Uint128::from(0u128),
         transfer_timeout: 300, // 300s
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         host_config: HostConfig {
             transfer_channel_id: "".to_string(),
+            lp_redemption_rate: Uint128::from(2000u128),
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
             unbonding_lp_amount: Uint128::from(0u128),
@@ -152,6 +156,7 @@ pub fn execute(
             execute_stake(deps, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
+        ExecuteMsg::ExecuteEpoch() => execute_epoch(deps),
         ExecuteMsg::IbcTransferToHost(msg) => execute_ibc_transfer_to_host(
             deps,
             msg.ica_channel_id,
@@ -237,7 +242,7 @@ pub fn execute_update_config(
         config.controller_config.deposit_denom = deposit_denom;
     }
     if let Some(lp_redemption_rate) = lp_redemption_rate {
-        config.lp_redemption_rate = lp_redemption_rate;
+        config.host_config.lp_redemption_rate = lp_redemption_rate;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -245,7 +250,10 @@ pub fn execute_update_config(
         .add_attribute("action", "update_config")
         .add_attribute("owner", config.owner.to_string())
         .add_attribute("unbond_period", config.unbond_period.to_string())
-        .add_attribute("lp_redemption_rate", config.lp_redemption_rate.to_string())
+        .add_attribute(
+            "lp_redemption_rate",
+            config.host_config.lp_redemption_rate.to_string(),
+        )
         .add_attribute(
             "deposit_denom",
             config.controller_config.deposit_denom.to_string(),
@@ -261,7 +269,7 @@ pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response
     }
     let amount = coin.amount;
     let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
-    let redemption_rate = config.lp_redemption_rate;
+    let redemption_rate = config.host_config.lp_redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -298,6 +306,44 @@ pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response
     Ok(rsp)
 }
 
+pub fn execute_epoch(deps: DepsMut) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    // execute finalized unbondings
+    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+    let mut free_atom_balance = config.controller_config.free_amount;
+    let mut total_unbonding_amount = config.total_unbonding_amount;
+    let mut rsp = Response::new();
+    for unbonding in unbondings {
+        if free_atom_balance < unbonding.amount {
+            break;
+        }
+        UNBONDINGS.remove(deps.storage, unbonding.id);
+        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: unbonding.sender.to_string(),
+            amount: coins(
+                unbonding.amount.u128(),
+                &config.controller_config.deposit_denom,
+            ),
+        });
+        rsp = rsp.add_message(bank_send_msg);
+        free_atom_balance -= unbonding.amount;
+        total_unbonding_amount -= unbonding.amount;
+    }
+    config.controller_config.free_amount = free_atom_balance;
+    config.total_unbonding_amount = total_unbonding_amount;
+    CONFIG.save(deps.storage, &config)?;
+
+    // TODO: execute ibc transfer to host
+    // TODO: execute ibc transfer to controller
+    // TODO: execute lockup
+    // TODO: execute unbonding
+    // TODO: execute swap
+    // TODO: execute add_liquidity
+    // TODO: execute remove_liquidity
+    Ok(rsp)
+}
+
 pub fn execute_unstake(
     deps: DepsMut,
     amount: Uint128,
@@ -311,7 +357,7 @@ pub fn execute_unstake(
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
                 let unstake_amount =
-                    amount * redemption_rate_multiplier / config.lp_redemption_rate;
+                    amount * redemption_rate_multiplier / config.host_config.lp_redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
@@ -324,16 +370,17 @@ pub fn execute_unstake(
         },
     )?;
 
-    config.total_deposit -= amount;
+    let unbonding = &Unbonding {
+        id: config.last_unbonding_id + 1,
+        sender: sender.to_owned(),
+        amount: amount,
+    };
+    UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
+    config.total_unbonding_amount += amount;
     CONFIG.save(deps.storage, &config)?;
-    let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: sender.to_string(),
-        amount: coins(amount.u128(), &config.controller_config.deposit_denom),
-    });
+
     let rsp = Response::new()
-        .add_message(bank_send_msg)
-        .add_attribute("action", "unstake")
-        .add_attribute("sender", sender)
+        .add_attribute("sender", sender.to_string())
         .add_attribute("amount", amount);
     Ok(rsp)
 }
@@ -444,15 +491,15 @@ pub fn execute_ica_add_liquidity(deps: DepsMut, env: Env) -> Result<Response, Co
     ];
     tokens_in.sort_by_key(|d| d.denom.to_string());
 
-    let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
+    let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
 
     // share_out_amount = atom_balance * 2 * 80% / redemption_rate
     let share_out_amount = config.host_config.free_atom_amount
-        * redemption_rate_multiplier
+        * lp_redemption_rate_multiplier
         * Uint128::from(2u128)
         * Uint128::from(8u128)
         / Uint128::from(10u128)
-        / config.lp_redemption_rate;
+        / config.host_config.lp_redemption_rate;
     let msg = MsgJoinPool {
         sender: config.ica_account.to_string(),
         share_out_amount: share_out_amount.to_string(),
@@ -477,9 +524,21 @@ pub fn execute_ica_remove_liquidity(
     timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+
+    // amount of liquidity to remove for unbonding
+    let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
+    let to_withdraw_atom_from_host =
+        config.total_unbonding_amount - config.controller_config.free_amount;
+    let to_remove_liquidity = to_withdraw_atom_from_host - config.host_config.free_atom_amount;
+    let mut to_remove_lp =
+        to_remove_liquidity * lp_redemption_rate_multiplier / config.host_config.lp_redemption_rate;
+    if to_remove_lp > config.host_config.free_lp_amount {
+        to_remove_lp = config.host_config.free_lp_amount;
+    }
+
     let msg = MsgExitPool {
         sender: config.ica_account.to_string(),
-        share_in_amount: config.host_config.free_lp_amount.to_string(),
+        share_in_amount: to_remove_lp.to_string(),
         pool_id: 1u64,
         token_out_mins: vec![
             OsmosisCoin {
@@ -709,7 +768,21 @@ pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(deps.storage)?;
     let deposit = DEPOSITS.load(deps.storage, addr)?;
     let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
-    Ok(deposit.amount * config.lp_redemption_rate / redemption_rate_multiplier)
+    Ok(deposit.amount * config.host_config.lp_redemption_rate / redemption_rate_multiplier)
+}
+
+const DEFAULT_LIMIT: u32 = 10;
+pub fn query_unbondings(storage: &dyn Storage, limit: Option<u32>) -> StdResult<Vec<Unbonding>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+
+    UNBONDINGS
+        .range(storage, None, None, Order::Ascending)
+        .take(limit)
+        .map(|item| {
+            let (_, v) = item?;
+            Ok(v)
+        })
+        .collect::<StdResult<Vec<Unbonding>>>()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

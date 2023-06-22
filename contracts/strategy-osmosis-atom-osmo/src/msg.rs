@@ -20,6 +20,7 @@ pub enum ExecuteMsg {
     },
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
+    ExecuteEpoch(),
     IbcTransferToHost(IbcTransferToHostMsg),
     IbcTransferToController(IbcTransferToControllerMsg),
     IcaAddLiquidity(IcaAddLiquidityMsg),
