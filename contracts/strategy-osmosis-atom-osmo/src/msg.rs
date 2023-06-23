@@ -125,6 +125,7 @@ pub enum QueryMsg {
     Channel {
         id: String,
     },
+    Unbondings {},
     // TODO: add more queries to get exact state of the contract
 }
 

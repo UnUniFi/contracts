@@ -114,3 +114,15 @@ pub struct InterchainAccountPacketData {
     pub data: Vec<u8>,
     pub memo: String,
 }
+
+pub struct IcaAmounts {
+    pub to_swap_atom: Uint128,
+    pub to_swap_osmo: Uint128,
+    pub to_add_liquidity_lp: Uint128,
+    pub to_bond_lp: Uint128,
+    pub to_remove_lp: Uint128,
+    pub to_add_lp: Uint128,
+    pub to_unbond_lp: Uint128,
+    pub to_transfer_to_controller: Uint128,
+    pub to_transfer_to_host: Uint128,
+}

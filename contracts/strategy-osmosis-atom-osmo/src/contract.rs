@@ -2,7 +2,9 @@ use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg,
 };
-use crate::state::{Config, DepositInfo, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, UNBONDINGS};
+use crate::state::{
+    Config, DepositInfo, IcaAmounts, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, UNBONDINGS,
+};
 use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -169,31 +171,12 @@ pub fn execute(
             execute_ibc_transfer_to_controller(deps, env, msg.amount)
         }
         ExecuteMsg::IcaAddLiquidity(_) => execute_ica_add_liquidity(deps, env),
-        ExecuteMsg::IcaRemoveLiquidity(msg) => execute_ica_remove_liquidity(
-            deps,
-            env,
-            msg.channel_id,
-            msg.denom,
-            msg.amount,
-            msg.timeout,
-        ),
-        ExecuteMsg::IcaSwapRewardsToTwoTokens(msg) => execute_ica_swap_rewards_to_two_tokens(
-            deps,
-            env,
-            msg.channel_id,
-            msg.denom,
-            msg.amount,
-            msg.timeout,
-        ),
+        ExecuteMsg::IcaRemoveLiquidity(_) => execute_ica_remove_liquidity(deps, env),
+        ExecuteMsg::IcaSwapRewardsToTwoTokens(msg) => {
+            execute_ica_swap_rewards_to_two_tokens(deps, env)
+        }
         ExecuteMsg::IcaSwapTwoTokensToDepositToken(msg) => {
-            execute_ica_swap_two_tokens_to_deposit_token(
-                deps,
-                env,
-                msg.channel_id,
-                msg.denom,
-                msg.amount,
-                msg.timeout,
-            )
+            execute_ica_swap_two_tokens_to_deposit_token(deps, env)
         }
         ExecuteMsg::IcaSwapDepositTokenToTwoTokens(msg) => {
             execute_ica_swap_deposit_token_to_two_tokens(
@@ -205,10 +188,8 @@ pub fn execute(
                 msg.timeout,
             )
         }
-        ExecuteMsg::IcaBondLpTokens(msg) => execute_ica_bond_lp_tokens(deps, env, msg.timeout),
-        ExecuteMsg::IcaBeginUnbondLpTokens(msg) => {
-            execute_ica_begin_unbonding_lp_tokens(deps, env, msg.timeout)
-        }
+        ExecuteMsg::IcaBondLpTokens(_) => execute_ica_bond_lp_tokens(deps, env),
+        ExecuteMsg::IcaBeginUnbondLpTokens(_) => execute_ica_begin_unbonding_lp_tokens(deps, env),
         ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
             execute_store_ica_unlocked_balances(deps, msg.coins)
         }
@@ -260,6 +241,41 @@ pub fn execute_update_config(
         );
 
     Ok(resp)
+}
+
+pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
+    let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
+    let to_add_liquidity_lp = config.host_config.free_atom_amount
+        * lp_redemption_rate_multiplier
+        * Uint128::from(2u128)
+        * Uint128::from(8u128)
+        / Uint128::from(10u128)
+        / config.host_config.lp_redemption_rate;
+
+    let to_withdraw_atom_from_host =
+        config.total_unbonding_amount - config.controller_config.free_amount;
+    let to_remove_liquidity = to_withdraw_atom_from_host - config.host_config.free_atom_amount;
+    let mut to_remove_lp =
+        to_remove_liquidity * lp_redemption_rate_multiplier / config.host_config.lp_redemption_rate;
+    let mut to_unbond_lp = Uint128::from(0u128);
+    if to_remove_lp > config.host_config.free_lp_amount {
+        to_unbond_lp = to_remove_lp - config.host_config.free_lp_amount;
+        to_remove_lp = config.host_config.free_lp_amount;
+    }
+
+    let to_bond_lp = config.host_config.free_lp_amount - to_remove_lp;
+
+    return IcaAmounts {
+        to_swap_atom: config.host_config.free_atom_amount,
+        to_swap_osmo: config.host_config.free_osmo_amount,
+        to_add_liquidity_lp: to_add_liquidity_lp,
+        to_bond_lp: to_bond_lp,
+        to_remove_lp: to_remove_lp,
+        to_add_lp: to_bond_lp,
+        to_unbond_lp: to_unbond_lp,
+        to_transfer_to_controller: Uint128::from(30u128), // TODO: test value
+        to_transfer_to_host: Uint128::from(111u128),      // TODO: test value
+    };
 }
 
 pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response, ContractError> {
@@ -515,25 +531,12 @@ pub fn execute_ica_add_liquidity(deps: DepsMut, env: Env) -> Result<Response, Co
     }))
 }
 
-pub fn execute_ica_remove_liquidity(
-    deps: DepsMut,
-    env: Env,
-    channel_id: String,
-    denom: String,
-    amount: Uint128,
-    timeout: u64,
-) -> Result<Response, ContractError> {
+pub fn execute_ica_remove_liquidity(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-
-    // amount of liquidity to remove for unbonding
-    let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
-    let to_withdraw_atom_from_host =
-        config.total_unbonding_amount - config.controller_config.free_amount;
-    let to_remove_liquidity = to_withdraw_atom_from_host - config.host_config.free_atom_amount;
-    let mut to_remove_lp =
-        to_remove_liquidity * lp_redemption_rate_multiplier / config.host_config.lp_redemption_rate;
-    if to_remove_lp > config.host_config.free_lp_amount {
-        to_remove_lp = config.host_config.free_lp_amount;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_remove_lp = ica_amounts.to_remove_lp;
+    if to_remove_lp.is_zero() {
+        return Ok(Response::new());
     }
 
     let msg = MsgExitPool {
@@ -563,10 +566,6 @@ pub fn execute_ica_remove_liquidity(
 pub fn execute_ica_swap_rewards_to_two_tokens(
     deps: DepsMut,
     env: Env,
-    channel_id: String,
-    denom: String,
-    amount: Uint128,
-    timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     let msg = MsgSwapExactAmountIn {
@@ -593,17 +592,18 @@ pub fn execute_ica_swap_rewards_to_two_tokens(
 pub fn execute_ica_swap_two_tokens_to_deposit_token(
     deps: DepsMut,
     env: Env,
-    channel_id: String,
-    denom: String,
-    amount: Uint128,
-    timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_swap_osmo = ica_amounts.to_swap_osmo;
+    if to_swap_osmo.is_zero() {
+        return Ok(Response::new());
+    }
     let msg = MsgSwapExactAmountIn {
         sender: config.ica_account.to_string(),
         token_in: Some(OsmosisCoin {
             denom: config.host_config.osmo_denom,
-            amount: config.host_config.free_osmo_amount.to_string(),
+            amount: to_swap_osmo.to_string(),
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
@@ -629,11 +629,17 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
     timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_swap_atom = ica_amounts.to_swap_atom;
+    if to_swap_atom.is_zero() {
+        return Ok(Response::new());
+    }
+
     let msg = MsgSwapExactAmountIn {
         sender: config.ica_account.to_string(),
         token_in: Some(OsmosisCoin {
             denom: config.host_config.atom_denom,
-            amount: config.host_config.free_atom_amount.to_string(),
+            amount: to_swap_atom.to_string(),
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
@@ -655,17 +661,19 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
     }))
 }
 
-pub fn execute_ica_bond_lp_tokens(
-    deps: DepsMut,
-    env: Env,
-    timeout: u64,
-) -> Result<Response, ContractError> {
+pub fn execute_ica_bond_lp_tokens(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_bond_lp = ica_amounts.to_bond_lp;
+    if to_bond_lp.is_zero() {
+        return Ok(Response::new());
+    }
+
     let msg = MsgLockTokens {
         owner: config.ica_account.to_string(),
         coins: vec![OsmosisCoin {
             denom: config.host_config.lp_denom,
-            amount: config.host_config.bonded_lp_amount.to_string(),
+            amount: to_bond_lp.to_string(),
         }],
         duration: Some(Duration {
             seconds: config.unbond_period as i64,
@@ -684,15 +692,19 @@ pub fn execute_ica_bond_lp_tokens(
 pub fn execute_ica_begin_unbonding_lp_tokens(
     deps: DepsMut,
     env: Env,
-    timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_unbond_lp = ica_amounts.to_unbond_lp;
+    if to_unbond_lp.is_zero() {
+        return Ok(Response::new());
+    }
     let msg = MsgBeginUnlocking {
         owner: config.ica_account.to_string(),
         id: 1u64,
         coins: vec![OsmosisCoin {
             denom: config.host_config.lp_denom,
-            amount: config.host_config.bonded_lp_amount.to_string(),
+            amount: to_unbond_lp.to_string(),
         }],
     };
     if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {
@@ -714,6 +726,8 @@ pub fn execute_store_ica_unlocked_balances(
             config.host_config.free_osmo_amount = coin.amount;
         } else if coin.denom == config.host_config.atom_denom {
             config.host_config.free_atom_amount = coin.amount;
+        } else if coin.denom == config.host_config.lp_denom {
+            config.host_config.free_lp_amount = coin.amount;
         }
     }
     CONFIG.save(deps.storage, &config)?;
@@ -730,6 +744,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
         QueryMsg::ListChannels {} => to_binary(&query_list_channels(deps)?),
         QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
+        QueryMsg::Unbondings {} => to_binary(&query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?),
     }
 }
 
