@@ -155,41 +155,25 @@ pub fn execute(
         ),
         ExecuteMsg::Stake(_) => {
             let coin: Coin = one_coin(&info)?;
-            execute_stake(deps, coin, info.sender)
+            execute_stake(deps, env, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
         ExecuteMsg::ExecuteEpoch() => execute_epoch(deps),
-        ExecuteMsg::IbcTransferToHost(msg) => execute_ibc_transfer_to_host(
-            deps,
-            msg.ica_channel_id,
-            msg.channel_id,
-            msg.denom,
-            msg.amount,
-            msg.timeout,
-        ),
-        ExecuteMsg::IbcTransferToController(msg) => {
-            execute_ibc_transfer_to_controller(deps, env, msg.amount)
-        }
-        ExecuteMsg::IcaAddLiquidity(_) => execute_ica_add_liquidity(deps, env),
-        ExecuteMsg::IcaRemoveLiquidity(_) => execute_ica_remove_liquidity(deps, env),
-        ExecuteMsg::IcaSwapRewardsToTwoTokens(msg) => {
+        ExecuteMsg::IbcTransferToHost() => execute_ibc_transfer_to_host(deps, env),
+        ExecuteMsg::IbcTransferToController() => execute_ibc_transfer_to_controller(deps, env),
+        ExecuteMsg::IcaAddLiquidity() => execute_ica_add_liquidity(deps, env),
+        ExecuteMsg::IcaRemoveLiquidity() => execute_ica_remove_liquidity(deps, env),
+        ExecuteMsg::IcaSwapRewardsToTwoTokens() => {
             execute_ica_swap_rewards_to_two_tokens(deps, env)
         }
-        ExecuteMsg::IcaSwapTwoTokensToDepositToken(msg) => {
+        ExecuteMsg::IcaSwapTwoTokensToDepositToken() => {
             execute_ica_swap_two_tokens_to_deposit_token(deps, env)
         }
-        ExecuteMsg::IcaSwapDepositTokenToTwoTokens(msg) => {
-            execute_ica_swap_deposit_token_to_two_tokens(
-                deps,
-                env,
-                msg.channel_id,
-                msg.denom,
-                msg.amount,
-                msg.timeout,
-            )
+        ExecuteMsg::IcaSwapDepositTokenToTwoTokens() => {
+            execute_ica_swap_deposit_token_to_two_tokens(deps, env)
         }
-        ExecuteMsg::IcaBondLpTokens(_) => execute_ica_bond_lp_tokens(deps, env),
-        ExecuteMsg::IcaBeginUnbondLpTokens(_) => execute_ica_begin_unbonding_lp_tokens(deps, env),
+        ExecuteMsg::IcaBondLpTokens() => execute_ica_bond_lp_tokens(deps, env),
+        ExecuteMsg::IcaBeginUnbondLpTokens() => execute_ica_begin_unbonding_lp_tokens(deps, env),
         ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
             execute_store_ica_unlocked_balances(deps, msg.coins)
         }
@@ -278,7 +262,12 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
     };
 }
 
-pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response, ContractError> {
+pub fn execute_stake(
+    deps: DepsMut,
+    env: Env,
+    coin: Coin,
+    sender: Addr,
+) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     if config.controller_config.deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
@@ -306,14 +295,7 @@ pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response
     config.total_deposit += amount;
     CONFIG.save(deps.storage, &config)?;
 
-    execute_ibc_transfer_to_host(
-        deps,
-        config.ica_channel_id,
-        config.host_config.transfer_channel_id,
-        config.controller_config.deposit_denom,
-        amount,
-        config.transfer_timeout,
-    )?;
+    execute_ibc_transfer_to_host(deps, env)?;
 
     let rsp = Response::default()
         .add_attribute("action", "stake")
@@ -431,25 +413,23 @@ pub fn send_ica_tx(
     return Ok(res);
 }
 
-pub fn execute_ibc_transfer_to_host(
-    deps: DepsMut,
-    ica_channel_id: String,
-    channel_id: String,
-    denom: String,
-    amount: Uint128,
-    timeout: u64,
-) -> Result<Response, ContractError> {
-    let info = CHANNEL_INFO.load(deps.storage, &ica_channel_id)?;
-    let timestamp = Timestamp::from_seconds(timeout);
+pub fn execute_ibc_transfer_to_host(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_transfer_to_host = ica_amounts.to_transfer_to_host;
+    if to_transfer_to_host.is_zero() {
+        return Ok(Response::new());
+    }
+    let timeout = env.block.time.plus_seconds(config.transfer_timeout);
     let ibc_msg = IbcMsg::Transfer {
-        channel_id: channel_id,
-        to_address: info.address,
-        amount: coin(amount.u128(), denom),
-        timeout: IbcTimeout::from(timestamp),
+        channel_id: config.ica_channel_id,
+        to_address: config.ica_account,
+        amount: coin(to_transfer_to_host.u128(), config.host_config.atom_denom),
+        timeout: IbcTimeout::from(timeout),
     };
 
     let mut config: Config = CONFIG.load(deps.storage)?;
-    config.controller_config.pending_transfer_amount += amount;
+    config.controller_config.pending_transfer_amount += to_transfer_to_host;
     CONFIG.save(deps.storage, &config)?;
 
     let res = Response::new()
@@ -461,15 +441,19 @@ pub fn execute_ibc_transfer_to_host(
 pub fn execute_ibc_transfer_to_controller(
     deps: DepsMut,
     env: Env,
-    amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let to_transfer_to_controller = ica_amounts.to_transfer_to_controller;
+    if to_transfer_to_controller.is_zero() {
+        return Ok(Response::new());
+    }
     let msg = MsgTransfer {
         source_port: "transfer".to_string(),
         source_channel: config.controller_config.transfer_channel_id,
         token: Some(ProtoCoin {
             denom: config.host_config.atom_denom,
-            amount: amount.to_string(),
+            amount: to_transfer_to_controller.to_string(),
         }),
         sender: config.ica_account,
         receiver: env.contract.address.to_string(),
@@ -623,10 +607,6 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
 pub fn execute_ica_swap_deposit_token_to_two_tokens(
     deps: DepsMut,
     env: Env,
-    channel_id: String,
-    denom: String,
-    amount: Uint128,
-    timeout: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());

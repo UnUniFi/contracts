@@ -21,78 +21,16 @@ pub enum ExecuteMsg {
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     ExecuteEpoch(),
-    IbcTransferToHost(IbcTransferToHostMsg),
-    IbcTransferToController(IbcTransferToControllerMsg),
-    IcaAddLiquidity(IcaAddLiquidityMsg),
-    IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
-    IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
-    IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
-    IcaSwapDepositTokenToTwoTokens(IcaSwapDepositTokenToTwoTokensMsg),
-    IcaBondLpTokens(IcaBondLpTokensMsg),
-    IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
+    IbcTransferToHost(),
+    IbcTransferToController(),
+    IcaAddLiquidity(),
+    IcaRemoveLiquidity(),
+    IcaSwapRewardsToTwoTokens(),
+    IcaSwapTwoTokensToDepositToken(),
+    IcaSwapDepositTokenToTwoTokens(),
+    IcaBondLpTokens(),
+    IcaBeginUnbondLpTokens(),
     StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IbcTransferToHostMsg {
-    pub ica_channel_id: String,
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IbcTransferToControllerMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaAddLiquidityMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaRemoveLiquidityMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaSwapRewardsToTwoTokensMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaSwapTwoTokensToDepositTokenMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaSwapDepositTokenToTwoTokensMsg {
-    pub channel_id: String,
-    pub denom: String,
-    pub amount: Uint128,
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaBondLpTokensMsg {
-    pub timeout: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaBeginUnbondLpTokensMsg {
-    pub timeout: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
