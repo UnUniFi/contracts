@@ -20,16 +20,15 @@ pub enum ExecuteMsg {
     },
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
-    ExecuteEpoch(),
-    IbcTransferToHost(),
-    IbcTransferToController(),
-    IcaAddLiquidity(),
-    IcaRemoveLiquidity(),
-    IcaSwapRewardsToTwoTokens(),
-    IcaSwapTwoTokensToDepositToken(),
-    IcaSwapDepositTokenToTwoTokens(),
-    IcaBondLpTokens(),
-    IcaBeginUnbondLpTokens(),
+    ExecuteEpoch(ExecuteEpochMsg),
+    IbcTransferToHost(IbcTransferToHostMsg),
+    IbcTransferToController(IbcTransferToControllerMsg),
+    IcaAddAndBondLiquidity(IcaAddAndBondLiquidityMsg),
+    IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
+    IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
+    IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
+    IcaSwapDepositTokenToTwoTokens(IcaSwapDepositTokenToTwoTokensMsg),
+    IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
     StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
 }
 
@@ -45,6 +44,36 @@ pub struct StakeMsg {}
 pub struct UnstakeMsg {
     pub amount: Uint128,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteEpochMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IbcTransferToHostMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IbcTransferToControllerMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaAddAndBondLiquidityMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaRemoveLiquidityMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapRewardsToTwoTokensMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapTwoTokensToDepositTokenMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaSwapDepositTokenToTwoTokensMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaBondLpTokensMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IcaBeginUnbondLpTokensMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

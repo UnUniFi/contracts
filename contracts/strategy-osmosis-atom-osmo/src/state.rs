@@ -11,6 +11,7 @@ pub struct ControllerConfig {
     pub transfer_channel_id: String,
     pub deposit_denom: String, // `ibc/xxxxuatom`
     pub free_amount: Uint128,
+    pub stacked_amount_to_deposit: Uint128,
     pub pending_transfer_amount: Uint128, // TODO: where to get hook for transfer finalization?
 }
 
@@ -41,14 +42,21 @@ pub struct HostConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum Phase {
+    Deposit,
+    DepositEnding,
+    Withdraw,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
     pub unbond_period: u64,
     pub redemption_rate: Uint128,
     pub total_deposit: Uint128,
     pub total_withdrawn: Uint128,
-    pub total_unbonding_amount: Uint128,
     pub last_unbonding_id: u64,
+    pub phase: Phase,
 
     pub ica_channel_id: String,
     pub ica_account: String,
@@ -65,11 +73,14 @@ pub struct DepositInfo {
     pub amount: Uint128, // contract deposit ratio
 }
 
+// Unbonding record is removed when bank send is finalized
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Unbonding {
     pub id: u64,
     pub sender: Addr,
-    pub amount: Uint128, // atom amount
+    pub amount: Uint128, // lp amount at the ratio
+    pub start_time: u64,
+    pub marked: bool, // flag for withdrawal phase withdraw
 }
 
 pub const UNBONDINGS: Map<u64, Unbonding> = Map::new("unbondings");
@@ -118,11 +129,10 @@ pub struct InterchainAccountPacketData {
 pub struct IcaAmounts {
     pub to_swap_atom: Uint128,
     pub to_swap_osmo: Uint128,
-    pub to_add_liquidity_lp: Uint128,
-    pub to_bond_lp: Uint128,
-    pub to_remove_lp: Uint128,
     pub to_add_lp: Uint128,
+    pub to_remove_lp: Uint128,
     pub to_unbond_lp: Uint128,
     pub to_transfer_to_controller: Uint128,
     pub to_transfer_to_host: Uint128,
+    pub to_return_amount: Uint128,
 }
