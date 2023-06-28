@@ -28,13 +28,17 @@ pub enum ExecuteMsg {
     IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
     IcaSwapBalanceToTwoTokens(IcaSwapBalanceToTwoTokensMsg),
     IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
-    StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
+    IcqBalanceCallback(IcqBalanceCallbackMsg),
+    IbcTransferCallback(IbcTransferCallbackMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct StoreIcaUnlockedBalancesMsg {
+pub struct IcqBalanceCallbackMsg {
     pub coins: Vec<Coin>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IbcTransferCallbackMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StakeMsg {}

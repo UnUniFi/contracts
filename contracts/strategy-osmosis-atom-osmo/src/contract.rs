@@ -179,9 +179,8 @@ pub fn execute(
         ExecuteMsg::IcaBeginUnbondLpTokens(msg) => {
             execute_ica_begin_unbonding_lp_tokens(deps.storage, env, msg.unbonding_lp_amount)
         }
-        ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
-            execute_store_ica_unlocked_balances(deps, env, msg.coins)
-        }
+        ExecuteMsg::IcqBalanceCallback(msg) => execute_icq_balance_callback(deps, env, msg.coins),
+        ExecuteMsg::IbcTransferCallback(_) => execute_ibc_transfer_callback(deps, env),
     }
 }
 
@@ -948,7 +947,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
     }))
 }
 
-pub fn execute_store_ica_unlocked_balances(
+pub fn execute_icq_balance_callback(
     deps: DepsMut,
     env: Env,
     coins: Vec<Coin>,
@@ -965,7 +964,13 @@ pub fn execute_store_ica_unlocked_balances(
     }
     CONFIG.save(deps.storage, &config)?;
     execute_epoch(deps, env, EpochCallSource::IcqCallback, true)?;
-    let res = Response::new().add_attribute("action", "store_ica_unlocked_balances".to_string());
+    let res = Response::new().add_attribute("action", "icq_balance_callback".to_string());
+    return Ok(res);
+}
+
+pub fn execute_ibc_transfer_callback(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    execute_epoch(deps, env, EpochCallSource::TransferCallback, true)?;
+    let res = Response::new().add_attribute("action", "ibc_transfer_callback".to_string());
     return Ok(res);
 }
 
