@@ -25,12 +25,12 @@ pub struct HostConfig {
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
     pub pending_unbond_lp_amount: Uint128,
-    pub pending_swap_lp_amount: Uint128, // pending swap from lp to deposit token amount
+    pub pending_lp_removal_amount: Uint128, // pending removal from lp
     pub lp_redemption_rate: Uint128,
 
     pub osmo_denom: String, // OSMO
     pub free_osmo_amount: Uint128,
-    pub pending_swap_to_atom_amount: Uint128, // Convert OSMO to ATOM
+    pub pending_swap_to_atom_amount: Uint128, // pending swap from OSMO to ATOM
 
     pub atom_denom: String,                    // ATOM
     pub free_atom_amount: Uint128,             // free ATOM balance

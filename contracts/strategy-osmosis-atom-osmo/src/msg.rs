@@ -25,7 +25,6 @@ pub enum ExecuteMsg {
     IbcTransferToController(IbcTransferToControllerMsg),
     IcaAddAndBondLiquidity(IcaAddAndBondLiquidityMsg),
     IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
-    IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
     IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
     IcaSwapBalanceToTwoTokens(IcaSwapBalanceToTwoTokensMsg),
     IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),

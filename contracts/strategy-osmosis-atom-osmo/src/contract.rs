@@ -109,8 +109,8 @@ pub fn instantiate(
             free_lp_amount: Uint128::from(0u128),
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_unbond_lp_amount: Uint128::from(0u128),
-            pending_swap_lp_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
-            osmo_denom: "uosmo".to_string(),              // OSMO
+            pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
+            osmo_denom: "uosmo".to_string(),                 // OSMO
             free_osmo_amount: Uint128::from(0u128),
             pending_swap_to_atom_amount: Uint128::from(0u128), // Convert OSMO to ATOM
             atom_denom: "stake".to_string(),                   // ATOM
