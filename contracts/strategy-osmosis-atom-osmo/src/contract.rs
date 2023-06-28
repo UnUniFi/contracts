@@ -10,9 +10,9 @@ use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdError, StdResult, Storage, Timestamp,
-    Uint128,
+    coin, coins, to_binary, Addr, BalanceResponse, BankMsg, BankQuery, Binary, Coin, CosmosMsg,
+    Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, QuerierWrapper,
+    QueryRequest, Response, StdError, StdResult, Storage, Timestamp, Uint128,
 };
 use cw_utils::one_coin;
 use osmosis_std::shim::Duration;
@@ -350,25 +350,6 @@ pub fn execute_stake(
     Ok(rsp)
 }
 
-// pub fn query_balance(
-//     querier: &QuerierWrapper,
-//     account_addr: Addr,
-//     denom: String,
-// ) -> StdResult<Uint128> {
-//     // load price form the oracle
-//     let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
-//         address: account_addr.to_string(),
-//         denom,
-//     }))?;
-//     Ok(balance.amount.amount)
-// }
-// let balance = query_balance(&deps.querier, env.contract.address, denom.to_string())?;
-// if balance.is_zero() {
-//     return Err(StdError::generic_err(
-//         "a balance greater than zero is required by the factory for verification",
-//     ));
-// }
-
 // Submit the ICQ for the withdrawal account balance
 pub fn submit_icq_for_host(store: &dyn Storage, env: Env) -> Result<Response, ContractError> {
     // TODO: query balace of ica account
@@ -378,6 +359,19 @@ pub fn submit_icq_for_host(store: &dyn Storage, env: Env) -> Result<Response, Co
     return Ok(Response::new());
 }
 
+pub fn query_balance(
+    querier: &QuerierWrapper,
+    account_addr: Addr,
+    denom: String,
+) -> StdResult<Uint128> {
+    // load price form the oracle
+    let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+        address: account_addr.to_string(),
+        denom,
+    }))?;
+    Ok(balance.amount.amount)
+}
+
 pub fn execute_epoch(
     deps: DepsMut,
     env: Env,
@@ -385,8 +379,18 @@ pub fn execute_epoch(
     success: bool,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
+    if let Ok(balance) = query_balance(
+        &deps.querier,
+        env.contract.address.to_owned(),
+        config.controller_config.deposit_denom.to_string(),
+    ) {
+        config.controller_config.free_amount = balance;
+        CONFIG.save(deps.storage, &config)?;
+    }
 
     let mut rsp: Result<Response, ContractError> = Ok(Response::new());
+    let mut next_phase = Phase::Deposit;
+    let mut next_phase_step = 1u64;
     if config.phase == Phase::Withdraw {
         if config.phase_step == 1u64 {
             // - Mark unbond ending queue items on contract
@@ -400,56 +404,56 @@ pub fn execute_epoch(
             }
             // - execute remove liquidity operation
             rsp = execute_ica_remove_liquidity(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 2u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 3u64 {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 4u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 5u64 {
             // - swap full osmo to atom
             rsp = execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 6u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 7u64 {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 8u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 9u64 {
             // - ibc transfer full atom balance from ica to contract
             rsp = execute_ibc_transfer_to_controller(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 10u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 11u64 {
             // - refresh balance of host chain after ibc transfer callback
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 12u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else {
             // 13u64
@@ -483,7 +487,7 @@ pub fn execute_epoch(
                 rsp = Ok(resp);
             }
             // - switch to `Deposit` phase
-            config.phase = Phase::Deposit;
+            next_phase = Phase::Deposit;
             CONFIG.save(deps.storage, &config)?;
         }
     } else {
@@ -492,55 +496,55 @@ pub fn execute_epoch(
             // - ibc transfer to host for stacked atoms during withdraw phases
             rsp = execute_ibc_transfer_to_host(deps.storage, env);
             // TODO: if nothing transferred increase step by +2
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 2u64 {
             // do nothing - waiting for transfer callback
         } else if config.phase_step == 3u64 {
             // - icq balance of ica account when `Deposit` phase
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 4u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 5u64 {
             // - swap half atom to osmo & half osmo to atom in a single ica tx
             rsp = execute_ica_swap_deposit_token_to_two_tokens(deps.storage, env);
             // TODO: if nothing transferred increase step by +2
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 6u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 7u64 {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 8u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 9u64 {
             // - add liquidity & bond in a single ica tx
             rsp = execute_ica_add_and_bond_liquidity(deps.storage, env);
             // TODO: if nothing transferred increase step by +2
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 8u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 9u64 {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            config.phase_step += 1;
+            next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 10u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 11u64 {
             // Unbonding epoch operation
@@ -560,23 +564,28 @@ pub fn execute_epoch(
                 config.host_config.unbonding_lp_amount += unbonding_lp_amount;
                 CONFIG.save(deps.storage, &config)?;
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             } else {
                 config.phase_step += 2;
             }
         } else if config.phase_step == 12u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                config.phase_step += 1;
+                next_phase_step = config.phase_step + 1;
             }
         } else {
             // 13u64
             if !config.host_config.free_lp_amount.is_zero() {
-                config.phase = Phase::Withdraw;
+                next_phase = Phase::Withdraw;
             }
-            config.phase_step = 1u64;
+            next_phase_step = 1u64;
         }
     }
+
+    // update phase
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    config.phase = next_phase;
+    config.phase_step = next_phase_step;
     CONFIG.save(deps.storage, &config)?;
     return rsp;
 }
