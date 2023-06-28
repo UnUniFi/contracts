@@ -44,10 +44,41 @@ pub struct HostConfig {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Phase {
     Deposit,
-    DepositEnding,
     Withdraw,
 }
 
+// Regular epoch operation (once per day)
+// - icq balance of ica account when `Deposit` phase
+// Unbonding epoch operation
+// - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
+// `Deposit` phase operations
+// - This phase starts when `WithdrawToUser` phase ends
+// - ibc transfer to host for newly incoming atoms
+// - ibc transfer to host for stacked atoms during withdraw phases
+// - swap half atom to osmo & half osmo to atom in a single ica tx
+// - initiate and wait for icq to update latest balances
+// - add liquidity & bond in a single ica tx
+// - repeat the flow
+// `DepositEnding` phase operations
+// - This phase starts from `Deposit` phase, when ica free lp balance is positive
+// - ibc transfers are disabled
+// - swap half atom to osmo & half osmo to atom in a single ica tx
+// - wait for icq to update latest balances
+// - add liquidity & bond in a single ica tx
+// - initiate and wait for icq to update latest balances
+// - update to phase to `LqWithdraw`
+// `Withdraw` phase operations
+// - This phase starts when `DepositEnding` phase ends
+// - Mark unbond ending queue items on contract
+// - execute remove liquidity operation
+// - initiate and wait or icq to update latest balances
+// - swap full osmo to atom
+// - initiate and wait or icq to update latest balances
+// - ibc transfer full atom balance from ica to contract
+// - wait for ica callback for ibc transfer finalization
+// - calculate amount to return, contract balance - stacked atom balance for deposit
+// - send amounts to marked unbond ending items proportionally
+// - switch to `Deposit` phase
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
@@ -57,6 +88,7 @@ pub struct Config {
     pub total_withdrawn: Uint128,
     pub last_unbonding_id: u64,
     pub phase: Phase,
+    pub phase_step: u64, // counted from 1 for each phase
 
     pub ica_channel_id: String,
     pub ica_account: String,
@@ -135,4 +167,12 @@ pub struct IcaAmounts {
     pub to_transfer_to_controller: Uint128,
     pub to_transfer_to_host: Uint128,
     pub to_return_amount: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum EpochCallSource {
+    NormalEpoch,
+    IcqCallback,
+    IcaCallback,
+    TransferCallback,
 }

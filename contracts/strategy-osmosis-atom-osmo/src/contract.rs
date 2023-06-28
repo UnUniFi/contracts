@@ -3,7 +3,8 @@ use crate::msg::{
     QueryMsg,
 };
 use crate::state::{
-    Config, DepositInfo, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, UNBONDINGS,
+    Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG,
+    DEPOSITS, UNBONDINGS,
 };
 use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
@@ -98,6 +99,7 @@ pub fn instantiate(
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         phase: Phase::Deposit,
+        phase_step: 1u64,
         host_config: HostConfig {
             transfer_channel_id: "".to_string(),
             lp_redemption_rate: Uint128::from(2000u128),
@@ -159,23 +161,29 @@ pub fn execute(
             execute_stake(deps, env, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        ExecuteMsg::ExecuteEpoch(_) => execute_epoch(deps),
-        ExecuteMsg::IbcTransferToHost(_) => execute_ibc_transfer_to_host(deps, env),
-        ExecuteMsg::IbcTransferToController(_) => execute_ibc_transfer_to_controller(deps, env),
-        ExecuteMsg::IcaAddAndBondLiquidity(_) => execute_ica_add_and_bond_liquidity(deps, env),
-        ExecuteMsg::IcaRemoveLiquidity(_) => execute_ica_remove_liquidity(deps, env),
+        ExecuteMsg::ExecuteEpoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true),
+        ExecuteMsg::IbcTransferToHost(_) => execute_ibc_transfer_to_host(deps.storage, env),
+        ExecuteMsg::IbcTransferToController(_) => {
+            execute_ibc_transfer_to_controller(deps.storage, env)
+        }
+        ExecuteMsg::IcaAddAndBondLiquidity(_) => {
+            execute_ica_add_and_bond_liquidity(deps.storage, env)
+        }
+        ExecuteMsg::IcaRemoveLiquidity(_) => execute_ica_remove_liquidity(deps.storage, env),
         ExecuteMsg::IcaSwapRewardsToTwoTokens(_) => {
-            execute_ica_swap_rewards_to_two_tokens(deps, env)
+            execute_ica_swap_rewards_to_two_tokens(deps.storage, env)
         }
         ExecuteMsg::IcaSwapTwoTokensToDepositToken(_) => {
-            execute_ica_swap_two_tokens_to_deposit_token(deps, env)
+            execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env)
         }
         ExecuteMsg::IcaSwapDepositTokenToTwoTokens(_) => {
-            execute_ica_swap_deposit_token_to_two_tokens(deps, env)
+            execute_ica_swap_deposit_token_to_two_tokens(deps.storage, env)
         }
-        ExecuteMsg::IcaBeginUnbondLpTokens(_) => execute_ica_begin_unbonding_lp_tokens(deps, env),
+        ExecuteMsg::IcaBeginUnbondLpTokens(msg) => {
+            execute_ica_begin_unbonding_lp_tokens(deps.storage, env, msg.unbonding_lp_amount)
+        }
         ExecuteMsg::StoreIcaUnlockedBalances(msg) => {
-            execute_store_ica_unlocked_balances(deps, msg.coins)
+            execute_store_ica_unlocked_balances(deps, env, msg.coins)
         }
     }
 }
@@ -287,10 +295,7 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             / Uint128::from(10u128)
             / config.host_config.lp_redemption_rate;
 
-        let mut to_transfer_to_controller = config.controller_config.free_amount;
-        if config.phase == Phase::DepositEnding {
-            to_transfer_to_controller = Uint128::from(0u128);
-        }
+        let to_transfer_to_controller = config.controller_config.free_amount;
 
         return IcaAmounts {
             to_swap_atom: config.host_config.free_atom_amount / Uint128::from(2u128),
@@ -338,8 +343,6 @@ pub fn execute_stake(
     config.total_deposit += amount;
     CONFIG.save(deps.storage, &config)?;
 
-    execute_ibc_transfer_to_host(deps, env)?;
-
     let rsp = Response::default()
         .add_attribute("action", "stake")
         .add_attribute("sender", sender)
@@ -347,42 +350,235 @@ pub fn execute_stake(
     Ok(rsp)
 }
 
-pub fn execute_epoch(deps: DepsMut) -> Result<Response, ContractError> {
+// pub fn query_balance(
+//     querier: &QuerierWrapper,
+//     account_addr: Addr,
+//     denom: String,
+// ) -> StdResult<Uint128> {
+//     // load price form the oracle
+//     let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+//         address: account_addr.to_string(),
+//         denom,
+//     }))?;
+//     Ok(balance.amount.amount)
+// }
+// let balance = query_balance(&deps.querier, env.contract.address, denom.to_string())?;
+// if balance.is_zero() {
+//     return Err(StdError::generic_err(
+//         "a balance greater than zero is required by the factory for verification",
+//     ));
+// }
+
+// Submit the ICQ for the withdrawal account balance
+pub fn submit_icq_for_host(store: &dyn Storage, env: Env) -> Result<Response, ContractError> {
+    // TODO: query balace of ica account
+    // Note: bonded lp and unbonding lp token balance could be managed without icq on contract side
+    // TODO: query bonded lp token balance of ica account
+    // TODO: query unbonding lp token balance of ica account
+    return Ok(Response::new());
+}
+
+pub fn execute_epoch(
+    deps: DepsMut,
+    env: Env,
+    called_from: EpochCallSource,
+    success: bool,
+) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    // execute finalized unbondings
-    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
-    let mut free_atom_balance = config.controller_config.free_amount;
-    let mut total_unbonding_amount = config.host_config.unbonding_lp_amount;
-    let mut rsp = Response::new();
-    for unbonding in unbondings {
-        if free_atom_balance < unbonding.amount {
-            break;
+    let mut rsp: Result<Response, ContractError> = Ok(Response::new());
+    if config.phase == Phase::Withdraw {
+        if config.phase_step == 1u64 {
+            // - Mark unbond ending queue items on contract
+            // assumption: matured unbondings on the contract is same as matured unbondings on controller chain
+            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            for mut unbonding in unbondings {
+                if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
+                    unbonding.marked = true;
+                    UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                }
+            }
+            // - execute remove liquidity operation
+            rsp = execute_ica_remove_liquidity(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 2u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 3u64 {
+            // - initiate and wait or icq to update latest balances
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 4u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 5u64 {
+            // - swap full osmo to atom
+            rsp = execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 6u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 7u64 {
+            // - initiate and wait or icq to update latest balances
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 8u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 9u64 {
+            // - ibc transfer full atom balance from ica to contract
+            rsp = execute_ibc_transfer_to_controller(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 10u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 11u64 {
+            // - refresh balance of host chain after ibc transfer callback
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 12u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else {
+            // 13u64
+            // - calculate amount to return, contract balance - stacked atom balance for deposit
+            let amount_to_return = config.controller_config.free_amount
+                - config.controller_config.stacked_amount_to_deposit;
+            // - send amounts to marked unbond ending items proportionally
+            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let mut total_marked_lp_amount = Uint128::from(0u128);
+            for unbonding in unbondings.as_slice() {
+                if unbonding.marked {
+                    total_marked_lp_amount += unbonding.amount;
+                }
+            }
+            if !total_marked_lp_amount.is_zero() {
+                let mut resp: Response = Response::new();
+                for unbonding in unbondings {
+                    if unbonding.marked {
+                        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+                            to_address: unbonding.sender.to_string(),
+                            amount: coins(
+                                (amount_to_return * unbonding.amount / total_marked_lp_amount)
+                                    .u128(),
+                                &config.controller_config.deposit_denom,
+                            ),
+                        });
+                        resp = resp.add_message(bank_send_msg);
+                        UNBONDINGS.remove(deps.storage, unbonding.id);
+                    }
+                }
+                rsp = Ok(resp);
+            }
+            // - switch to `Deposit` phase
+            config.phase = Phase::Deposit;
+            CONFIG.save(deps.storage, &config)?;
         }
-        UNBONDINGS.remove(deps.storage, unbonding.id);
-        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
-            to_address: unbonding.sender.to_string(),
-            amount: coins(
-                unbonding.amount.u128(),
-                &config.controller_config.deposit_denom,
-            ),
-        });
-        rsp = rsp.add_message(bank_send_msg);
-        free_atom_balance -= unbonding.amount;
-        total_unbonding_amount -= unbonding.amount;
-    }
-    config.controller_config.free_amount = free_atom_balance;
-    config.host_config.unbonding_lp_amount = total_unbonding_amount;
-    CONFIG.save(deps.storage, &config)?;
+    } else {
+        if config.phase_step == 1u64 {
+            // - ibc transfer to host for newly incoming atoms
+            // - ibc transfer to host for stacked atoms during withdraw phases
+            rsp = execute_ibc_transfer_to_host(deps.storage, env);
+            // TODO: if nothing transferred increase step by +2
+            config.phase_step += 1;
+        } else if config.phase_step == 2u64 {
+            // do nothing - waiting for transfer callback
+        } else if config.phase_step == 3u64 {
+            // - icq balance of ica account when `Deposit` phase
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 4u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 5u64 {
+            // - swap half atom to osmo & half osmo to atom in a single ica tx
+            rsp = execute_ica_swap_deposit_token_to_two_tokens(deps.storage, env);
+            // TODO: if nothing transferred increase step by +2
+            config.phase_step += 1;
+        } else if config.phase_step == 6u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 7u64 {
+            // - initiate and wait for icq to update latest balances
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 8u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 9u64 {
+            // - add liquidity & bond in a single ica tx
+            rsp = execute_ica_add_and_bond_liquidity(deps.storage, env);
+            // TODO: if nothing transferred increase step by +2
+            config.phase_step += 1;
+        } else if config.phase_step == 8u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 9u64 {
+            // - initiate and wait for icq to update latest balances
+            rsp = submit_icq_for_host(deps.storage, env);
+            config.phase_step += 1;
+        } else if config.phase_step == 10u64 {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                config.phase_step += 1;
+            }
+        } else if config.phase_step == 11u64 {
+            // Unbonding epoch operation
+            // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
+            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let mut unbonding_lp_amount = Uint128::from(0u128);
+            for mut unbonding in unbondings {
+                if unbonding.start_time != 0 {
+                    break;
+                }
+                unbonding.start_time = env.block.time.seconds();
+                UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                unbonding_lp_amount += unbonding.amount;
+            }
 
-    // TODO: execute ibc transfer to host
-    // TODO: execute ibc transfer to controller
-    // TODO: execute lockup
-    // TODO: execute unbonding
-    // TODO: execute swap
-    // TODO: execute add_liquidity
-    // TODO: execute remove_liquidity
-    Ok(rsp)
+            if !unbonding_lp_amount.is_zero() {
+                config.host_config.unbonding_lp_amount += unbonding_lp_amount;
+                CONFIG.save(deps.storage, &config)?;
+                rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
+                config.phase_step += 1;
+            } else {
+                config.phase_step += 2;
+            }
+        } else if config.phase_step == 12u64 {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                config.phase_step += 1;
+            }
+        } else {
+            // 13u64
+            if !config.host_config.free_lp_amount.is_zero() {
+                config.phase = Phase::Withdraw;
+            }
+            config.phase_step = 1u64;
+        }
+    }
+    CONFIG.save(deps.storage, &config)?;
+    return rsp;
 }
 
 pub fn execute_unstake(
@@ -429,12 +625,12 @@ pub fn execute_unstake(
 }
 
 pub fn send_ica_tx(
-    deps: DepsMut,
+    store: &dyn Storage,
     env: Env,
     action: String,
     msgs: Vec<Any>,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(store)?;
     let cosmos_tx = CosmosTx { messages: msgs };
     let mut cosmos_tx_buf = vec![];
     cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
@@ -458,8 +654,11 @@ pub fn send_ica_tx(
     return Ok(res);
 }
 
-pub fn execute_ibc_transfer_to_host(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+pub fn execute_ibc_transfer_to_host(
+    store: &mut dyn Storage,
+    env: Env,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_transfer_to_host = ica_amounts.to_transfer_to_host;
     if to_transfer_to_host.is_zero() {
@@ -473,9 +672,10 @@ pub fn execute_ibc_transfer_to_host(deps: DepsMut, env: Env) -> Result<Response,
         timeout: IbcTimeout::from(timeout),
     };
 
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let mut config: Config = CONFIG.load(store)?;
+    config.controller_config.stacked_amount_to_deposit = Uint128::from(0u128);
     config.controller_config.pending_transfer_amount += to_transfer_to_host;
-    CONFIG.save(deps.storage, &config)?;
+    CONFIG.save(store, &config)?;
 
     let res = Response::new()
         .add_message(ibc_msg)
@@ -484,10 +684,10 @@ pub fn execute_ibc_transfer_to_host(deps: DepsMut, env: Env) -> Result<Response,
 }
 
 pub fn execute_ibc_transfer_to_controller(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_transfer_to_controller = ica_amounts.to_transfer_to_controller;
     if to_transfer_to_controller.is_zero() {
@@ -507,7 +707,7 @@ pub fn execute_ibc_transfer_to_controller(
     };
     if let Ok(msg_any) = msg.to_any() {
         return send_ica_tx(
-            deps,
+            store,
             env,
             "transfer_to_controller".to_string(),
             vec![msg_any],
@@ -523,11 +723,14 @@ pub fn execute_ibc_transfer_to_controller(
 // TODO: add endpoint for initiating stake, unstake, claim rewards + autocompound for each epoch yieldaggregator trigger
 
 pub fn execute_ica_add_and_bond_liquidity(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let mut config: Config = CONFIG.load(store)?;
     let share_out_amount = determine_ica_amounts(config.to_owned()).to_add_lp;
+    config.host_config.bonded_lp_amount += share_out_amount;
+    CONFIG.save(store, &config)?;
+
     let mut tokens_in: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
             denom: config.host_config.osmo_denom,
@@ -561,7 +764,7 @@ pub fn execute_ica_add_and_bond_liquidity(
     if let Ok(msg_any1) = join_pool_to_any(msg1) {
         if let Ok(msg_any2) = lock_tokens_msg_to_any(msg2) {
             return send_ica_tx(
-                deps,
+                store,
                 env,
                 "add_and_bond_lp_tokens".to_string(),
                 vec![msg_any1, msg_any2],
@@ -574,13 +777,19 @@ pub fn execute_ica_add_and_bond_liquidity(
     }))
 }
 
-pub fn execute_ica_remove_liquidity(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+pub fn execute_ica_remove_liquidity(
+    store: &mut dyn Storage,
+    env: Env,
+) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_remove_lp = ica_amounts.to_remove_lp;
     if to_remove_lp.is_zero() {
         return Ok(Response::new());
     }
+
+    config.host_config.bonded_lp_amount -= to_remove_lp;
+    CONFIG.save(store, &config)?;
 
     let msg = MsgExitPool {
         sender: config.ica_account.to_string(),
@@ -598,7 +807,7 @@ pub fn execute_ica_remove_liquidity(deps: DepsMut, env: Env) -> Result<Response,
         ],
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {
-        return send_ica_tx(deps, env, "remove_liquidity".to_string(), vec![msg_any]);
+        return send_ica_tx(store, env, "remove_liquidity".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -607,10 +816,10 @@ pub fn execute_ica_remove_liquidity(deps: DepsMut, env: Env) -> Result<Response,
 }
 
 pub fn execute_ica_swap_rewards_to_two_tokens(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(store)?;
     let msg = MsgSwapExactAmountIn {
         sender: config.ica_account.to_string(),
         token_in: Some(OsmosisCoin {
@@ -624,7 +833,7 @@ pub fn execute_ica_swap_rewards_to_two_tokens(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        return send_ica_tx(deps, env, "swap_rewards".to_string(), vec![msg_any]);
+        return send_ica_tx(store, env, "swap_rewards".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -633,10 +842,10 @@ pub fn execute_ica_swap_rewards_to_two_tokens(
 }
 
 pub fn execute_ica_swap_two_tokens_to_deposit_token(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_swap_osmo = ica_amounts.to_swap_osmo;
     if to_swap_osmo.is_zero() {
@@ -655,7 +864,7 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        return send_ica_tx(deps, env, "swap_to_atom".to_string(), vec![msg_any]);
+        return send_ica_tx(store, env, "swap_to_atom".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -664,10 +873,10 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
 }
 
 pub fn execute_ica_swap_deposit_token_to_two_tokens(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_swap_atom = ica_amounts.to_swap_atom;
     if to_swap_atom.is_zero() {
@@ -688,7 +897,7 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
         return send_ica_tx(
-            deps,
+            store,
             env,
             "swap_to_lp_underlyings".to_string(),
             vec![msg_any],
@@ -701,13 +910,12 @@ pub fn execute_ica_swap_deposit_token_to_two_tokens(
 }
 
 pub fn execute_ica_begin_unbonding_lp_tokens(
-    deps: DepsMut,
+    store: &mut dyn Storage,
     env: Env,
+    unbonding_lp_amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
-    let to_unbond_lp = ica_amounts.to_unbond_lp;
-    if to_unbond_lp.is_zero() {
+    let config: Config = CONFIG.load(store)?;
+    if unbonding_lp_amount.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgBeginUnlocking {
@@ -715,11 +923,11 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
         id: 1u64,
         coins: vec![OsmosisCoin {
             denom: config.host_config.lp_denom,
-            amount: to_unbond_lp.to_string(),
+            amount: unbonding_lp_amount.to_string(),
         }],
     };
     if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {
-        return send_ica_tx(deps, env, "begin_unbonding_lp".to_string(), vec![msg_any]);
+        return send_ica_tx(store, env, "begin_unbonding_lp".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -729,6 +937,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
 
 pub fn execute_store_ica_unlocked_balances(
     deps: DepsMut,
+    env: Env,
     coins: Vec<Coin>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -742,6 +951,7 @@ pub fn execute_store_ica_unlocked_balances(
         }
     }
     CONFIG.save(deps.storage, &config)?;
+    execute_epoch(deps, env, EpochCallSource::IcqCallback, true)?;
     let res = Response::new().add_attribute("action", "store_ica_unlocked_balances".to_string());
     return Ok(res);
 }

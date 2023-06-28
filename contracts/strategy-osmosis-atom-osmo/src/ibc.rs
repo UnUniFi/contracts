@@ -1,10 +1,14 @@
 // use crate::proto::comdex::Metadata;
-use crate::state::{Config, Metadata, CONFIG};
+use crate::{
+    contract::execute_epoch,
+    state::{Config, Metadata, CONFIG},
+};
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
-    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
-    IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    IbcAcknowledgement, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
+    IbcChannelOpenMsg, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg,
+    SubMsgResult, WasmMsg,
 };
 use cw20::{Balance, Cw20ExecuteMsg};
 use schemars::JsonSchema;
@@ -97,16 +101,36 @@ pub fn ibc_packet_receive(
     Ok(IbcReceiveResponse::new())
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum IcaPacketAcknowledgement {
+    Result(Binary),
+    Error(String),
+}
+
+pub fn try_get_ack_error(ack: &IbcAcknowledgement) -> Option<String> {
+    let ack: IcaPacketAcknowledgement = from_binary(&ack.data)
+        .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(ack.data.to_base64()));
+    match ack {
+        IcaPacketAcknowledgement::Error(e) => Some(e),
+        _ => None,
+    }
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 // check if success or failure and update balance, or return funds
 pub fn ibc_packet_ack(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_ack: {:?}", msg).as_str());
-    // TODO: handle ICA messages callback for success or failure
+    if let Some(_) = try_get_ack_error(&msg.acknowledgement) {
+        execute_epoch(deps, env, crate::state::EpochCallSource::IcaCallback, false)?;
+    } else {
+        execute_epoch(deps, env, crate::state::EpochCallSource::IcaCallback, true)?;
+    }
     Ok(IbcBasicResponse::new())
 }
 

@@ -73,7 +73,9 @@ pub struct IcaSwapDepositTokenToTwoTokensMsg {}
 pub struct IcaBondLpTokensMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaBeginUnbondLpTokensMsg {}
+pub struct IcaBeginUnbondLpTokensMsg {
+    pub unbonding_lp_amount: Uint128,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
