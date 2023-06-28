@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
     IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
     IcaSwapRewardsToTwoTokens(IcaSwapRewardsToTwoTokensMsg),
     IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
-    IcaSwapDepositTokenToTwoTokens(IcaSwapDepositTokenToTwoTokensMsg),
+    IcaSwapBalanceToTwoTokens(IcaSwapBalanceToTwoTokensMsg),
     IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
     StoreIcaUnlockedBalances(StoreIcaUnlockedBalancesMsg),
 }
@@ -67,7 +67,7 @@ pub struct IcaSwapRewardsToTwoTokensMsg {}
 pub struct IcaSwapTwoTokensToDepositTokenMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IcaSwapDepositTokenToTwoTokensMsg {}
+pub struct IcaSwapBalanceToTwoTokensMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IcaBondLpTokensMsg {}
