@@ -104,10 +104,8 @@ pub fn instantiate(
             lp_redemption_rate: Uint128::from(2000u128),
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
-            unbonding_lp_amount: Uint128::from(0u128),
             free_lp_amount: Uint128::from(0u128),
             pending_bond_lp_amount: Uint128::from(0u128),
-            pending_unbond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
             osmo_denom: "uosmo".to_string(),                 // OSMO
             free_osmo_amount: Uint128::from(0u128),
@@ -386,10 +384,14 @@ pub fn execute_epoch(
     }
 
     let mut rsp: Result<Response, ContractError> = Ok(Response::new());
-    let mut next_phase = Phase::Deposit;
-    let mut next_phase_step = 1u64;
+    let mut next_phase = config.phase.to_owned();
+    let mut next_phase_step = config.phase_step.to_owned();
+
     if config.phase == Phase::Withdraw {
         if config.phase_step == 1u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - Mark unbond ending queue items on contract
             // assumption: matured unbondings on the contract is same as matured unbondings on controller chain
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
@@ -405,7 +407,20 @@ pub fn execute_epoch(
         } else if config.phase_step == 2u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                let pending_lp_removal_amount = config.host_config.pending_lp_removal_amount;
+                if success {
+                    if config.host_config.bonded_lp_amount < pending_lp_removal_amount {
+                        config.host_config.bonded_lp_amount = Uint128::from(0u128);
+                    } else {
+                        config.host_config.bonded_lp_amount -= pending_lp_removal_amount;
+                    }
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
+                config.host_config.pending_lp_removal_amount = Uint128::from(0u128);
+                CONFIG.save(deps.storage, &config)?;
             }
         } else if config.phase_step == 3u64 {
             // - initiate and wait or icq to update latest balances
@@ -417,13 +432,20 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 5u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - swap full osmo to atom
             rsp = execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env);
             next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 6u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                if success {
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
             }
         } else if config.phase_step == 7u64 {
             // - initiate and wait or icq to update latest balances
@@ -435,13 +457,20 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 9u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - ibc transfer full atom balance from ica to contract
             rsp = execute_ibc_transfer_to_controller(deps.storage, env);
             next_phase_step = config.phase_step + 1;
         } else if config.phase_step == 10u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                if success {
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
             }
         } else if config.phase_step == 11u64 {
             // - refresh balance of host chain after ibc transfer callback
@@ -453,6 +482,9 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // 13u64
             // - calculate amount to return, contract balance - stacked atom balance for deposit
             let amount_to_return = config.controller_config.free_amount
@@ -485,9 +517,13 @@ pub fn execute_epoch(
             }
             // - switch to `Deposit` phase
             next_phase = Phase::Deposit;
+            next_phase_step = 1u64;
         }
     } else {
         if config.phase_step == 1u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - ibc transfer to host for newly incoming atoms
             // - ibc transfer to host for stacked atoms during withdraw phases
             let ica_amounts = determine_ica_amounts(config.to_owned());
@@ -513,6 +549,9 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 5u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - swap half atom to osmo & half osmo to atom in a single ica tx
             let ica_amounts = determine_ica_amounts(config.to_owned());
             let to_swap_atom = ica_amounts.to_swap_atom;
@@ -526,7 +565,11 @@ pub fn execute_epoch(
         } else if config.phase_step == 6u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                if success {
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
             }
         } else if config.phase_step == 7u64 {
             // - initiate and wait for icq to update latest balances
@@ -538,6 +581,9 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 9u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // - add liquidity & bond in a single ica tx
             let share_out_amount = determine_ica_amounts(config.to_owned()).to_add_lp;
             if share_out_amount.is_zero() {
@@ -549,7 +595,16 @@ pub fn execute_epoch(
         } else if config.phase_step == 10u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                let pending_bond_lp_amount = config.host_config.pending_bond_lp_amount;
+                if success {
+                    config.host_config.bonded_lp_amount += pending_bond_lp_amount;
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
+                config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
+                CONFIG.save(deps.storage, &config)?;
             }
         } else if config.phase_step == 11u64 {
             // - initiate and wait for icq to update latest balances
@@ -561,6 +616,9 @@ pub fn execute_epoch(
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 13u64 {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
             // Unbonding epoch operation
             // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
@@ -575,7 +633,6 @@ pub fn execute_epoch(
             }
 
             if !unbonding_lp_amount.is_zero() {
-                config.host_config.unbonding_lp_amount += unbonding_lp_amount;
                 CONFIG.save(deps.storage, &config)?;
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
                 next_phase_step = config.phase_step + 1;
@@ -585,7 +642,11 @@ pub fn execute_epoch(
         } else if config.phase_step == 14u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                next_phase_step = config.phase_step + 1;
+                if success {
+                    next_phase_step = config.phase_step + 1;
+                } else {
+                    next_phase_step = config.phase_step - 1;
+                }
             }
         } else {
             // 15u64
@@ -636,8 +697,6 @@ pub fn execute_unstake(
         marked: false,
     };
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
-    config.host_config.unbonding_lp_amount += amount;
-    CONFIG.save(deps.storage, &config)?;
 
     let rsp = Response::new()
         .add_attribute("sender", sender.to_string())
@@ -689,7 +748,10 @@ pub fn execute_ibc_transfer_to_host(
     let ibc_msg = IbcMsg::Transfer {
         channel_id: config.controller_config.transfer_channel_id,
         to_address: config.ica_account,
-        amount: coin(to_transfer_to_host.u128(), config.host_config.atom_denom),
+        amount: coin(
+            to_transfer_to_host.u128(),
+            config.controller_config.deposit_denom,
+        ),
         timeout: IbcTimeout::from(timeout),
     };
 
@@ -751,7 +813,7 @@ pub fn execute_ica_add_and_bond_liquidity(
     if share_out_amount.is_zero() {
         return Ok(Response::new());
     }
-    config.host_config.bonded_lp_amount += share_out_amount;
+    config.host_config.pending_bond_lp_amount = share_out_amount;
     CONFIG.save(store, &config)?;
 
     let mut tokens_in: Vec<OsmosisCoin> = vec![
@@ -811,7 +873,7 @@ pub fn execute_ica_remove_liquidity(
         return Ok(Response::new());
     }
 
-    config.host_config.bonded_lp_amount -= to_remove_lp;
+    config.host_config.pending_lp_removal_amount = to_remove_lp;
     CONFIG.save(store, &config)?;
 
     let msg = MsgExitPool {

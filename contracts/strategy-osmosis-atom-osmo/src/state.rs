@@ -21,10 +21,8 @@ pub struct HostConfig {
 
     pub lp_denom: String, // ATOM-OSMO
     pub bonded_lp_amount: Uint128,
-    pub unbonding_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
-    pub pending_unbond_lp_amount: Uint128,
     pub pending_lp_removal_amount: Uint128, // pending removal from lp
     pub lp_redemption_rate: Uint128,
 
