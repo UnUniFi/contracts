@@ -4,7 +4,7 @@ use crate::msg::{
 };
 use crate::state::{
     Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG,
-    DEPOSITS, UNBONDINGS,
+    DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
 };
 use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
@@ -87,13 +87,12 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let redemption_rate_multiplier = Uint128::from(1000000u128); // 10^6
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
         total_deposit: Uint128::from(0u128),
         last_unbonding_id: 1u64,
-        redemption_rate: redemption_rate_multiplier,
+        redemption_rate: STAKE_RATE_MULTIPLIER,
         total_withdrawn: Uint128::from(0u128),
         transfer_timeout: 300, // 300s
         ica_channel_id: "".to_string(),
@@ -197,7 +196,7 @@ pub fn execute_update_config(
         config.phase_step = phase_step;
     }
     if let Some(transfer_timeout) = msg.transfer_timeout {
-        config.phase_step = transfer_timeout;
+        config.transfer_timeout = transfer_timeout;
     }
     if let Some(lp_denom) = msg.lp_denom {
         config.host_config.lp_denom = lp_denom;
@@ -290,15 +289,12 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             to_return_amount: amount_to_return,
         };
     } else {
-        let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
         let to_add_lp = config.host_config.free_atom_amount
-            * lp_redemption_rate_multiplier
+            * HOST_LP_RATE_MULTIPLIER
             * Uint128::from(2u128)
             * Uint128::from(9u128)
             / Uint128::from(10u128)
             / config.host_config.lp_redemption_rate;
-
-        let to_transfer_to_controller = config.controller_config.free_amount;
 
         return IcaAmounts {
             to_swap_atom: config.host_config.free_atom_amount / Uint128::from(2u128),
@@ -306,8 +302,8 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             to_add_lp: to_add_lp,
             to_remove_lp: Uint128::from(0u128),
             to_unbond_lp: Uint128::from(0u128),
-            to_transfer_to_controller: to_transfer_to_controller,
-            to_transfer_to_host: Uint128::from(0u128),
+            to_transfer_to_controller: Uint128::from(0u128),
+            to_transfer_to_host: config.controller_config.free_amount,
             to_return_amount: Uint128::from(0u128),
         };
     }
@@ -324,14 +320,12 @@ pub fn execute_stake(
         return Err(ContractError::NoAllowedToken {});
     }
     let amount = coin.amount;
-    let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
-    let redemption_rate = config.host_config.lp_redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let stake_amount = amount * redemption_rate_multiplier / redemption_rate;
+                let stake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_add(stake_amount)?,
@@ -552,21 +546,21 @@ pub fn execute_epoch(
                 rsp = execute_ica_add_and_bond_liquidity(deps.storage, env);
                 next_phase_step = config.phase_step + 1;
             }
-        } else if config.phase_step == 8u64 {
+        } else if config.phase_step == 10u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 next_phase_step = config.phase_step + 1;
             }
-        } else if config.phase_step == 9u64 {
+        } else if config.phase_step == 11u64 {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
             next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 10u64 {
+        } else if config.phase_step == 12u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = config.phase_step + 1;
             }
-        } else if config.phase_step == 11u64 {
+        } else if config.phase_step == 13u64 {
             // Unbonding epoch operation
             // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
@@ -588,13 +582,13 @@ pub fn execute_epoch(
             } else {
                 config.phase_step += 2;
             }
-        } else if config.phase_step == 12u64 {
+        } else if config.phase_step == 14u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 next_phase_step = config.phase_step + 1;
             }
         } else {
-            // 13u64
+            // 15u64
             if !config.host_config.free_lp_amount.is_zero() {
                 next_phase = Phase::Withdraw;
             }
@@ -616,14 +610,12 @@ pub fn execute_unstake(
     sender: Addr,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
-    let lp_redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let unstake_amount =
-                    amount * lp_redemption_rate_multiplier / config.host_config.lp_redemption_rate;
+                let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
@@ -639,7 +631,7 @@ pub fn execute_unstake(
     let unbonding = &Unbonding {
         id: config.last_unbonding_id + 1,
         sender: sender.to_owned(),
-        amount: amount * lp_redemption_rate_multiplier / config.host_config.lp_redemption_rate,
+        amount: amount * HOST_LP_RATE_MULTIPLIER / config.host_config.lp_redemption_rate,
         start_time: 0u64,
         marked: false,
     };
@@ -1021,18 +1013,25 @@ pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
     })
 }
 
-pub fn query_unbonding(_: Deps, _: String) -> StdResult<Uint128> {
-    Ok(Uint128::from(0u128))
+pub fn query_unbonding(deps: Deps, addr: String) -> StdResult<Uint128> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let mut pending_unbonding_lp = Uint128::new(0u128);
+    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.sender == addr {
+            pending_unbonding_lp += unbonding.amount;
+        }
+    }
+    Ok(pending_unbonding_lp * config.host_config.lp_redemption_rate / HOST_LP_RATE_MULTIPLIER)
 }
 
 pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(deps.storage)?;
     let deposit = DEPOSITS.load(deps.storage, addr)?;
-    let redemption_rate_multiplier = Uint128::from(1000000_000000_000000u128); // 10^18
-    Ok(deposit.amount * config.host_config.lp_redemption_rate / redemption_rate_multiplier)
+    Ok(deposit.amount * config.redemption_rate / STAKE_RATE_MULTIPLIER)
 }
 
-const DEFAULT_LIMIT: u32 = 10;
+const DEFAULT_LIMIT: u32 = 50;
 pub fn query_unbondings(storage: &dyn Storage, limit: Option<u32>) -> StdResult<Vec<Unbonding>> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
 

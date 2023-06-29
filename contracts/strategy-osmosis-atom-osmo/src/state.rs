@@ -175,3 +175,6 @@ pub enum EpochCallSource {
     IcaCallback,
     TransferCallback,
 }
+
+pub const STAKE_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000u128); // 10^6
+pub const HOST_LP_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000_000000_000000u128); // 10^18
