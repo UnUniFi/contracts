@@ -1,4 +1,4 @@
-use crate::state::ChannelInfo;
+use crate::state::{ChannelInfo, Phase};
 use cosmwasm_std::{Coin, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    UpdateConfig {
-        owner: Option<String>,
-        unbond_period: Option<u64>,
-        deposit_denom: Option<String>,
-        lp_redemption_rate: Option<Uint128>,
-    },
+    UpdateConfig(UpdateConfigMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     ExecuteEpoch(ExecuteEpochMsg),
@@ -30,6 +25,22 @@ pub enum ExecuteMsg {
     IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
     IcqBalanceCallback(IcqBalanceCallbackMsg),
     IbcTransferCallback(IbcTransferCallbackMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UpdateConfigMsg {
+    pub owner: Option<String>,
+    pub unbond_period: Option<u64>,
+    pub lp_denom: Option<String>,
+    pub lp_redemption_rate: Option<Uint128>,
+    pub phase: Option<Phase>,
+    pub phase_step: Option<u64>,
+    pub transfer_timeout: Option<u64>,
+    pub transfer_channel_id: Option<String>,
+    pub osmo_denom: Option<String>,
+    pub atom_denom: Option<String>,
+    pub controller_deposit_denom: Option<String>,
+    pub controller_transfer_channel_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

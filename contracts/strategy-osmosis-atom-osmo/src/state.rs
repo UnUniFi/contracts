@@ -37,8 +37,7 @@ pub struct HostConfig {
     pub pending_swap_to_osmo_amount: Uint128,  // pending swap from ATOM -> OSMO to add liquidity
     pub pending_add_liquidity_amount: Uint128, // amount of ATOM used on liquidity addition
     pub pending_transfer_amount: Uint128, // pending transfer to controller - TODO: how to get hook for transfer finalization?
-    pub required_withdrawal_amount: Uint128,
-    // TODO: probably create two ica accounts for convenience
+                                          // TODO: probably create two ica accounts for convenience
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

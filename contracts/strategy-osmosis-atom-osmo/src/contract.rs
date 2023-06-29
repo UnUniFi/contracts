@@ -1,6 +1,6 @@
 use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
-    QueryMsg,
+    QueryMsg, UpdateConfigMsg,
 };
 use crate::state::{
     Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG,
@@ -101,7 +101,7 @@ pub fn instantiate(
         phase: Phase::Deposit,
         phase_step: 1u64,
         host_config: HostConfig {
-            transfer_channel_id: "".to_string(),
+            transfer_channel_id: "channel-1".to_string(),
             lp_redemption_rate: Uint128::from(2000u128),
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
@@ -118,7 +118,6 @@ pub fn instantiate(
             pending_swap_to_osmo_amount: Uint128::from(0u128), // pending swap from ATOM -> OSMO to add liquidity
             pending_add_liquidity_amount: Uint128::from(0u128), // amount of ATOM used on liquidity addition
             pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
-            required_withdrawal_amount: Uint128::from(0u128),
         },
         controller_config: ControllerConfig {
             transfer_channel_id: "channel-1".to_string(),
@@ -142,20 +141,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateConfig {
-            owner,
-            unbond_period,
-            deposit_denom,
-            lp_redemption_rate,
-        } => execute_update_config(
-            deps,
-            env,
-            info,
-            owner,
-            unbond_period,
-            deposit_denom,
-            lp_redemption_rate,
-        ),
+        ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
         ExecuteMsg::Stake(_) => {
             let coin: Coin = one_coin(&info)?;
             execute_stake(deps, env, coin, info.sender)
@@ -189,10 +175,7 @@ pub fn execute_update_config(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    owner: Option<String>,
-    unbond_period: Option<u64>,
-    deposit_denom: Option<String>,
-    lp_redemption_rate: Option<Uint128>,
+    msg: UpdateConfigMsg,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
@@ -201,17 +184,41 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    if let Some(owner) = owner {
+    if let Some(owner) = msg.owner {
         config.owner = deps.api.addr_validate(&owner)?;
     }
-    if let Some(unbond_period) = unbond_period {
+    if let Some(unbond_period) = msg.unbond_period {
         config.unbond_period = unbond_period;
     }
-    if let Some(deposit_denom) = deposit_denom {
+    if let Some(phase) = msg.phase {
+        config.phase = phase;
+    }
+    if let Some(phase_step) = msg.phase_step {
+        config.phase_step = phase_step;
+    }
+    if let Some(transfer_timeout) = msg.transfer_timeout {
+        config.phase_step = transfer_timeout;
+    }
+    if let Some(lp_denom) = msg.lp_denom {
+        config.host_config.lp_denom = lp_denom;
+    }
+    if let Some(lp_redemption_rate) = msg.lp_redemption_rate {
+        config.host_config.lp_redemption_rate = lp_redemption_rate;
+    }
+    if let Some(transfer_channel_id) = msg.transfer_channel_id {
+        config.host_config.transfer_channel_id = transfer_channel_id;
+    }
+    if let Some(osmo_denom) = msg.osmo_denom {
+        config.host_config.osmo_denom = osmo_denom;
+    }
+    if let Some(atom_denom) = msg.atom_denom {
+        config.host_config.atom_denom = atom_denom;
+    }
+    if let Some(deposit_denom) = msg.controller_deposit_denom {
         config.controller_config.deposit_denom = deposit_denom;
     }
-    if let Some(lp_redemption_rate) = lp_redemption_rate {
-        config.host_config.lp_redemption_rate = lp_redemption_rate;
+    if let Some(transfer_channel_id) = msg.controller_transfer_channel_id {
+        config.controller_config.transfer_channel_id = transfer_channel_id;
     }
 
     CONFIG.save(deps.storage, &config)?;
