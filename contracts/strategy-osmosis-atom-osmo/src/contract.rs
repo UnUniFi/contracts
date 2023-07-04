@@ -101,7 +101,7 @@ pub fn instantiate(
         phase_step: 1u64,
         host_config: HostConfig {
             transfer_channel_id: "channel-1".to_string(),
-            lp_redemption_rate: Uint128::from(2000u128),
+            lp_redemption_rate: Uint128::from(200000u128),
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
             free_lp_amount: Uint128::from(0u128),
@@ -365,6 +365,18 @@ pub fn query_balance(
         denom,
     }))?;
     Ok(balance.amount.amount)
+}
+
+pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
+    let config: Config = CONFIG.load(store)?;
+    let mut total_matured_unbondings = Uint128::new(0);
+    let unbondings = query_unbondings(store, Some(DEFAULT_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
+            total_matured_unbondings += unbonding.amount;
+        }
+    }
+    Ok(total_matured_unbondings)
 }
 
 pub fn execute_epoch(
@@ -650,7 +662,11 @@ pub fn execute_epoch(
             }
         } else {
             // 15u64
-            if !config.host_config.free_lp_amount.is_zero() {
+            // when free lp amount and matured unbondings exist, move to withdraw phase
+            let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
+            if !config.host_config.free_lp_amount.is_zero()
+                && matured_unbondings > Uint128::from(0u128)
+            {
                 next_phase = Phase::Withdraw;
             }
             next_phase_step = 1u64;
