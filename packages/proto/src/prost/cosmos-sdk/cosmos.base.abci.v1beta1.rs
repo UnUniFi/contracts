@@ -48,18 +48,29 @@ pub struct MsgData {
     #[prost(bytes = "vec", tag = "2")]
     pub data: ::prost::alloc::vec::Vec<u8>,
 }
+
+// https://github.com/cosmos/cosmos-rust/releases/tag/cosmrs%2Fv0.7.1
+// https://github.com/cosmos/cosmos-rust/blob/be641f4ec15f7229b012e86f5db2e6a437ea8a5b/cosmos-sdk-proto/src/prost/cosmos-sdk/cosmos.base.abci.v1beta1.rs
 /// TxMsgData defines a list of MsgData. A transaction will have a MsgData object
 /// for each message.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TxMsgData {
-    /// data field is deprecated and not populated.
-    #[deprecated]
     #[prost(message, repeated, tag = "1")]
     pub data: ::prost::alloc::vec::Vec<MsgData>,
-    /// msg_responses contains the Msg handler responses packed into Anys.
-    ///
-    /// Since: cosmos-sdk 0.46
-    #[prost(message, repeated, tag = "2")]
-    pub msg_responses: ::prost::alloc::vec::Vec<::prost_types::Any>,
 }
+
+// /// TxMsgData defines a list of MsgData. A transaction will have a MsgData object
+// /// for each message.
+// #[derive(Clone, PartialEq, ::prost::Message)]
+// pub struct TxMsgData {
+//     /// data field is deprecated and not populated.
+//     // #[deprecated]
+//     #[prost(message, repeated, tag = "1")]
+//     pub data: ::prost::alloc::vec::Vec<MsgData>,
+//     /// msg_responses contains the Msg handler responses packed into Anys.
+//     ///
+//     /// Since: cosmos-sdk 0.46
+//     #[prost(message, repeated, tag = "2")]
+//     pub msg_responses: ::prost::alloc::vec::Vec<::prost_types::Any>,
+// }
 // @@protoc_insertion_point(module)
