@@ -36,6 +36,7 @@ use osmosis_std::types::osmosis::lockup::{
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 use prost::{EncodeError, Message};
 use prost_types::Any;
+use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
@@ -102,6 +103,7 @@ pub fn instantiate(
         host_config: HostConfig {
             transfer_channel_id: "channel-1".to_string(),
             lp_redemption_rate: Uint128::from(200000u128),
+            lock_id: 0u64,
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
             free_lp_amount: Uint128::from(0u128),
@@ -144,7 +146,9 @@ pub fn execute(
             execute_stake(deps, env, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        ExecuteMsg::ExecuteEpoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true),
+        ExecuteMsg::ExecuteEpoch(_) => {
+            execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
+        }
         ExecuteMsg::IbcTransferToHost(_) => execute_ibc_transfer_to_host(deps.storage, env),
         ExecuteMsg::IbcTransferToController(_) => {
             execute_ibc_transfer_to_controller(deps.storage, env)
@@ -384,6 +388,7 @@ pub fn execute_epoch(
     env: Env,
     called_from: EpochCallSource,
     success: bool,
+    ret: Option<Vec<u8>>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     if let Ok(balance) = query_balance(
@@ -610,6 +615,18 @@ pub fn execute_epoch(
                 let mut config: Config = CONFIG.load(deps.storage)?;
                 let pending_bond_lp_amount = config.host_config.pending_bond_lp_amount;
                 if success {
+                    if let Some(ret_bytes) = ret {
+                        let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
+                        if let Ok(tx_msg_data) = tx_msg_data_result {
+                            if tx_msg_data.data.len() > 1 {
+                                let msg_ret_result =
+                                    MsgLockTokensResponse::decode(&tx_msg_data.data[1].data[..]);
+                                if let Ok(msg_ret) = msg_ret_result {
+                                    config.host_config.lock_id = msg_ret.id;
+                                }
+                            }
+                        }
+                    }
                     config.host_config.bonded_lp_amount += pending_bond_lp_amount;
                     next_phase_step = config.phase_step + 1;
                 } else {
@@ -636,27 +653,43 @@ pub fn execute_epoch(
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
             let mut unbonding_lp_amount = Uint128::from(0u128);
             for mut unbonding in unbondings {
-                if unbonding.start_time != 0 {
-                    break;
+                if unbonding.start_time != 0 || unbonding.pending_start == true {
+                    continue;
                 }
                 unbonding.start_time = env.block.time.seconds();
+                unbonding.pending_start = true;
                 UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                 unbonding_lp_amount += unbonding.amount;
             }
 
             if !unbonding_lp_amount.is_zero() {
-                CONFIG.save(deps.storage, &config)?;
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
                 next_phase_step = config.phase_step + 1;
             } else {
-                config.phase_step += 2;
+                next_phase_step = config.phase_step + 2;
             }
         } else if config.phase_step == 14u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
+                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    for mut unbonding in unbondings {
+                        if unbonding.pending_start == true {
+                            unbonding.start_time = env.block.time.seconds();
+                            unbonding.pending_start == false;
+                            UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                        }
+                    }
+
                     next_phase_step = config.phase_step + 1;
                 } else {
+                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    for mut unbonding in unbondings {
+                        if unbonding.start_time != 0 && unbonding.pending_start == true {
+                            unbonding.pending_start = false;
+                            UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                        }
+                    }
                     next_phase_step = config.phase_step - 1;
                 }
             }
@@ -686,7 +719,7 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -709,6 +742,7 @@ pub fn execute_unstake(
         id: config.last_unbonding_id + 1,
         sender: sender.to_owned(),
         amount: amount * HOST_LP_RATE_MULTIPLIER / config.host_config.lp_redemption_rate,
+        pending_start: false,
         start_time: 0u64,
         marked: false,
     };
@@ -1040,13 +1074,13 @@ pub fn execute_icq_balance_callback(
         }
     }
     CONFIG.save(deps.storage, &config)?;
-    execute_epoch(deps, env, EpochCallSource::IcqCallback, true)?;
+    execute_epoch(deps, env, EpochCallSource::IcqCallback, true, None)?;
     let res = Response::new().add_attribute("action", "icq_balance_callback".to_string());
     return Ok(res);
 }
 
 pub fn execute_ibc_transfer_callback(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    execute_epoch(deps, env, EpochCallSource::TransferCallback, true)?;
+    execute_epoch(deps, env, EpochCallSource::TransferCallback, true, None)?;
     let res = Response::new().add_attribute("action", "ibc_transfer_callback".to_string());
     return Ok(res);
 }

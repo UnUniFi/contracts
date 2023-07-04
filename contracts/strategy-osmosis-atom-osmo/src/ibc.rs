@@ -104,17 +104,8 @@ pub fn ibc_packet_receive(
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum IcaPacketAcknowledgement {
-    Result(Binary),
+    Result(Vec<u8>),
     Error(String),
-}
-
-pub fn try_get_ack_error(ack: &IbcAcknowledgement) -> Option<String> {
-    let ack: IcaPacketAcknowledgement = from_binary(&ack.data)
-        .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(ack.data.to_base64()));
-    match ack {
-        IcaPacketAcknowledgement::Error(e) => Some(e),
-        _ => None,
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -126,10 +117,28 @@ pub fn ibc_packet_ack(
 ) -> Result<IbcBasicResponse, ContractError> {
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_ack: {:?}", msg).as_str());
-    if let Some(_) = try_get_ack_error(&msg.acknowledgement) {
-        execute_epoch(deps, env, crate::state::EpochCallSource::IcaCallback, false)?;
-    } else {
-        execute_epoch(deps, env, crate::state::EpochCallSource::IcaCallback, true)?;
+
+    let ack: IcaPacketAcknowledgement = from_binary(&msg.acknowledgement.data)
+        .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(msg.acknowledgement.data.to_base64()));
+    match ack {
+        IcaPacketAcknowledgement::Error(e) => {
+            execute_epoch(
+                deps,
+                env,
+                crate::state::EpochCallSource::IcaCallback,
+                false,
+                None,
+            )?;
+        }
+        IcaPacketAcknowledgement::Result(r) => {
+            execute_epoch(
+                deps,
+                env,
+                crate::state::EpochCallSource::IcaCallback,
+                true,
+                Some(r),
+            )?;
+        }
     }
     Ok(IbcBasicResponse::new())
 }

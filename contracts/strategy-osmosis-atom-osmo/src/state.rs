@@ -25,6 +25,7 @@ pub struct HostConfig {
     pub pending_bond_lp_amount: Uint128,
     pub pending_lp_removal_amount: Uint128, // pending removal from lp
     pub lp_redemption_rate: Uint128,
+    pub lock_id: u64,
 
     pub osmo_denom: String, // OSMO
     pub free_osmo_amount: Uint128,
@@ -107,7 +108,8 @@ pub struct DepositInfo {
 pub struct Unbonding {
     pub id: u64,
     pub sender: Addr,
-    pub amount: Uint128, // lp amount at the ratio
+    pub amount: Uint128,     // lp amount at the ratio
+    pub pending_start: bool, // ica message broadcasted for withdrawal and waiting for callback
     pub start_time: u64,
     pub marked: bool, // flag for withdrawal phase withdraw
 }
