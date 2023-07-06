@@ -104,7 +104,7 @@ pub fn ibc_packet_receive(
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum IcaPacketAcknowledgement {
-    Result(Vec<u8>),
+    Result(Binary),
     Error(String),
 }
 
@@ -136,7 +136,7 @@ pub fn ibc_packet_ack(
                 env,
                 crate::state::EpochCallSource::IcaCallback,
                 true,
-                Some(r),
+                Some(r.to_vec()),
             )?;
         }
     }

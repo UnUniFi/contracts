@@ -676,7 +676,7 @@ pub fn execute_epoch(
                     for mut unbonding in unbondings {
                         if unbonding.pending_start == true {
                             unbonding.start_time = env.block.time.seconds();
-                            unbonding.pending_start == false;
+                            unbonding.pending_start = false;
                             UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                         }
                     }
@@ -828,7 +828,7 @@ pub fn execute_ibc_transfer_to_controller(
     }
     let msg = MsgTransfer {
         source_port: "transfer".to_string(),
-        source_channel: config.controller_config.transfer_channel_id,
+        source_channel: config.host_config.transfer_channel_id,
         token: Some(ProtoCoin {
             denom: config.host_config.atom_denom,
             amount: to_transfer_to_controller.to_string(),
@@ -926,20 +926,23 @@ pub fn execute_ica_remove_liquidity(
     config.host_config.pending_lp_removal_amount = to_remove_lp;
     CONFIG.save(store, &config)?;
 
+    let mut tokens_out: Vec<OsmosisCoin> = vec![
+        OsmosisCoin {
+            denom: config.host_config.osmo_denom,
+            amount: "1".to_string(),
+        },
+        OsmosisCoin {
+            denom: config.host_config.atom_denom.to_string(),
+            amount: "1".to_string(),
+        },
+    ];
+    tokens_out.sort_by_key(|d| d.denom.to_string());
+
     let msg = MsgExitPool {
         sender: config.ica_account.to_string(),
         share_in_amount: to_remove_lp.to_string(),
         pool_id: 1u64,
-        token_out_mins: vec![
-            OsmosisCoin {
-                denom: config.host_config.osmo_denom,
-                amount: "1".to_string(),
-            },
-            OsmosisCoin {
-                denom: config.host_config.atom_denom.to_string(),
-                amount: "1".to_string(),
-            },
-        ],
+        token_out_mins: tokens_out,
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {
         return send_ica_tx(store, env, "remove_liquidity".to_string(), vec![msg_any]);
@@ -1043,7 +1046,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
     }
     let msg = MsgBeginUnlocking {
         owner: config.ica_account.to_string(),
-        id: 1u64,
+        id: config.host_config.lock_id,
         coins: vec![OsmosisCoin {
             denom: config.host_config.lp_denom,
             amount: unbonding_lp_amount.to_string(),
