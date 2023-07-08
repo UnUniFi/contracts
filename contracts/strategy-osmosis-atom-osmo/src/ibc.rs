@@ -8,7 +8,7 @@ use cosmwasm_std::{
     IbcAcknowledgement, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
     IbcChannelOpenMsg, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg,
     IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg,
-    SubMsgResult, WasmMsg,
+    SubMsgResult, WasmMsg, from_slice,
 };
 use cw20::{Balance, Cw20ExecuteMsg};
 use schemars::JsonSchema;
@@ -118,29 +118,38 @@ pub fn ibc_packet_ack(
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_ack: {:?}", msg).as_str());
 
-    let ack: IcaPacketAcknowledgement = from_binary(&msg.acknowledgement.data)
-        .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(msg.acknowledgement.data.to_base64()));
-    match ack {
-        IcaPacketAcknowledgement::Error(e) => {
-            execute_epoch(
-                deps,
-                env,
-                crate::state::EpochCallSource::IcaCallback,
-                false,
-                None,
-            )?;
-        }
-        IcaPacketAcknowledgement::Result(r) => {
-            execute_epoch(
-                deps,
-                env,
-                crate::state::EpochCallSource::IcaCallback,
-                true,
-                Some(r.to_vec()),
-            )?;
-        }
-    }
+    /// NOTE: At this moment that we unpack the binary of the ack packet, 
+    /// we need to sort out the different types of acks that we can receive
+    /// for transfer ack packet, ica ack packet, etc (possibly, wasm-wasm ack packet?). 
+    // let ack: IcaPacketAcknowledgement = from_binary(&msg.acknowledgement.data)
+    //     .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(msg.acknowledgement.data.to_base64()));
+    
+    /// NOTE: We have to handle the different types of Ack packet data types following the above statement.
+    /// So, below way to distringush the success and failure of the ack packet is not correct.
+    /// We maybe need a better way to cover all the possible ack packet data types.
+    // match ack {
+    //     IcaPacketAcknowledgement::Error(e) => {
+    //         execute_epoch(
+    //             deps,
+    //             env,
+    //             crate::state::EpochCallSource::IcaCallback,
+    //             false,
+    //             None,
+    //         )?;
+    //     }
+    //     IcaPacketAcknowledgement::Result(r) => {
+    //         execute_epoch(
+    //             deps,
+    //             env,
+    //             crate::state::EpochCallSource::IcaCallback,
+    //             true,
+    //             Some(r.to_vec()),
+    //         )?;
+    //     }
+    // }
+
     Ok(IbcBasicResponse::new())
+
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
