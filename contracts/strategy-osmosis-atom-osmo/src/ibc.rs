@@ -127,6 +127,13 @@ pub fn ibc_packet_ack(
     /// NOTE: We have to handle the different types of Ack packet data types following the above statement.
     /// So, below way to distringush the success and failure of the ack packet is not correct.
     /// We maybe need a better way to cover all the possible ack packet data types.
+    
+    
+    // which local channel was this packet send from
+    let caller = msg.original_packet.src.channel_id.clone();
+    // we need to parse the ack based on our request
+    let original_packet: PacketMsg = from_slice(&msg.original_packet.data)?;
+    let res: StdAck = from_slice(&msg.acknowledgement.data)?;
     // match ack {
     //     IcaPacketAcknowledgement::Error(e) => {
     //         execute_epoch(

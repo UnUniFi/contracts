@@ -1,12 +1,12 @@
-use crate::msg::{
+use strategy_osmosis::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg, UpdateConfigMsg,
 };
-use crate::state::{
+use strategy_osmosis::state::{
     Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG,
     DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
 };
-use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
+use strategy_osmosis::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
