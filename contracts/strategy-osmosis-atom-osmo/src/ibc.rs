@@ -1,8 +1,10 @@
 // use crate::proto::comdex::Metadata;
-use crate::{
-    contract::execute_epoch,
+use strategy_osmosis::{
     state::{Config, Metadata, CONFIG},
 };
+
+use crate::contract::execute_epoch;
+
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
     IbcAcknowledgement, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
@@ -15,7 +17,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strategy::error::{ContractError, Never};
 
-use crate::state::{ChannelInfo, CHANNEL_INFO};
+use strategy_osmosis::state::{ChannelInfo, CHANNEL_INFO};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
@@ -128,12 +130,12 @@ pub fn ibc_packet_ack(
     /// So, below way to distringush the success and failure of the ack packet is not correct.
     /// We maybe need a better way to cover all the possible ack packet data types.
     
-    
+
     // which local channel was this packet send from
     let caller = msg.original_packet.src.channel_id.clone();
     // we need to parse the ack based on our request
-    let original_packet: PacketMsg = from_slice(&msg.original_packet.data)?;
-    let res: StdAck = from_slice(&msg.acknowledgement.data)?;
+    // let original_packet: PacketMsg = from_slice(&msg.original_packet.data)?;
+    // let res: StdAck = from_slice(&msg.acknowledgement.data)?;
     // match ack {
     //     IcaPacketAcknowledgement::Error(e) => {
     //         execute_epoch(
