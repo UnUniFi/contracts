@@ -53,7 +53,7 @@ pub fn ibc_channel_connect(
         let info = ChannelInfo {
             id: channel.endpoint.channel_id,
             counterparty_endpoint: channel.counterparty_endpoint,
-            connection_id: channel.connection_id,
+            connection_id: channel.connection_id.to_string(),
             address: p.address.to_string(),
         };
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
@@ -61,6 +61,7 @@ pub fn ibc_channel_connect(
         let mut config: Config = CONFIG.load(deps.storage)?;
         config.ica_account = p.address.to_string();
         config.ica_channel_id = info.id;
+        config.ica_connection_id = channel.connection_id.to_string();
         CONFIG.save(deps.storage, &config)?;
         return Ok(IbcBasicResponse::default());
     }

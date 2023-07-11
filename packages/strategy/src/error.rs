@@ -14,8 +14,12 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Bech32 error")]
+    Bech32(#[from] bech32::Error),
+
     #[error("{0}")]
     Payment(#[from] PaymentError),
+
     #[error("Amount larger than 2**64, not supported by ics20 packets")]
     AmountOverflow {},
 
@@ -30,6 +34,9 @@ pub enum ContractError {
 
     #[error("Execute msg unknown")]
     UnknownRequest {},
+
+    #[error("Maximum address length")]
+    MaxAddrLength {},
 }
 
 impl From<FromUtf8Error> for ContractError {

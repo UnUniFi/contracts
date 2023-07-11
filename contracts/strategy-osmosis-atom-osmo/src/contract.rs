@@ -1,3 +1,8 @@
+use crate::binding::{
+    AddressBytes, SudoMsg, UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY,
+    POOLS_PREFIX,
+};
+use crate::helpers::{decode_and_convert, length_prefix};
 use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg, UpdateConfigMsg,
@@ -31,7 +36,7 @@ use osmosis_std::types::osmosis::lockup::{
     MsgBeginUnlockingResponse,
     MsgLockTokens,
     MsgLockTokensResponse,
-    // MsgSetRewardReceiverAddress, MsgSetRewardReceiverAddressResponse,
+    // MsgSetRewardReceiverAddress, MsgSetRewardReceiverAddressResponse<UnunifiMsg>,
 };
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 use prost::{EncodeError, Message};
@@ -87,7 +92,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
@@ -96,6 +101,7 @@ pub fn instantiate(
         redemption_rate: STAKE_RATE_MULTIPLIER,
         total_withdrawn: Uint128::from(0u128),
         transfer_timeout: 300, // 300s
+        ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         phase: Phase::Deposit,
@@ -131,6 +137,50 @@ pub fn instantiate(
     Ok(Response::new())
 }
 
+#[entry_point]
+pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response<UnunifiMsg>, ContractError> {
+    match msg {
+        SudoMsg::KVQueryResult {
+            connection_id,
+            chain_id,
+            query_prefix,
+            query_key,
+            data,
+        } => sudo_kv_query_result(
+            deps,
+            env,
+            connection_id,
+            chain_id,
+            query_prefix,
+            query_key,
+            data,
+        ),
+        _ => Ok(Response::default()),
+    }
+}
+
+/// sudo_kv_query_result is the contract's callback for KV query results. Note that only the query
+/// id is provided, so you need to read the query result from the state.
+pub fn sudo_kv_query_result(
+    deps: DepsMut,
+    env: Env,
+    connection_id: String,
+    chain_id: String,
+    query_prefix: String,
+    query_key: Binary,
+    data: Binary,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    deps.api.debug(
+        format!(
+            "WASMDEBUG: sudo_kv_query_result received; query_id: {:?}",
+            query_key,
+        )
+        .as_str(),
+    );
+
+    Ok(Response::default())
+}
+
 //Execute the handle messages.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -138,7 +188,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
         ExecuteMsg::Stake(_) => {
@@ -177,7 +227,7 @@ pub fn execute_update_config(
     _env: Env,
     info: MessageInfo,
     msg: UpdateConfigMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     // Permission check
@@ -316,7 +366,7 @@ pub fn execute_stake(
     env: Env,
     coin: Coin,
     sender: Addr,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     if config.controller_config.deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
@@ -349,13 +399,89 @@ pub fn execute_stake(
     Ok(rsp)
 }
 
+/// Creates balances Cosmos-SDK storage prefix for account with **addr**
+/// https://github.com/cosmos/cosmos-sdk/blob/ad9e5620fb3445c716e9de45cfcdb56e8f1745bf/x/bank/types/key.go#L55
+pub fn create_account_balances_prefix<AddrBytes: AsRef<[u8]>>(
+    addr: AddrBytes,
+) -> Result<Vec<u8>, ContractError> {
+    let mut prefix: Vec<u8> = vec![BALANCES_PREFIX];
+    prefix.extend_from_slice(length_prefix(addr)?.as_slice());
+
+    Ok(prefix)
+}
+
+/// Creates **denom** balance Cosmos-SDK storage key for account with **addr**
+pub fn create_account_denom_balance_key<AddrBytes: AsRef<[u8]>, S: AsRef<str>>(
+    addr: AddrBytes,
+    denom: S,
+) -> Result<Vec<u8>, ContractError> {
+    let mut account_balance_key = create_account_balances_prefix(addr)?;
+    account_balance_key.extend_from_slice(denom.as_ref().as_bytes());
+
+    Ok(account_balance_key)
+}
+
+pub fn create_pool_key(pool_id: u64) -> Result<Vec<u8>, ContractError> {
+    let mut pool_key: Vec<u8> = vec![POOLS_PREFIX];
+    pool_key.extend_from_slice(pool_id.to_be_bytes().as_slice());
+
+    Ok(pool_key)
+}
+
 // Submit the ICQ for the withdrawal account balance
-pub fn submit_icq_for_host(store: &dyn Storage, env: Env) -> Result<Response, ContractError> {
-    // TODO: query balace of ica account
+pub fn submit_icq_for_host(
+    store: &dyn Storage,
+    env: Env,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let config: Config = CONFIG.load(store)?;
+    let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
+
+    let atom_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.atom_denom,
+    )?;
+    let osmo_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.osmo_denom,
+    )?;
+    let lp_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.lp_denom,
+    )?;
+    let gamm_pool_key = create_pool_key(1u64)?;
+
+    let msgs = vec![
+        UnunifiMsg::SubmitICQRequest {
+            chain_id: "osmosis-1".to_string(),
+            connection_id: config.ica_connection_id.to_string(),
+            query_prefix: BANK_STORE_KEY.to_string(),
+            query_key: Binary(atom_balance_key),
+        },
+        UnunifiMsg::SubmitICQRequest {
+            chain_id: "osmosis-1".to_string(),
+            connection_id: config.ica_connection_id.to_string(),
+            query_prefix: BANK_STORE_KEY.to_string(),
+            query_key: Binary(osmo_balance_key),
+        },
+        UnunifiMsg::SubmitICQRequest {
+            chain_id: "osmosis-1".to_string(),
+            connection_id: config.ica_connection_id.to_string(),
+            query_prefix: BANK_STORE_KEY.to_string(),
+            query_key: Binary(lp_balance_key),
+        },
+        UnunifiMsg::SubmitICQRequest {
+            chain_id: "osmosis-1".to_string(),
+            connection_id: config.ica_connection_id.to_string(),
+            query_prefix: GAMM_STORE_KEY.to_string(),
+            query_key: Binary(gamm_pool_key),
+        },
+    ];
+
     // Note: bonded lp and unbonding lp token balance could be managed without icq on contract side
     // TODO: query bonded lp token balance of ica account
     // TODO: query unbonding lp token balance of ica account
-    return Ok(Response::new());
+    let resp = Response::new().add_messages(msgs);
+    return Ok(resp);
 }
 
 pub fn query_balance(
@@ -389,7 +515,7 @@ pub fn execute_epoch(
     called_from: EpochCallSource,
     success: bool,
     ret: Option<Vec<u8>>,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     if let Ok(balance) = query_balance(
         &deps.querier,
@@ -400,7 +526,7 @@ pub fn execute_epoch(
         CONFIG.save(deps.storage, &config)?;
     }
 
-    let mut rsp: Result<Response, ContractError> = Ok(Response::new());
+    let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());
     let mut next_phase = config.phase.to_owned();
     let mut next_phase_step = config.phase_step.to_owned();
 
@@ -515,7 +641,7 @@ pub fn execute_epoch(
                 }
             }
             if !total_marked_lp_amount.is_zero() {
-                let mut resp: Response = Response::new();
+                let mut resp: Response<UnunifiMsg> = Response::new();
                 for unbonding in unbondings {
                     if unbonding.marked {
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
@@ -718,7 +844,7 @@ pub fn execute_unstake(
     deps: DepsMut,
     amount: Uint128,
     sender: Addr,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     DEPOSITS.update(
         deps.storage,
@@ -759,7 +885,7 @@ pub fn send_ica_tx(
     env: Env,
     action: String,
     msgs: Vec<Any>,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let cosmos_tx = CosmosTx { messages: msgs };
     let mut cosmos_tx_buf = vec![];
@@ -787,7 +913,7 @@ pub fn send_ica_tx(
 pub fn execute_ibc_transfer_to_host(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_transfer_to_host = ica_amounts.to_transfer_to_host;
@@ -819,7 +945,7 @@ pub fn execute_ibc_transfer_to_host(
 pub fn execute_ibc_transfer_to_controller(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_transfer_to_controller = ica_amounts.to_transfer_to_controller;
@@ -857,7 +983,7 @@ pub fn execute_ibc_transfer_to_controller(
 pub fn execute_ica_add_and_bond_liquidity(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(store)?;
     let share_out_amount = determine_ica_amounts(config.to_owned()).to_add_lp;
     if share_out_amount.is_zero() {
@@ -915,7 +1041,7 @@ pub fn execute_ica_add_and_bond_liquidity(
 pub fn execute_ica_remove_liquidity(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_remove_lp = ica_amounts.to_remove_lp;
@@ -956,7 +1082,7 @@ pub fn execute_ica_remove_liquidity(
 pub fn execute_ica_swap_two_tokens_to_deposit_token(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_swap_osmo = ica_amounts.to_swap_osmo;
@@ -987,7 +1113,7 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
 pub fn execute_ica_swap_balance_to_two_tokens(
     store: &mut dyn Storage,
     env: Env,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
     let to_swap_atom = ica_amounts.to_swap_atom;
@@ -1039,7 +1165,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
     store: &mut dyn Storage,
     env: Env,
     unbonding_lp_amount: Uint128,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     if unbonding_lp_amount.is_zero() {
         return Ok(Response::new());
@@ -1065,7 +1191,7 @@ pub fn execute_icq_balance_callback(
     deps: DepsMut,
     env: Env,
     coins: Vec<Coin>,
-) -> Result<Response, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     for coin in coins.iter() {
         if coin.denom == config.host_config.osmo_denom {
@@ -1082,7 +1208,10 @@ pub fn execute_icq_balance_callback(
     return Ok(res);
 }
 
-pub fn execute_ibc_transfer_callback(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+pub fn execute_ibc_transfer_callback(
+    deps: DepsMut,
+    env: Env,
+) -> Result<Response<UnunifiMsg>, ContractError> {
     execute_epoch(deps, env, EpochCallSource::TransferCallback, true, None)?;
     let res = Response::new().add_attribute("action", "ibc_transfer_callback".to_string());
     return Ok(res);
@@ -1161,7 +1290,11 @@ pub fn query_unbondings(storage: &dyn Storage, limit: Option<u32>) -> StdResult<
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(
+    _deps: DepsMut,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
     Ok(Response::default())
 }
 

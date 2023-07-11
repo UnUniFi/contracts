@@ -89,6 +89,7 @@ pub struct Config {
     pub phase_step: u64, // counted from 1 for each phase
 
     pub ica_channel_id: String,
+    pub ica_connection_id: String,
     pub ica_account: String,
     pub transfer_timeout: u64,
     pub host_config: HostConfig,
