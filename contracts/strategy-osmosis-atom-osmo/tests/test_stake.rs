@@ -16,12 +16,12 @@ fn stake() {
     let mut deps = setup();
     let sender = "anyone";
 
+    // Error: because of the invalid denom
     let invalid_info = mock_info("anyone", &coins(10000 as u128, "invalid"));
     let err = execute_stake(deps.as_mut(), mock_env(), invalid_info.funds[0].clone(), invalid_info.sender).unwrap_err();
     assert_eq!(err, ContractError::NoAllowedToken {  });
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-
+    // Success: 
     let info = mock_info(sender, &coins(10000 as u128, "stake"));
     let res = execute_stake(deps.as_mut(), mock_env(), info.funds[0].clone(), info.sender).unwrap();
 
