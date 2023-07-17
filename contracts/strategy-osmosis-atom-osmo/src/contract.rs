@@ -48,7 +48,7 @@ use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use proto::traits::TypeUrl;
-use strategy::error::ContractError;
+use strategy::error::{ContractError, NoDeposit};
 
 fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
     return msg.to_bytes().map(|bytes| Any {
@@ -857,10 +857,7 @@ pub fn execute_unstake(
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
                 });
             }
-            Ok(DepositInfo {
-                sender: sender.clone(),
-                amount: amount,
-            })
+            Err(NoDeposit{}.into())
         },
     )?;
 
