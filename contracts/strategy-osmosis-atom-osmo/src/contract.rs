@@ -845,13 +845,14 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+    let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
+                // let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
@@ -870,6 +871,11 @@ pub fn execute_unstake(
         marked: false,
     };
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
+
+    // decrease total deposit amount as last unbonding id is increased
+    config.total_deposit -= unstake_amount;
+    config.last_unbonding_id += 1;
+    CONFIG.save(deps.storage, &config)?;
 
     let rsp = Response::new()
         .add_attribute("sender", sender.to_string())
