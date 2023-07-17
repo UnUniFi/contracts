@@ -852,7 +852,6 @@ pub fn execute_unstake(
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                // let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
@@ -873,6 +872,7 @@ pub fn execute_unstake(
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
 
     // decrease total deposit amount as last unbonding id is increased
+    // NOTE: eventually, we should remove these params from config because it's simply double counting
     config.total_deposit -= unstake_amount;
     config.last_unbonding_id += 1;
     CONFIG.save(deps.storage, &config)?;
