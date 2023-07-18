@@ -644,18 +644,22 @@ pub fn execute_epoch(
                 let mut resp: Response<UnunifiMsg> = Response::new();
                 for unbonding in unbondings {
                     if unbonding.marked {
+                        let returning_amount = amount_to_return * unbonding.amount / total_marked_lp_amount;
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
-                                (amount_to_return * unbonding.amount / total_marked_lp_amount)
-                                    .u128(),
+                                returning_amount.into(),
                                 &config.controller_config.deposit_denom,
                             ),
                         });
                         resp = resp.add_message(bank_send_msg);
                         UNBONDINGS.remove(deps.storage, unbonding.id);
+                        // update the total_withdrawn amount in config just for the record
+                        // memo: this param can be deleted in the future
+                        config.total_withdrawn += returning_amount;
                     }
                 }
+                CONFIG.save(deps.storage, &config)?;
                 rsp = Ok(resp);
             }
             // - switch to `Deposit` phase
@@ -871,9 +875,8 @@ pub fn execute_unstake(
     };
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
 
-    // decrease total deposit amount as last unbonding id is increased
+    // increase last unbonding id
     // NOTE: eventually, we should remove these params from config because it's simply double counting
-    config.total_deposit -= unstake_amount;
     config.last_unbonding_id += 1;
     CONFIG.save(deps.storage, &config)?;
 
