@@ -50,3 +50,11 @@ impl From<TryFromIntError> for ContractError {
         ContractError::AmountOverflow {}
     }
 }
+
+impl From<NoDeposit> for StdError {
+    fn from(_: NoDeposit) -> Self {
+        StdError::generic_err("No deposit")
+    }
+}
+
+pub struct NoDeposit {}
