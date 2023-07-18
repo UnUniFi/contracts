@@ -37,6 +37,9 @@ pub enum ContractError {
 
     #[error("Maximum address length")]
     MaxAddrLength {},
+
+    #[error("Already Has ICA channel")]
+    AlreadyHasIcaChannel {},
 }
 
 impl From<FromUtf8Error> for ContractError {

@@ -48,6 +48,12 @@ pub fn ibc_channel_connect(
     let counterparty_version = msg.counterparty_version();
     if let Some(version) = counterparty_version {
         let p: Metadata = from_binary(&Binary::from(version.as_bytes().to_vec()))?;
+        let mut config: Config = CONFIG.load(deps.storage)?;
+        // Check if we already have a channel of ICA (ICS27) to a chain
+        // If so, we don't permit to have another one at this moment.
+        if !config.ica_account.is_empty() {
+            return Err(ContractError::AlreadyHasIcaChannel {  });
+        }
 
         let channel: IbcChannel = msg.into();
         let info = ChannelInfo {
@@ -58,7 +64,7 @@ pub fn ibc_channel_connect(
         };
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
 
-        let mut config: Config = CONFIG.load(deps.storage)?;
+        
         config.ica_account = p.address.to_string();
         config.ica_channel_id = info.id;
         config.ica_connection_id = channel.connection_id.to_string();
