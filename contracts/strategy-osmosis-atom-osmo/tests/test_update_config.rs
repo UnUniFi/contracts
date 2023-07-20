@@ -69,7 +69,6 @@ fn update_config() {
         })
         .unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
-    
 }
 
 
