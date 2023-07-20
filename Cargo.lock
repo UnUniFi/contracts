@@ -962,6 +962,8 @@ dependencies = [
  "cosmwasm-std",
  "cw-utils 0.13.4",
  "cw20 0.14.0",
+ "prost",
+ "prost-types",
  "protobuf",
  "schemars",
  "serde",

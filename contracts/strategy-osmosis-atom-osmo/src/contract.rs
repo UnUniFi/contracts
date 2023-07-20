@@ -1,6 +1,5 @@
 use crate::binding::{
-    AddressBytes, SudoMsg, UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY,
-    POOLS_PREFIX,
+    SudoMsg, UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX,
 };
 use crate::helpers::{decode_and_convert, length_prefix};
 use crate::msg::{
@@ -17,7 +16,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BalanceResponse, BankMsg, BankQuery, Binary, Coin, CosmosMsg,
     Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, QuerierWrapper,
-    QueryRequest, Response, StdError, StdResult, Storage, Timestamp, Uint128,
+    QueryRequest, Response, StdError, StdResult, Storage, Uint128,
 };
 use cw_utils::one_coin;
 use osmosis_std::shim::Duration;
@@ -27,7 +26,7 @@ use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::{
 };
 use osmosis_std::types::osmosis::gamm::v1beta1::{
     MsgExitPool, MsgExitPoolResponse, MsgJoinPool, MsgJoinPoolResponse, MsgSwapExactAmountIn,
-    MsgSwapExactAmountInResponse,
+    MsgSwapExactAmountInResponse, Pool as OsmosisBalancerPool,
 };
 use osmosis_std::types::osmosis::lockup::{
     MsgBeginUnlocking,
@@ -48,6 +47,7 @@ use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use proto::traits::TypeUrl;
+use std::str::FromStr;
 use strategy::error::{ContractError, NoDeposit};
 
 fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
@@ -106,7 +106,9 @@ pub fn instantiate(
         ica_account: "".to_string(),
         phase: Phase::Deposit,
         phase_step: 1u64,
+        pending_icq: 0u64,
         host_config: HostConfig {
+            pool_id: 1,
             transfer_channel_id: "channel-1".to_string(),
             lp_redemption_rate: Uint128::from(200000u128),
             lock_id: 0u64,
@@ -155,8 +157,32 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response<UnunifiMsg
             query_key,
             data,
         ),
-        _ => Ok(Response::default()),
+        SudoMsg::TransferCallback {
+            denom,
+            amount,
+            sender,
+            receiver,
+            memo,
+            success,
+        } => sudo_transfer_callback(deps, env, denom, amount, sender, receiver, memo, success),
     }
+}
+
+pub fn sudo_transfer_callback(
+    deps: DepsMut,
+    env: Env,
+    denom: String,
+    amount: String,
+    sender: String,
+    receiver: String,
+    memo: String,
+    success: bool,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    deps.api
+        .debug(format!("WASMDEBUG: sudo_transfer_callback received",).as_str());
+    execute_epoch(deps, env, EpochCallSource::TransferCallback, success, None)?;
+    let res = Response::new().add_attribute("action", "ibc_transfer_callback".to_string());
+    return Ok(res);
 }
 
 /// sudo_kv_query_result is the contract's callback for KV query results. Note that only the query
@@ -177,6 +203,64 @@ pub fn sudo_kv_query_result(
         )
         .as_str(),
     );
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
+    let atom_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.atom_denom.to_string(),
+    )?;
+    let osmo_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.osmo_denom.to_string(),
+    )?;
+    let lp_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.host_config.lp_denom.to_string(),
+    )?;
+
+    if query_prefix == BANK_STORE_KEY {
+        if query_key == atom_balance_key {}
+        let mut amount = Uint128::from(0u128);
+        if data.len() > 0 {
+            // TODO: to update if Osmosis update Cosmos version to v0.47
+            let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
+            amount = Uint128::from_str(balance.amount.as_str())?;
+        }
+        if query_key == atom_balance_key {
+            config.host_config.free_atom_amount = amount;
+        } else if query_key == osmo_balance_key {
+            config.host_config.free_osmo_amount = amount;
+        } else if query_key == lp_balance_key {
+            config.host_config.free_lp_amount = amount;
+        }
+    } else {
+        // GAMM_STORE_KEY
+        let any: Any = Any::decode(data.as_slice())?;
+        let pool: OsmosisBalancerPool = OsmosisBalancerPool::decode(any.value.as_slice())?;
+        let mut atom_amount = Uint128::from(0u128);
+        let mut total_share = Uint128::from(0u128);
+        for pool_asset in pool.pool_assets {
+            if let Some(token) = pool_asset.token {
+                if token.denom == config.host_config.atom_denom.to_string() {
+                    atom_amount = Uint128::from_str(token.amount.as_str())?;
+                    break;
+                }
+            }
+        }
+        if let Some(total_shares) = pool.total_shares {
+            total_share = Uint128::from_str(total_shares.amount.as_str())?;
+        }
+        config.host_config.lp_redemption_rate =
+            atom_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+    }
+
+    config.pending_icq -= 1;
+    CONFIG.save(deps.storage, &config)?;
+
+    if config.pending_icq == 0 {
+        execute_epoch(deps, env, EpochCallSource::IcqCallback, true, None)?;
+    }
 
     Ok(Response::default())
 }
@@ -240,6 +324,9 @@ pub fn execute_update_config(
     }
     if let Some(unbond_period) = msg.unbond_period {
         config.unbond_period = unbond_period;
+    }
+    if let Some(pool_id) = msg.pool_id {
+        config.host_config.pool_id = pool_id;
     }
     if let Some(phase) = msg.phase {
         config.phase = phase;
@@ -322,7 +409,6 @@ pub fn execute_update_config(
 // - send amounts to marked unbond ending items proportionally
 // - switch to `Deposit` phase
 pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
-    // TODO: to_unbond_lp if it's unbonding epoch
     if config.phase == Phase::Withdraw {
         let mut amount_to_return = Uint128::from(0u128);
         if config.controller_config.free_amount > config.controller_config.stacked_amount_to_deposit
@@ -335,7 +421,6 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             to_swap_osmo: config.host_config.free_atom_amount,
             to_remove_lp: config.host_config.free_lp_amount,
             to_add_lp: Uint128::from(0u128),
-            to_unbond_lp: Uint128::from(0u128),
             to_transfer_to_controller: config.host_config.free_atom_amount,
             to_transfer_to_host: Uint128::from(0u128),
             to_return_amount: amount_to_return,
@@ -353,7 +438,6 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             to_swap_osmo: config.host_config.free_osmo_amount / Uint128::from(2u128),
             to_add_lp: to_add_lp,
             to_remove_lp: Uint128::from(0u128),
-            to_unbond_lp: Uint128::from(0u128),
             to_transfer_to_controller: Uint128::from(0u128),
             to_transfer_to_host: config.controller_config.free_amount,
             to_return_amount: Uint128::from(0u128),
@@ -430,10 +514,13 @@ pub fn create_pool_key(pool_id: u64) -> Result<Vec<u8>, ContractError> {
 
 // Submit the ICQ for the withdrawal account balance
 pub fn submit_icq_for_host(
-    store: &dyn Storage,
+    store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
+    let mut config: Config = CONFIG.load(store)?;
+    config.pending_icq = 4u64;
+    CONFIG.save(store, &config)?;
+
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
 
     let atom_balance_key = create_account_denom_balance_key(
@@ -448,29 +535,29 @@ pub fn submit_icq_for_host(
         converted_addr_bytes.clone(),
         config.host_config.lp_denom,
     )?;
-    let gamm_pool_key = create_pool_key(1u64)?;
+    let gamm_pool_key = create_pool_key(config.host_config.pool_id)?;
 
     let msgs = vec![
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "osmosis-1".to_string(),
+            chain_id: "test-1".to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(atom_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "osmosis-1".to_string(),
+            chain_id: "test-1".to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(osmo_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "osmosis-1".to_string(),
+            chain_id: "test-1".to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(lp_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "osmosis-1".to_string(),
+            chain_id: "test-1".to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: GAMM_STORE_KEY.to_string(),
             query_key: Binary(gamm_pool_key),
@@ -478,8 +565,6 @@ pub fn submit_icq_for_host(
     ];
 
     // Note: bonded lp and unbonding lp token balance could be managed without icq on contract side
-    // TODO: query bonded lp token balance of ica account
-    // TODO: query unbonding lp token balance of ica account
     let resp = Response::new().add_messages(msgs);
     return Ok(resp);
 }
@@ -644,7 +729,8 @@ pub fn execute_epoch(
                 let mut resp: Response<UnunifiMsg> = Response::new();
                 for unbonding in unbondings {
                     if unbonding.marked {
-                        let returning_amount = amount_to_return * unbonding.amount / total_marked_lp_amount;
+                        let returning_amount =
+                            amount_to_return * unbonding.amount / total_marked_lp_amount;
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
@@ -861,7 +947,7 @@ pub fn execute_unstake(
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
                 });
             }
-            Err(NoDeposit{}.into())
+            Err(NoDeposit {}.into())
         },
     )?;
 
@@ -927,7 +1013,7 @@ pub fn execute_ibc_transfer_to_host(
         return Ok(Response::new());
     }
     let timeout = env.block.time.plus_seconds(config.transfer_timeout);
-    let ibc_msg = IbcMsg::Transfer {
+    let ibc_msg = UnunifiMsg::IbcTransfer {
         channel_id: config.controller_config.transfer_channel_id,
         to_address: config.ica_account,
         amount: coin(
@@ -1013,7 +1099,7 @@ pub fn execute_ica_add_and_bond_liquidity(
     let msg1 = MsgJoinPool {
         sender: config.ica_account.to_string(),
         share_out_amount: share_out_amount.to_string(),
-        pool_id: 1u64,
+        pool_id: config.host_config.pool_id,
         token_in_maxs: tokens_in,
     };
 
@@ -1073,7 +1159,7 @@ pub fn execute_ica_remove_liquidity(
     let msg = MsgExitPool {
         sender: config.ica_account.to_string(),
         share_in_amount: to_remove_lp.to_string(),
-        pool_id: 1u64,
+        pool_id: config.host_config.pool_id,
         token_out_mins: tokens_out,
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {
@@ -1103,7 +1189,7 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
-            pool_id: 1u64,
+            pool_id: config.host_config.pool_id,
             token_out_denom: config.host_config.atom_denom,
         }],
     };
@@ -1135,7 +1221,7 @@ pub fn execute_ica_swap_balance_to_two_tokens(
             }),
             token_out_min_amount: "1".to_string(),
             routes: vec![SwapAmountInRoute {
-                pool_id: 1u64,
+                pool_id: config.host_config.pool_id,
                 token_out_denom: config.host_config.atom_denom.to_string(),
             }],
         };
@@ -1153,7 +1239,7 @@ pub fn execute_ica_swap_balance_to_two_tokens(
             }),
             token_out_min_amount: "1".to_string(),
             routes: vec![SwapAmountInRoute {
-                pool_id: 1u64,
+                pool_id: config.host_config.pool_id,
                 token_out_denom: config.host_config.osmo_denom,
             }],
         };

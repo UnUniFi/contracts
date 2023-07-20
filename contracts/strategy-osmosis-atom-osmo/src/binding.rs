@@ -1,9 +1,5 @@
-use std::str::FromStr;
-
-use crate::state::{ChannelInfo, Phase};
-use cosmwasm_std::{Binary, Coin, Decimal, Uint128};
+use cosmwasm_std::{Binary, Coin, IbcTimeout};
 use cosmwasm_std::{CosmosMsg, CustomMsg};
-use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strategy::error::ContractError;
@@ -17,6 +13,12 @@ pub enum UnunifiMsg {
         chain_id: String,
         query_prefix: String,
         query_key: Binary,
+    },
+    IbcTransfer {
+        channel_id: String,
+        to_address: String,
+        amount: Coin,
+        timeout: IbcTimeout,
     },
 }
 
@@ -39,13 +41,16 @@ pub enum SudoMsg {
         query_key: Binary,
         data: Binary,
     },
+    #[serde(rename = "transfer_callback")]
+    TransferCallback {
+        denom: String,
+        amount: String,
+        sender: String,
+        receiver: String,
+        memo: String,
+        success: bool,
+    },
 }
-
-const DECIMAL_PLACES: u32 = 18;
-const DECIMAL_FRACTIONAL: u128 = 10u128.pow(DECIMAL_PLACES);
-
-const QUERY_TYPE_KV_VALUE: &str = "kv";
-const QUERY_TYPE_TX_VALUE: &str = "tx";
 
 /// Protobuf type url of standard Cosmos SDK bank transfer message
 pub const COSMOS_SDK_TRANSFER_MSG_URL: &str = "/cosmos.bank.v1beta1.MsgSend";
@@ -70,23 +75,10 @@ pub const VALIDATORS_KEY: u8 = 0x21;
 pub const MAX_ADDR_LEN: usize = 255;
 
 /// Name of the standard **bank** Cosmos-SDK module
-pub const BANK_STORE_KEY: &str = "bank";
+pub const BANK_STORE_KEY: &str = "store/bank/key";
 
 /// Name of osmosis **gamm** module
-pub const GAMM_STORE_KEY: &str = "gamm";
-
-/// Name of the standard **staking** Cosmos-SDK module
-pub const STAKING_STORE_KEY: &str = "staking";
-
-/// Key for bond denomination param of Cosmos-SDK staking module
-/// https://github.com/cosmos/cosmos-sdk/blob/35ae2c4c72d4aeb33447d5a7af23ca47f786606e/x/staking/types/params.go#L39
-pub const KEY_BOND_DENOM: &str = "BondDenom";
-
-/// Name of the standard **params** Cosmos-SDK module
-pub const PARAMS_STORE_KEY: &str = "params";
-
-/// Default delimiter of **params** Cosmos-SDK module
-pub const PARAMS_STORE_DELIMITER: &str = "/";
+pub const GAMM_STORE_KEY: &str = "store/gamm/key";
 
 /// Bytes representations of Bech32 address
 pub type AddressBytes = Vec<u8>;

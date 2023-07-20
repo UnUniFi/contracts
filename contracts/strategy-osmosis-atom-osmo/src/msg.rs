@@ -31,6 +31,7 @@ pub enum ExecuteMsg {
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
     pub unbond_period: Option<u64>,
+    pub pool_id: Option<u64>,
     pub lp_denom: Option<String>,
     pub lp_redemption_rate: Option<Uint128>,
     pub phase: Option<Phase>,
