@@ -13,6 +13,8 @@ license = "Apache-2.0"
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
+prost = "0.11"
+prost-types = "0.11"
 bech32 = "0.9.0"
 cw-utils = "0.13.4"
 cw20 = { version = "0.14.0" } 

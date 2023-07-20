@@ -19,6 +19,7 @@ pub struct ControllerConfig {
 pub struct HostConfig {
     pub transfer_channel_id: String,
 
+    pub pool_id: u64,     // 1
     pub lp_denom: String, // ATOM-OSMO
     pub bonded_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
@@ -87,6 +88,7 @@ pub struct Config {
     pub last_unbonding_id: u64,
     pub phase: Phase,
     pub phase_step: u64, // counted from 1 for each phase
+    pub pending_icq: u64,
 
     pub ica_channel_id: String,
     pub ica_connection_id: String,
@@ -163,7 +165,6 @@ pub struct IcaAmounts {
     pub to_swap_osmo: Uint128,
     pub to_add_lp: Uint128,
     pub to_remove_lp: Uint128,
-    pub to_unbond_lp: Uint128,
     pub to_transfer_to_controller: Uint128,
     pub to_transfer_to_host: Uint128,
     pub to_return_amount: Uint128,
