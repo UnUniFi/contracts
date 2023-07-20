@@ -48,7 +48,7 @@ use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use proto::traits::TypeUrl;
 use std::str::FromStr;
-use strategy::error::ContractError;
+use strategy::error::{ContractError, NoDeposit};
 
 fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
     return msg.to_bytes().map(|bytes| Any {
@@ -729,18 +729,23 @@ pub fn execute_epoch(
                 let mut resp: Response<UnunifiMsg> = Response::new();
                 for unbonding in unbondings {
                     if unbonding.marked {
+                        let returning_amount =
+                            amount_to_return * unbonding.amount / total_marked_lp_amount;
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
-                                (amount_to_return * unbonding.amount / total_marked_lp_amount)
-                                    .u128(),
+                                returning_amount.into(),
                                 &config.controller_config.deposit_denom,
                             ),
                         });
                         resp = resp.add_message(bank_send_msg);
                         UNBONDINGS.remove(deps.storage, unbonding.id);
+                        // update the total_withdrawn amount in config just for the record
+                        // memo: this param can be deleted in the future
+                        config.total_withdrawn += returning_amount;
                     }
                 }
+                CONFIG.save(deps.storage, &config)?;
                 rsp = Ok(resp);
             }
             // - switch to `Deposit` phase
@@ -930,22 +935,19 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+    let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
                 });
             }
-            Ok(DepositInfo {
-                sender: sender.clone(),
-                amount: amount,
-            })
+            Err(NoDeposit {}.into())
         },
     )?;
 
@@ -958,6 +960,11 @@ pub fn execute_unstake(
         marked: false,
     };
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
+
+    // increase last unbonding id
+    // NOTE: eventually, we should remove these params from config because it's simply double counting
+    config.last_unbonding_id += 1;
+    CONFIG.save(deps.storage, &config)?;
 
     let rsp = Response::new()
         .add_attribute("sender", sender.to_string())
