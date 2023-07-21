@@ -1,16 +1,13 @@
 // use crate::proto::comdex::Metadata;
 use crate::{
-    contract::execute_epoch,
+    epoch::execute_epoch,
     state::{Config, Metadata, CONFIG},
 };
 use cosmwasm_std::{
-    attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
-    IbcAcknowledgement, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
-    IbcChannelOpenMsg, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg,
-    SubMsgResult, WasmMsg,
+    entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacket, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
-use cw20::{Balance, Cw20ExecuteMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strategy::error::{ContractError, Never};

@@ -1,5 +1,5 @@
 use crate::binding::{UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX};
-use crate::contract::execute_epoch;
+use crate::epoch::execute_epoch;
 use crate::helpers::{decode_and_convert, length_prefix};
 use crate::state::{Config, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Storage, Uint128};

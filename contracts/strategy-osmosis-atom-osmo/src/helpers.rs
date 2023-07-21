@@ -1,7 +1,7 @@
 use crate::binding::AddressBytes;
 use crate::state::InterchainAccountPacketData;
 use crate::{
-    binding::{SudoMsg, UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX},
+    binding::UnunifiMsg,
     state::{Config, CONFIG},
 };
 use cosmwasm_std::{to_binary, Env, IbcMsg, IbcTimeout, Response, Storage};
