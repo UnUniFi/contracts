@@ -156,20 +156,3 @@ pub fn ibc_packet_timeout(
 
     Ok(IbcBasicResponse::new())
 }
-
-// update the balance stored on this (channel, denom) index
-fn on_packet_success(deps: DepsMut, packet: IbcPacket) -> Result<IbcBasicResponse, ContractError> {
-    deps.api
-        .debug(format!("WASMDEBUG: on_packet_success: {:?}", packet).as_str());
-    Ok(IbcBasicResponse::new())
-}
-
-fn on_packet_failure(
-    deps: DepsMut,
-    packet: IbcPacket,
-    err: String,
-) -> Result<IbcBasicResponse, ContractError> {
-    deps.api
-        .debug(format!("WASMDEBUG: on_packet_success: {:?}", err).as_str());
-    Ok(IbcBasicResponse::new())
-}
