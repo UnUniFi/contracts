@@ -1,7 +1,7 @@
 use crate::binding::{
     SudoMsg, UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX,
 };
-use crate::helpers::{decode_and_convert, length_prefix};
+use crate::helpers::{decode_and_convert, length_prefix, send_ica_tx};
 use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg, UpdateConfigMsg,
@@ -35,18 +35,15 @@ use osmosis_std::types::osmosis::lockup::{
     MsgBeginUnlockingResponse,
     MsgLockTokens,
     MsgLockTokensResponse,
-    // MsgSetRewardReceiverAddress, MsgSetRewardReceiverAddressResponse<UnunifiMsg>,
+    // MsgSetRewardReceiverAddress, MsgSetRewardReceiverAddressResponse,
 };
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 use prost::{EncodeError, Message};
 use prost_types::Any;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
-use proto::cosmos::staking::v1beta1::MsgDelegate;
-use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
-use proto::traits::TypeUrl;
 use std::str::FromStr;
 use strategy::error::{ContractError, NoDeposit};
 
@@ -108,6 +105,7 @@ pub fn instantiate(
         phase_step: 1u64,
         pending_icq: 0u64,
         host_config: HostConfig {
+            chain_id: "test-1".to_string(),
             pool_id: 1,
             transfer_channel_id: "channel-1".to_string(),
             lp_redemption_rate: Uint128::from(200000u128),
@@ -526,25 +524,25 @@ pub fn submit_icq_for_host(
 
     let msgs = vec![
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "test-1".to_string(),
+            chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(atom_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "test-1".to_string(),
+            chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(osmo_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "test-1".to_string(),
+            chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(lp_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: "test-1".to_string(),
+            chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: GAMM_STORE_KEY.to_string(),
             query_key: Binary(gamm_pool_key),
@@ -561,7 +559,6 @@ pub fn query_balance(
     account_addr: Addr,
     denom: String,
 ) -> StdResult<Uint128> {
-    // load price form the oracle
     let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
         address: account_addr.to_string(),
         denom,
@@ -959,36 +956,6 @@ pub fn execute_unstake(
     Ok(rsp)
 }
 
-pub fn send_ica_tx(
-    store: &dyn Storage,
-    env: Env,
-    action: String,
-    msgs: Vec<Any>,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let cosmos_tx = CosmosTx { messages: msgs };
-    let mut cosmos_tx_buf = vec![];
-    cosmos_tx.encode(&mut cosmos_tx_buf).unwrap();
-
-    let ibc_packet = InterchainAccountPacketData {
-        r#type: 1,
-        data: cosmos_tx_buf,
-        memo: action.to_string(),
-    };
-
-    let timeout = env.block.time.plus_seconds(config.transfer_timeout);
-    let ibc_msg = IbcMsg::SendPacket {
-        channel_id: config.ica_channel_id,
-        data: to_binary(&ibc_packet)?,
-        timeout: IbcTimeout::from(timeout),
-    };
-
-    let res = Response::new()
-        .add_message(ibc_msg)
-        .add_attribute("action", action.to_string());
-    return Ok(res);
-}
-
 pub fn execute_ibc_transfer_to_host(
     store: &mut dyn Storage,
     env: Env,
@@ -1056,8 +1023,6 @@ pub fn execute_ibc_transfer_to_controller(
         msg: "".to_string(),
     }))
 }
-
-// TODO: add endpoint for ibc transfer initiated by yieldaggregator module endblocker
 
 pub fn execute_ica_add_and_bond_liquidity(
     store: &mut dyn Storage,

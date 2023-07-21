@@ -1,9 +1,9 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use strategy::error::ContractError;
-use strategy_osmosis_atom_osmo::contract::{execute_update_config};
-use strategy_osmosis_atom_osmo::msg::{UpdateConfigMsg, QueryMsg};
-use strategy_osmosis_atom_osmo::state::{Config};
+use strategy_osmosis_atom_osmo::contract::execute_update_config;
+use strategy_osmosis_atom_osmo::msg::{QueryMsg, UpdateConfigMsg};
+use strategy_osmosis_atom_osmo::state::Config;
 
 use crate::helpers::setup;
 
@@ -15,7 +15,7 @@ fn Initialized_state() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(0, config.unbond_period);
-    // assert_eq!("uguu", config.controller_config.deposit_denom);    
+    // assert_eq!("uguu", config.controller_config.deposit_denom);
 }
 
 #[test]
@@ -33,6 +33,7 @@ fn update_config() {
             unbond_period: None,
             lp_denom: None,
             lp_redemption_rate: None,
+            ica_channel_id: None,
             phase: None,
             phase_step: None,
             transfer_timeout: None,
@@ -42,8 +43,9 @@ fn update_config() {
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("uguu".to_string()),
             pool_id: None,
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
 
@@ -59,6 +61,7 @@ fn update_config() {
             unbond_period: None,
             lp_denom: None,
             lp_redemption_rate: None,
+            ica_channel_id: None,
             phase: None,
             phase_step: None,
             transfer_timeout: None,
@@ -68,9 +71,8 @@ fn update_config() {
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("stake".to_string()),
             pool_id: None,
-        })
-        .unwrap_err();
+        },
+    )
+    .unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 }
-
-

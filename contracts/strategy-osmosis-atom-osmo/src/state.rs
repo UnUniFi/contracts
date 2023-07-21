@@ -19,6 +19,7 @@ pub struct ControllerConfig {
 pub struct HostConfig {
     pub transfer_channel_id: String,
 
+    pub chain_id: String,
     pub pool_id: u64,     // 1
     pub lp_denom: String, // ATOM-OSMO
     pub bonded_lp_amount: Uint128,
