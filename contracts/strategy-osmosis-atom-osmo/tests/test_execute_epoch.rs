@@ -15,7 +15,6 @@ mod helpers;
 #[test]
 fn epoch_deposit_phase_flow() {
     let mut deps = setup();
-    let sender = "anyone";
         
     // CASE: when the step is 1 as the config is just initialized
     // without any pending deposit
@@ -28,35 +27,39 @@ fn epoch_deposit_phase_flow() {
 
     // TODO: CASE: Step is 1, but, with pending deposit
     // take a step back to 1
-    // let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
-    // config.phase_step = 1;
-    // // set some value in to_transfer_to_host in order to test the case when there is pending deposit
-    // config.host_config.free_atom_amount = Uint128::from(1000000u128);
-    // config.controller_config.free_amount = Uint128::from(1000000u128);
-    // CONFIG.save(deps.as_mut().storage, &config);
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
+    config.phase_step = 1;
+    CONFIG.save(deps.as_mut().storage, &config).unwrap();
 
-    // let amount = coins(
-    //         10000, 
-    //         config.controller_config.deposit_denom.clone()
-    //     );
-    // // send some funds to the contract
-    // let bank_send_res = send_funds_to_contract(mock_env(),  amount);
-    // assert!(bank_send_res.is_ok());
-    // we cannot send funds by using this function
-    // this has to be changed 
-
-    // let res = execute_epoch(deps.as_mut(), mock_env(), epoch_call_source_normal.clone(), true, None);
-    // assert!(res.is_ok());
+    let amount = coins(
+            10000, 
+            config.controller_config.deposit_denom.clone()
+        );
+    // send some funds to the contract
+    deps.querier.update_balance(mock_env().contract.address, amount);
     
-    // let config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
-    // assert_eq!(config.phase_step, 2);
+    let res = execute_epoch(deps.as_mut(), mock_env(), epoch_call_source_normal.clone(), true, None);
+    assert!(res.is_ok());
+    
+    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
+    assert_eq!(config.phase_step, 2);
+    // remove funds from contract as it's supposed to be
+    deps.querier.update_balance(mock_env().contract.address, coins(0, config.controller_config.deposit_denom.clone()));
+
+    // CASE: when the step is 2
+    let epoch_call_source_transfer = EpochCallSource::TransferCallback;
+    let res = execute_epoch(deps.as_mut(), mock_env(), epoch_call_source_transfer.clone(), true, None);
+    assert!(res.is_ok());
+
+    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
+    assert_eq!(config.phase_step, 3);
 
     // CASE: when the step is 3
     // first, register ica_account so that it can be executed properly
     // NOTE: This is totally random address.
     let ica_addr = String::from("osmo1aqvlxpk8dc4m2nkmxkf63a5zez9jkzgm6amkgddhfk0qj9j4rw3q662wuk");
     register_ica(deps.as_mut(), ica_addr);
-
+    
     let res = execute_epoch(deps.as_mut(), mock_env(), epoch_call_source_normal.clone(), true, None);
     assert!(res.is_ok());
 
@@ -240,6 +243,3 @@ fn epoch_deposit_phase_flow() {
     assert_eq!(config.phase, Phase::Withdraw);
     assert_eq!(config.phase_step, 1);
 }
-
-// TODO test of the step flow of Withdraw Phase in execute_epoch
-
