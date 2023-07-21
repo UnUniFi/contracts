@@ -59,10 +59,13 @@ pub fn ibc_channel_connect(
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
 
         let mut config: Config = CONFIG.load(deps.storage)?;
-        config.ica_account = p.address.to_string();
-        config.ica_channel_id = info.id;
-        config.ica_connection_id = channel.connection_id.to_string();
-        CONFIG.save(deps.storage, &config)?;
+        // save ica_account and channel automatically if it's the first ica_account
+        if config.ica_account == "".to_string() {
+            config.ica_account = p.address.to_string();
+            config.ica_channel_id = info.id;
+            config.ica_connection_id = channel.connection_id.to_string();
+            CONFIG.save(deps.storage, &config)?;
+        }
         return Ok(IbcBasicResponse::default());
     }
     return Ok(IbcBasicResponse::default());

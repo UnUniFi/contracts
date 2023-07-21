@@ -7,8 +7,8 @@ use crate::msg::{
     QueryMsg, UpdateConfigMsg,
 };
 use crate::state::{
-    Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO, CONFIG,
-    DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
+    ChannelInfo, Config, DepositInfo, EpochCallSource, IcaAmounts, Phase, Unbonding, CHANNEL_INFO,
+    CONFIG, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
 };
 use crate::state::{ControllerConfig, HostConfig, InterchainAccountPacketData};
 #[cfg(not(feature = "library"))]
@@ -327,6 +327,12 @@ pub fn execute_update_config(
     }
     if let Some(pool_id) = msg.pool_id {
         config.host_config.pool_id = pool_id;
+    }
+    if let Some(ica_channel_id) = msg.ica_channel_id {
+        let info: ChannelInfo = CHANNEL_INFO.load(deps.storage, ica_channel_id.as_str())?;
+        config.ica_account = info.address.to_string();
+        config.ica_channel_id = info.id;
+        config.ica_connection_id = info.connection_id.to_string();
     }
     if let Some(phase) = msg.phase {
         config.phase = phase;
@@ -1388,28 +1394,4 @@ pub fn migrate(
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     Ok(Response::default())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::test_helpers::*;
-
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, StdError};
-
-    #[test]
-    fn execute_update_config() {}
-
-    #[test]
-    fn execute_stake() {}
-
-    #[test]
-    fn execute_unstake() {}
-
-    #[test]
-    fn query_unbonding() {}
-
-    #[test]
-    fn query_bonded() {}
 }
