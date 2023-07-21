@@ -16,15 +16,6 @@ pub enum ExecuteMsg {
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     ExecuteEpoch(ExecuteEpochMsg),
-    IbcTransferToHost(IbcTransferToHostMsg),
-    IbcTransferToController(IbcTransferToControllerMsg),
-    IcaAddAndBondLiquidity(IcaAddAndBondLiquidityMsg),
-    IcaRemoveLiquidity(IcaRemoveLiquidityMsg),
-    IcaSwapTwoTokensToDepositToken(IcaSwapTwoTokensToDepositTokenMsg),
-    IcaSwapBalanceToTwoTokens(IcaSwapBalanceToTwoTokensMsg),
-    IcaBeginUnbondLpTokens(IcaBeginUnbondLpTokensMsg),
-    IcqBalanceCallback(IcqBalanceCallbackMsg),
-    IbcTransferCallback(IbcTransferCallbackMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

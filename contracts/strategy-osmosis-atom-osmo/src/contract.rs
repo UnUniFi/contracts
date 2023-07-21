@@ -283,25 +283,6 @@ pub fn execute(
         ExecuteMsg::ExecuteEpoch(_) => {
             execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
         }
-        ExecuteMsg::IbcTransferToHost(_) => execute_ibc_transfer_to_host(deps.storage, env),
-        ExecuteMsg::IbcTransferToController(_) => {
-            execute_ibc_transfer_to_controller(deps.storage, env)
-        }
-        ExecuteMsg::IcaAddAndBondLiquidity(_) => {
-            execute_ica_add_and_bond_liquidity(deps.storage, env)
-        }
-        ExecuteMsg::IcaRemoveLiquidity(_) => execute_ica_remove_liquidity(deps.storage, env),
-        ExecuteMsg::IcaSwapTwoTokensToDepositToken(_) => {
-            execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env)
-        }
-        ExecuteMsg::IcaSwapBalanceToTwoTokens(_) => {
-            execute_ica_swap_balance_to_two_tokens(deps.storage, env)
-        }
-        ExecuteMsg::IcaBeginUnbondLpTokens(msg) => {
-            execute_ica_begin_unbonding_lp_tokens(deps.storage, env, msg.unbonding_lp_amount)
-        }
-        ExecuteMsg::IcqBalanceCallback(msg) => execute_icq_balance_callback(deps, env, msg.coins),
-        ExecuteMsg::IbcTransferCallback(_) => execute_ibc_transfer_callback(deps, env),
     }
 }
 
@@ -1283,36 +1264,6 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
         source_type: "proto_any_conversion".to_string(),
         msg: "".to_string(),
     }))
-}
-
-pub fn execute_icq_balance_callback(
-    deps: DepsMut,
-    env: Env,
-    coins: Vec<Coin>,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    for coin in coins.iter() {
-        if coin.denom == config.host_config.osmo_denom {
-            config.host_config.free_osmo_amount = coin.amount;
-        } else if coin.denom == config.host_config.atom_denom {
-            config.host_config.free_atom_amount = coin.amount;
-        } else if coin.denom == config.host_config.lp_denom {
-            config.host_config.free_lp_amount = coin.amount;
-        }
-    }
-    CONFIG.save(deps.storage, &config)?;
-    execute_epoch(deps, env, EpochCallSource::IcqCallback, true, None)?;
-    let res = Response::new().add_attribute("action", "icq_balance_callback".to_string());
-    return Ok(res);
-}
-
-pub fn execute_ibc_transfer_callback(
-    deps: DepsMut,
-    env: Env,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    execute_epoch(deps, env, EpochCallSource::TransferCallback, true, None)?;
-    let res = Response::new().add_attribute("action", "ibc_transfer_callback".to_string());
-    return Ok(res);
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
