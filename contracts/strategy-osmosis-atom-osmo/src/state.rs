@@ -160,6 +160,7 @@ pub struct InterchainAccountPacketData {
     pub memo: String,
 }
 
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct IcaAmounts {
     pub to_swap_atom: Uint128,
     pub to_swap_osmo: Uint128,
