@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, Api, BankMsg, CosmosMsg, OverflowError, StdError, Timestamp, Uint128};
+use cosmwasm_std::{coins, Api, BankMsg, CosmosMsg, OverflowError, StdError, Timestamp, Uint128, DepsMut};
 // use cosmwasm_std::Overflow;
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
@@ -11,7 +11,7 @@ use strategy_osmosis_atom_osmo::epoch::execute_epoch;
 use strategy_osmosis_atom_osmo::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
 
 use crate::helpers::{
-    register_ica, remove_free_atom_from_host_account, send_funds_to_contract, setup,
+    register_ica, remove_free_atom_from_host_account, setup,
 };
 
 mod helpers;
@@ -379,4 +379,284 @@ fn epoch_deposit_phase_flow() {
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(config.phase, Phase::Withdraw);
     assert_eq!(config.phase_step, 1);
+}
+
+// test of the step flow in Withdraw phase
+#[test]
+fn epoch_withdraw_phase_flow() {
+    let mut deps = setup();    
+    let epoch_call_source_normal = EpochCallSource::NormalEpoch;
+    let epoch_call_source_transfer = EpochCallSource::TransferCallback;
+    let epoch_call_source_icq = EpochCallSource::IcqCallback;
+    let epoch_call_source_ica = EpochCallSource::IcaCallback;
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    config.phase = Phase::Withdraw;
+    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+    // CASE: when the step is 1 as the config is just initialized
+    // without any pending deposit
+    setup_test_case_for_execute_epoch(deps.as_mut(), 
+        1, 
+        Uint128::zero()
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 2);
+
+    // CASE: when the step is 2
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        2,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_ica.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+
+    assert_config_phase_step(deps.as_mut(), 3);
+
+    // CASE: when the step is 3
+    // first, register ica_account so that it can be executed properly
+    // NOTE: This is totally random address.
+    let ica_addr = String::from("osmo1aqvlxpk8dc4m2nkmxkf63a5zez9jkzgm6amkgddhfk0qj9j4rw3q662wuk");
+    register_ica(deps.as_mut(), ica_addr);
+
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        3,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+
+    assert_config_phase_step(deps.as_mut(), 4);
+    
+    // CASE: When the step is 4
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        4,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_icq.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 5);
+
+    // CASE: When the step is 5
+    // And, when
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        5,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 6);
+
+    // CASE: When the step is 6
+    // And, the ica tx is success
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        6,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_ica.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 7);
+
+    // CASE: When the step is 6
+    // And, the ica tx is failure
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        6,
+        Uint128::zero(),
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_ica.clone(),
+        false,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 5);
+
+    // CASE: When the step is 7
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        7, 
+        Uint128::zero()
+    );
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 8);
+
+    // CASE: When the step is 8
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        8, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_icq.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 9);
+
+    // CASE: When the step is 9
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        9, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 10);
+
+    // CASE: When the step is 10
+    // And, ica tx is success
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        10, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_ica.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 11);
+
+    // CASE: When the step is 10
+    // And, ica tx is failure
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        10, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_ica.clone(),
+        false,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 9);
+
+    // CASE: When the step is 11
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        11, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 12);
+
+    // CASE: When the step is 12
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        12, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_icq.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 13);
+
+    // CASE: When the step is 13
+    setup_test_case_for_execute_epoch(deps.as_mut(),
+        13, 
+        Uint128::zero()
+    );
+
+    let res = execute_epoch(
+        deps.as_mut(),
+        mock_env(),
+        epoch_call_source_normal.clone(),
+        true,
+        None,
+    );
+    assert!(res.is_ok());
+    assert_config_phase_step(deps.as_mut(), 1);
+    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    assert_eq!(config.phase, Phase::Deposit);
+}
+
+fn setup_test_case_for_execute_epoch(
+    deps: DepsMut,
+    phase_step: u64,
+    free_atom_amount: Uint128,
+) {
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    config.phase_step = phase_step;
+    config.host_config.free_atom_amount = free_atom_amount;
+
+    CONFIG.save(deps.storage, &config).unwrap();  
+}
+
+fn assert_config_phase_step(
+    deps: DepsMut,
+    expected_phase_step: u64,
+) {
+    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    assert_eq!(config.phase_step, expected_phase_step);
 }
