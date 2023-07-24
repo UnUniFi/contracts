@@ -386,7 +386,6 @@ fn epoch_deposit_phase_flow() {
 fn epoch_withdraw_phase_flow() {
     let mut deps = setup();    
     let epoch_call_source_normal = EpochCallSource::NormalEpoch;
-    let epoch_call_source_transfer = EpochCallSource::TransferCallback;
     let epoch_call_source_icq = EpochCallSource::IcqCallback;
     let epoch_call_source_ica = EpochCallSource::IcaCallback;
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
