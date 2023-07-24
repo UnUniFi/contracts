@@ -1,14 +1,13 @@
 use crate::binding::{SudoMsg, UnunifiMsg};
 use crate::epoch::execute_epoch;
 use crate::icq::{sudo_kv_query_result, sudo_transfer_callback};
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, UpdateConfigMsg};
 use crate::query::{
     query_bonded, query_channel, query_config, query_fee_info, query_list_channels,
     query_unbonding, query_unbondings, DEFAULT_LIMIT,
 };
 use crate::state::{
-    ChannelInfo, Config, DepositInfo, EpochCallSource, Phase, Unbonding, CHANNEL_INFO, CONFIG,
-    DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
+    Config, DepositInfo, EpochCallSource, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS,
+    HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
 };
 use crate::state::{ControllerConfig, HostConfig};
 #[cfg(not(feature = "library"))]
@@ -18,6 +17,9 @@ use cosmwasm_std::{
 };
 use cw_utils::one_coin;
 use strategy::error::{ContractError, NoDeposit};
+use strategy_osmosis::strategy::{
+    ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
+};
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

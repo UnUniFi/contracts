@@ -1,6 +1,6 @@
 use crate::binding::UnunifiMsg;
 use crate::helpers::send_ica_tx;
-use crate::state::{Config, IcaAmounts, Phase, CONFIG, HOST_LP_RATE_MULTIPLIER};
+use crate::state::{Config, IcaAmounts, CONFIG, HOST_LP_RATE_MULTIPLIER};
 use cosmwasm_std::{Env, Response, StdError, Storage, Uint128};
 use osmosis_std::shim::Duration;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -13,6 +13,7 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
+use strategy_osmosis::strategy::Phase;
 
 fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
     return msg.to_bytes().map(|bytes| Any {

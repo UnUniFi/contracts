@@ -1,8 +1,8 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use strategy::error::ContractError;
+use strategy_osmosis::strategy::{QueryMsg, UpdateConfigMsg};
 use strategy_osmosis_atom_osmo::contract::execute_update_config;
-use strategy_osmosis_atom_osmo::msg::{QueryMsg, UpdateConfigMsg};
 use strategy_osmosis_atom_osmo::state::Config;
 
 use crate::helpers::setup;
@@ -10,8 +10,8 @@ use crate::helpers::setup;
 mod helpers;
 
 #[test]
-fn Initialized_state() {
-    let mut deps = setup();
+fn initialized_state() {
+    let deps = setup();
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(0, config.unbond_period);

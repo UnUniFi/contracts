@@ -1,10 +1,10 @@
 use cosmwasm_std::{
     Addr, Binary, BlockInfo, IbcEndpoint, Order, StdResult, Storage, Timestamp, Uint128,
 };
+use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use cw_storage_plus::{Item, Map};
+use strategy_osmosis::strategy::{ChannelInfo, Phase};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ControllerConfig {
@@ -39,12 +39,6 @@ pub struct HostConfig {
     pub pending_add_liquidity_amount: Uint128, // amount of ATOM used on liquidity addition
     pub pending_transfer_amount: Uint128, // pending transfer to controller - TODO: how to get hook for transfer finalization?
                                           // TODO: probably create two ica accounts for convenience
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum Phase {
-    Deposit,
-    Withdraw,
 }
 
 // Regular epoch operation (once per day)
@@ -122,18 +116,6 @@ pub const UNBONDINGS: Map<u64, Unbonding> = Map::new("unbondings");
 pub const DEPOSITS: Map<String, DepositInfo> = Map::new("deposits");
 
 pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ChannelInfo {
-    /// id of this channel
-    pub id: String,
-    /// the remote channel/port we connect to
-    pub counterparty_endpoint: IbcEndpoint,
-    /// the connection this exists on (you can use to query client/consensus info)
-    pub connection_id: String,
-    /// interchain account address
-    pub address: String,
-}
 
 /// Metadata defines a set of protocol specific data encoded into the ICS27 channel version bytestring
 /// See ICS004: <https://github.com/cosmos/ibc/tree/master/spec/core/ics-004-channel-and-packet-semantics#Versioning>

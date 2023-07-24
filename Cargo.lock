@@ -1006,6 +1006,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-osmosis"
+version = "1.0.0"
+dependencies = [
+ "bech32",
+ "cosmwasm-std",
+ "cw-utils 0.13.4",
+ "cw20 0.14.0",
+ "prost",
+ "prost-types",
+ "protobuf",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "strategy-osmosis-atom-osmo"
 version = "1.0.0"
 dependencies = [
@@ -1023,6 +1039,7 @@ dependencies = [
  "schemars",
  "serde",
  "strategy",
+ "strategy-osmosis",
  "thiserror",
 ]
 

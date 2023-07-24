@@ -1,4 +1,3 @@
-use crate::msg::{ChannelResponse, FeeInfo, ListChannelsResponse};
 use crate::state::{
     Config, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, HOST_LP_RATE_MULTIPLIER,
     STAKE_RATE_MULTIPLIER, UNBONDINGS,
@@ -8,6 +7,7 @@ use cosmwasm_std::{
     Addr, BalanceResponse, BankQuery, Decimal, Deps, Order, QuerierWrapper, QueryRequest,
     StdResult, Storage, Uint128,
 };
+use strategy_osmosis::strategy::{ChannelResponse, FeeInfo, ListChannelsResponse};
 
 pub fn query_balance(
     querier: &QuerierWrapper,

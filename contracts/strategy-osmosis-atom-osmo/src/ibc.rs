@@ -5,14 +5,15 @@ use crate::{
 };
 use cosmwasm_std::{
     entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
-    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacket, IbcPacketAckMsg,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strategy::error::{ContractError, Never};
 
-use crate::state::{ChannelInfo, CHANNEL_INFO};
+use crate::state::CHANNEL_INFO;
+use strategy_osmosis::strategy::ChannelInfo;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {

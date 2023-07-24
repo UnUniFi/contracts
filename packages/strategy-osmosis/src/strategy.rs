@@ -1,4 +1,4 @@
-use crate::state::{ChannelInfo, Phase};
+use cosmwasm_std::IbcEndpoint;
 use cosmwasm_std::{Coin, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -102,7 +102,6 @@ pub enum QueryMsg {
         id: String,
     },
     Unbondings {},
-    // TODO: add more queries to get exact state of the contract
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -125,4 +124,22 @@ pub struct ListChannelsResponse {
 pub struct ChannelResponse {
     /// Information on the channel's connection
     pub info: ChannelInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum Phase {
+    Deposit,
+    Withdraw,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ChannelInfo {
+    /// id of this channel
+    pub id: String,
+    /// the remote channel/port we connect to
+    pub counterparty_endpoint: IbcEndpoint,
+    /// the connection this exists on (you can use to query client/consensus info)
+    pub connection_id: String,
+    /// interchain account address
+    pub address: String,
 }

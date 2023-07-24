@@ -7,7 +7,8 @@ use crate::ica::{
 use crate::icq::submit_icq_for_host;
 use crate::query::{query_balance, query_unbondings, DEFAULT_LIMIT};
 
-use crate::state::{Config, EpochCallSource, Phase, CONFIG, UNBONDINGS};
+use crate::state::{Config, EpochCallSource, CONFIG, UNBONDINGS};
+use strategy_osmosis::strategy::Phase;
 
 use cosmwasm_std::{
     coin, coins, BankMsg, CosmosMsg, DepsMut, Env, IbcTimeout, Response, StdResult, Storage,
@@ -57,7 +58,7 @@ pub fn execute_epoch(
                 return rsp;
             }
             // - Mark unbond ending queue items on contract
-            // assumption: matured unbondings on the contract is same as matured unbondings on controller chain
+            // assumption: matured unbondings on the contract is same as matured unbondings on host chain
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
             for mut unbonding in unbondings {
                 if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
