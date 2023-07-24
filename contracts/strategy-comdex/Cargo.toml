@@ -1,5 +1,5 @@
 [package]
-name = "strategy-base"
+name = "strategy-comdex"
 version = "1.0.0"
 authors = []
 edition = "2018"
@@ -31,7 +31,10 @@ schemars = "0.8.10"
 serde = { version = "1.0.144", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.23" }
 protobuf = { version = "2", features = ["with-bytes"] }
+prost = "0.11"
+prost-types = "0.11"
 strategy = { path = "../../packages/strategy" }
+proto = { path = "../../packages/proto", features = ["cosmwasm"] }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

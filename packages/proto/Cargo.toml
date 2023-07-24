@@ -1,0 +1,28 @@
+[package]
+name = "proto"
+version = "1.0.0"
+authors = []
+license = "Apache-2.0"
+repository = ""
+description = "Protobuf struct defintions for Ununifi contracts"
+readme = "README.md"
+categories = ["cryptography", "cryptography::cryptocurrencies", "database"]
+keywords = ["blockchain", "cosmos", "tendermint", "proto"]
+edition = "2021"
+rust-version = "1.63"
+
+[dependencies]
+prost = "0.11"
+prost-types = "0.11"
+tendermint-proto = "0.32"
+
+# Optional dependencies
+tonic = { version = "0.9", optional = true, default-features = false, features = ["codegen", "prost"] }
+
+[features]
+default = []
+cosmwasm = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
