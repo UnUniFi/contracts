@@ -40,7 +40,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
     assert_eq!(0, res.messages.len());
-
+    
     deps
 }
 
@@ -60,17 +60,10 @@ pub fn register_ica(
     Ok((Response::default()))
 }
 
-pub fn send_funds_to_contract(env: Env, amount: Vec<Coin>) -> StdResult<Response> {
-    let send_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: env.contract.address.to_string(),
-        amount: amount,
-    });
-
-    Ok(Response::new().add_message(send_msg))
-}
-
-pub fn remove_free_atom_from_host_account(deps: DepsMut) {
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+pub fn remove_free_atom_from_host_account(
+    deps: DepsMut,
+) {
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
     config.host_config.free_atom_amount = Uint128::zero();
     CONFIG.save(deps.storage, &config);
 }
