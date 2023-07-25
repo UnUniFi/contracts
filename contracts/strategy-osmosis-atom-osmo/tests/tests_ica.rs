@@ -1,9 +1,11 @@
+use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Uint128, Addr};
 // use cosmwasm_std::Overflow;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
-use strategy_osmosis::strategy::{Phase};
-use strategy_osmosis_atom_osmo::ica::determine_ica_amounts;
-use strategy_osmosis_atom_osmo::state::{Config, STAKE_RATE_MULTIPLIER, HostConfig, ControllerConfig};
+use strategy_osmosis::strategy::{Phase, QueryMsg};
+use strategy_osmosis_atom_osmo::ica::{determine_ica_amounts, execute_ibc_transfer_to_controller};
+use strategy_osmosis_atom_osmo::state::{Config, STAKE_RATE_MULTIPLIER, HostConfig, ControllerConfig, CONFIG};
+use crate::helpers::{setup, th_query};
 mod helpers;
 
 #[test]
@@ -74,4 +76,24 @@ fn determine_ica_amounts_for_withdraw() {
     assert_eq!(ica_amounts.to_remove_lp, Uint128::from(10u128));
     assert_eq!(ica_amounts.to_transfer_to_controller, Uint128::from(10000u128));
     assert_eq!(ica_amounts.to_return_amount, Uint128::from(9000u128));
+}
+
+#[test]
+fn test_execute_transfer_to_controller() {
+    let mut deps = setup();
+
+    // When is to_transfer_to_controller is zero.
+    let res = execute_ibc_transfer_to_controller(deps.as_mut().storage, mock_env());
+    assert!(res.is_ok());
+    assert_eq!(res.as_ref().unwrap().messages.len(), 0);
+
+    // When is to_transfer_to_controller is not zero.
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
+    config.phase = Phase::Withdraw;
+    config.host_config.free_atom_amount = Uint128::from(10000u128);
+    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+    let res = execute_ibc_transfer_to_controller(deps.as_mut().storage, mock_env());
+    assert!(res.is_ok());
+    assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 }
