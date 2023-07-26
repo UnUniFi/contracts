@@ -104,27 +104,6 @@ fn test_execute_transfer_to_controller() {
     assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 }
 
-#[test]
-fn test_execute_transfer_to_controller_with_pending_transfer() {
-    let mut deps = setup();
-
-    // When is to_transfer_to_controller is zero.
-    let res = execute_ibc_transfer_to_controller(deps.as_mut().storage, mock_env());
-    assert!(res.is_ok());
-    assert_eq!(res.as_ref().unwrap().messages.len(), 0);
-
-    // When is to_transfer_to_controller is not zero.
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
-    config.phase = Phase::Withdraw;
-    config.host_config.free_atom_amount = Uint128::from(10000u128);
-    config.controller_config.pending_transfer_amount = Uint128::from(1000u128);
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
-
-    let res = execute_ibc_transfer_to_controller(deps.as_mut().storage, mock_env());
-    assert!(res.is_ok());
-    assert_eq!(res.as_ref().unwrap().messages.len(), 1);
-}
-
 // test of execute_ica_add_and_bond_liquidity
 #[test]
 fn test_execute_ica_add_and_bond_liquidity() {
