@@ -1,3 +1,7 @@
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
+use prost::EncodeError;
+use prost_types::Any;
+use proto::traits::MessageExt;
 use strategy::error::ContractError;
 use strategy_osmosis::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
 use strategy_osmosis_atom_osmo::binding::UnunifiMsg;
@@ -66,4 +70,11 @@ pub fn remove_free_atom_from_host_account(
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
     config.host_config.free_atom_amount = Uint128::zero();
     CONFIG.save(deps.storage, &config);
+}
+
+pub fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
+    return msg.to_bytes().map(|bytes| Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgJoinPool".to_owned(),
+        value: bytes,
+    });
 }
