@@ -174,17 +174,16 @@ fn test_send_ica_tx() {
         "test".to_string(),
         vec![join_pool_to_any(msg1.clone()).unwrap()],
     );
-    println!("join pool any: {:?}", join_pool_to_any(msg1.clone()).unwrap());
 
     assert!(res.is_ok());
     assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 
-    // Assume res is your Response<UnunifiMsg> object
     match &res.as_ref().unwrap().messages[0].msg {
         CosmosMsg::Ibc(IbcMsg::SendPacket { data, .. }) => {
             let packet_data: InterchainAccountPacketData = from_binary(&data.clone()).unwrap();
             let cosmos_tx = Any::decode(packet_data.data.as_slice()).unwrap();
             assert!(cosmos_tx.value.is_empty());
+            // NOTE: below type_url is just filled in by refering to the result of the function.
             assert_eq!(cosmos_tx.type_url, "\n!/osmosis.gamm.v1beta1.MsgJoinPool\u{12}4\n\u{6}sender\u{10}\u{1}\u{1a}\u{6}100000\"\u{f}\n\u{5}uosmo\u{12}\u{6}100000\"\u{f}\n\u{5}uatom\u{12}\u{6}100000");
         },
         _ => panic!("Unexpected message type"),
