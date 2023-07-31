@@ -4,8 +4,8 @@ use prost_types::Any;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
 use strategy_osmosis::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
-use strategy_osmosis_atom_osmo::binding::UnunifiMsg;
-use strategy_osmosis_atom_osmo::contract::{execute_update_config, instantiate, query};
+use strategy_osmosis_base::binding::UnunifiMsg;
+use strategy_osmosis_base::contract::{execute_update_config, instantiate, query};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -28,7 +28,7 @@ use cosmwasm_std::{
     StdResult,
     Uint128,
 };
-use strategy_osmosis_atom_osmo::state::{Config, CONFIG};
+use strategy_osmosis_base::state::{Config, CONFIG};
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";

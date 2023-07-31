@@ -9,11 +9,11 @@ use strategy_osmosis::msg::join_pool_to_any;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use crate::helpers::{setup, th_query};
 use strategy_osmosis::strategy::{Phase, QueryMsg};
-use strategy_osmosis_atom_osmo::helpers::send_ica_tx;
-use strategy_osmosis_atom_osmo::ica::{
+use strategy_osmosis_base::helpers::send_ica_tx;
+use strategy_osmosis_base::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
 };
-use strategy_osmosis_atom_osmo::state::{
+use strategy_osmosis_base::state::{
     Config, ControllerConfig, HostConfig, InterchainAccountPacketData, CONFIG,
     STAKE_RATE_MULTIPLIER,
 };

@@ -2,13 +2,13 @@ use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Addr, Api, Binary, CosmosMsg, Uint128};
 use helpers::setup;
 use strategy_osmosis::strategy::{Phase, QueryMsg};
-use strategy_osmosis_atom_osmo::binding::UnunifiMsg;
-use strategy_osmosis_atom_osmo::helpers::decode_and_convert;
-use strategy_osmosis_atom_osmo::ica::determine_ica_amounts;
-use strategy_osmosis_atom_osmo::icq::{
+use strategy_osmosis_base::binding::UnunifiMsg;
+use strategy_osmosis_base::helpers::decode_and_convert;
+use strategy_osmosis_base::ica::determine_ica_amounts;
+use strategy_osmosis_base::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
 };
-use strategy_osmosis_atom_osmo::state::{
+use strategy_osmosis_base::state::{
     Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
 

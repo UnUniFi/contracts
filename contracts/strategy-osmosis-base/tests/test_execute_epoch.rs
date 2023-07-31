@@ -6,11 +6,11 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use strategy_osmosis::strategy::{ExecuteEpochMsg, ExecuteMsg, Phase, QueryMsg, UpdateConfigMsg};
-use strategy_osmosis_atom_osmo::contract::{
+use strategy_osmosis_base::contract::{
     execute, execute_stake, execute_unstake, execute_update_config,
 };
-use strategy_osmosis_atom_osmo::epoch::execute_epoch;
-use strategy_osmosis_atom_osmo::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
+use strategy_osmosis_base::epoch::execute_epoch;
+use strategy_osmosis_base::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
 
 use crate::helpers::{register_ica, remove_free_atom_from_host_account, setup};
 
