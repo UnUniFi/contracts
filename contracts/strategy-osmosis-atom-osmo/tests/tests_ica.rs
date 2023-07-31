@@ -1,12 +1,19 @@
-use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Uint128, Addr};
+use cosmwasm_std::testing::{mock_env, mock_dependencies};
+use cosmwasm_std::{Uint128, Addr, to_binary, IbcMsg, CosmosMsg, from_binary, SubMsg, Binary};
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
+use prost::Message;
+use prost_types::Any;
+use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
+use strategy_osmosis::msg::join_pool_to_any;
 // use cosmwasm_std::Overflow;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use strategy_osmosis::strategy::{Phase, QueryMsg};
-use strategy_osmosis_atom_osmo::ica::{determine_ica_amounts, execute_ibc_transfer_to_controller};
-use strategy_osmosis_atom_osmo::state::{Config, STAKE_RATE_MULTIPLIER, HostConfig, ControllerConfig, CONFIG};
+use strategy_osmosis_atom_osmo::helpers::send_ica_tx;
+use strategy_osmosis_atom_osmo::ica::{determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity};
+use strategy_osmosis_atom_osmo::state::{Config, STAKE_RATE_MULTIPLIER, HostConfig, ControllerConfig, CONFIG, InterchainAccountPacketData};
 use crate::helpers::{setup, th_query};
 mod helpers;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
 #[test]
 fn determine_ica_amounts_for_deposit() {
@@ -97,3 +104,69 @@ fn test_execute_transfer_to_controller() {
     assert!(res.is_ok());
     assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 }
+
+// test of execute_ica_add_and_bond_liquidity
+#[test]
+fn test_execute_ica_add_and_bond_liquidity() {
+    let mut deps = setup();
+
+    // When is to_transfer_to_controller is zero.
+    let res = execute_ica_add_and_bond_liquidity(deps.as_mut().storage, mock_env());
+    assert!(res.is_ok());
+    assert_eq!(res.as_ref().unwrap().messages.len(), 0);
+
+    // When is to_transfer_to_controller is not zero.
+    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {  });
+    config.host_config.free_atom_amount = Uint128::from(100000u128);
+    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+    let res = execute_ica_add_and_bond_liquidity(deps.as_mut().storage, mock_env());
+    assert!(res.is_ok());
+    assert_eq!(res.as_ref().unwrap().messages.len(), 1);
+}
+
+#[test]
+fn test_send_ica_tx() {
+    let sender = Addr::unchecked("sender");
+
+    let tokens_in: Vec<OsmosisCoin> = vec![
+        OsmosisCoin {
+            denom: "uosmo".to_string(),
+            amount: Uint128::from(100000u128).to_string(),
+        },
+        OsmosisCoin {
+            denom: "uatom".to_string(),
+            amount: Uint128::from(100000u128).to_string(),
+        },
+    ];
+
+    let msg1 = MsgJoinPool {
+        sender: sender.to_string(),
+        share_out_amount: Uint128::from(100000u128).to_string(),
+        pool_id: 1,
+        token_in_maxs: tokens_in,
+    };
+
+    let mut deps = setup();
+    let res = send_ica_tx(
+        deps.as_mut().storage,
+        mock_env(),
+        "test".to_string(),
+        vec![join_pool_to_any(msg1.clone()).unwrap()],
+    );
+
+    assert!(res.is_ok());
+    assert_eq!(res.as_ref().unwrap().messages.len(), 1);
+
+    match &res.as_ref().unwrap().messages[0].msg {
+        CosmosMsg::Ibc(IbcMsg::SendPacket { data, .. }) => {
+            let packet_data: InterchainAccountPacketData = from_binary(&data.clone()).unwrap();
+            let cosmos_tx = Any::decode(packet_data.data.as_slice()).unwrap();
+            assert!(cosmos_tx.value.is_empty());
+            // NOTE: below type_url is just filled in by refering to the result of the function.
+            assert_eq!(cosmos_tx.type_url, "\n!/osmosis.gamm.v1beta1.MsgJoinPool\u{12}4\n\u{6}sender\u{10}\u{1}\u{1a}\u{6}100000\"\u{f}\n\u{5}uosmo\u{12}\u{6}100000\"\u{f}\n\u{5}uatom\u{12}\u{6}100000");
+        },
+        _ => panic!("Unexpected message type"),
+    }
+}
+

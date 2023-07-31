@@ -54,7 +54,7 @@ pub fn execute(
             deposit_denom,
         } => execute_update_config(deps, env, info, owner, unbond_period, deposit_denom),
         ExecuteMsg::Stake(_) => {
-            let coin: Coin = one_coin(&info)?;
+            let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
             execute_stake(deps, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),

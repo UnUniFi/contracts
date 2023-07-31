@@ -1,3 +1,7 @@
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
+use prost::EncodeError;
+use prost_types::Any;
+use proto::traits::MessageExt;
 use strategy::error::ContractError;
 use strategy_osmosis::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
 use strategy_osmosis_atom_osmo::binding::UnunifiMsg;

@@ -7,48 +7,14 @@ use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
-use prost::EncodeError;
+// use prost::EncodeError;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
+use strategy_osmosis::msg::{join_pool_to_any, lock_tokens_msg_to_any, exit_pool_to_any, swap_msg_to_any, begin_unlocking_msg_to_any};
 use strategy_osmosis::strategy::Phase;
-
-fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgJoinPool".to_owned(),
-        value: bytes,
-    });
-}
-
-fn exit_pool_to_any(msg: MsgExitPool) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgExitPool".to_owned(),
-        value: bytes,
-    });
-}
-
-fn swap_msg_to_any(msg: MsgSwapExactAmountIn) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn".to_owned(),
-        value: bytes,
-    });
-}
-
-fn lock_tokens_msg_to_any(msg: MsgLockTokens) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.lockup.MsgLockTokens".to_owned(),
-        value: bytes,
-    });
-}
-
-fn begin_unlocking_msg_to_any(msg: MsgBeginUnlocking) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.lockup.MsgBeginUnlocking".to_owned(),
-        value: bytes,
-    });
-}
 
 // Regular epoch operation (once per day)
 // - icq balance of ica account when `Deposit` phase
