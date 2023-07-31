@@ -1,4 +1,4 @@
-use cosmwasm_std::{Decimal, Uint128, Uint64};
+use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

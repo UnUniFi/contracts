@@ -15,7 +15,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw_utils::one_coin;
+use cw_utils::{one_coin};
 use strategy::error::{ContractError, NoDeposit};
 use strategy_osmosis::strategy::{
     ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
@@ -116,7 +116,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
         ExecuteMsg::Stake(_) => {
-            let coin: Coin = one_coin(&info)?;
+            let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
             execute_stake(deps, env, coin, info.sender)
         }
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
