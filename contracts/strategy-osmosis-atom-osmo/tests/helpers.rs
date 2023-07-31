@@ -71,10 +71,3 @@ pub fn remove_free_atom_from_host_account(
     config.host_config.free_atom_amount = Uint128::zero();
     CONFIG.save(deps.storage, &config);
 }
-
-pub fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {
-    return msg.to_bytes().map(|bytes| Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgJoinPool".to_owned(),
-        value: bytes,
-    });
-}
