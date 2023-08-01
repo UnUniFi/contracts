@@ -15,7 +15,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw_utils::{one_coin};
+use cw_utils::one_coin;
 use strategy::error::{ContractError, NoDeposit};
 use strategy_osmosis::strategy::{
     ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
@@ -178,6 +178,9 @@ pub fn execute_update_config(
     }
     if let Some(atom_denom) = msg.atom_denom {
         config.host_config.atom_denom = atom_denom;
+    }
+    if let Some(chain_id) = msg.chain_id {
+        config.host_config.chain_id = chain_id;
     }
     if let Some(deposit_denom) = msg.controller_deposit_denom {
         config.controller_config.deposit_denom = deposit_denom;

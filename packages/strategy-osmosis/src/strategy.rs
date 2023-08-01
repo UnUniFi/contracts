@@ -34,6 +34,7 @@ pub struct UpdateConfigMsg {
     pub atom_denom: Option<String>,
     pub controller_deposit_denom: Option<String>,
     pub controller_transfer_channel_id: Option<String>,
+    pub chain_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
