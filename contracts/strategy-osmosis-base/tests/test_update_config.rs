@@ -2,8 +2,8 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use strategy::error::ContractError;
 use strategy_osmosis::strategy::{QueryMsg, UpdateConfigMsg};
-use strategy_osmosis_atom_osmo::contract::execute_update_config;
-use strategy_osmosis_atom_osmo::state::Config;
+use strategy_osmosis_base::contract::execute_update_config;
+use strategy_osmosis_base::state::Config;
 
 use crate::helpers::setup;
 
@@ -38,8 +38,8 @@ fn update_config() {
             phase_step: None,
             transfer_timeout: None,
             transfer_channel_id: None,
-            osmo_denom: None,
-            atom_denom: None,
+            quote_denom: None,
+            base_denom: None,
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("uguu".to_string()),
             pool_id: None,
@@ -66,8 +66,8 @@ fn update_config() {
             phase_step: None,
             transfer_timeout: None,
             transfer_channel_id: None,
-            osmo_denom: None,
-            atom_denom: None,
+            quote_denom: None,
+            base_denom: None,
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("stake".to_string()),
             pool_id: None,

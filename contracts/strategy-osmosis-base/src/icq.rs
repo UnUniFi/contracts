@@ -48,13 +48,13 @@ pub fn sudo_kv_query_result(
 
     let mut config: Config = CONFIG.load(deps.storage)?;
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
-    let atom_balance_key = create_account_denom_balance_key(
+    let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.atom_denom.to_string(),
+        config.host_config.base_denom.to_string(),
     )?;
-    let osmo_balance_key = create_account_denom_balance_key(
+    let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.osmo_denom.to_string(),
+        config.host_config.quote_denom.to_string(),
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
@@ -62,17 +62,17 @@ pub fn sudo_kv_query_result(
     )?;
 
     if query_prefix == BANK_STORE_KEY {
-        if query_key == atom_balance_key {}
+        if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
         if data.len() > 0 {
             // TODO: to update if Osmosis update Cosmos version to v0.47
             let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
             amount = Uint128::from_str(balance.amount.as_str())?;
         }
-        if query_key == atom_balance_key {
-            config.host_config.free_atom_amount = amount;
-        } else if query_key == osmo_balance_key {
-            config.host_config.free_osmo_amount = amount;
+        if query_key == base_balance_key {
+            config.host_config.free_base_amount = amount;
+        } else if query_key == quote_balance_key {
+            config.host_config.free_quote_amount = amount;
         } else if query_key == lp_balance_key {
             config.host_config.free_lp_amount = amount;
         }
@@ -80,12 +80,12 @@ pub fn sudo_kv_query_result(
         // GAMM_STORE_KEY
         let any: Any = Any::decode(data.as_slice())?;
         let pool: OsmosisBalancerPool = OsmosisBalancerPool::decode(any.value.as_slice())?;
-        let mut atom_amount = Uint128::from(0u128);
+        let mut base_amount = Uint128::from(0u128);
         let mut total_share = Uint128::from(0u128);
         for pool_asset in pool.pool_assets {
             if let Some(token) = pool_asset.token {
-                if token.denom == config.host_config.atom_denom.to_string() {
-                    atom_amount = Uint128::from_str(token.amount.as_str())?;
+                if token.denom == config.host_config.base_denom.to_string() {
+                    base_amount = Uint128::from_str(token.amount.as_str())?;
                     break;
                 }
             }
@@ -94,7 +94,7 @@ pub fn sudo_kv_query_result(
             total_share = Uint128::from_str(total_shares.amount.as_str())?;
         }
         config.host_config.lp_redemption_rate =
-            atom_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+            base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
     }
 
     config.pending_icq -= 1;
@@ -147,13 +147,13 @@ pub fn submit_icq_for_host(
 
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
 
-    let atom_balance_key = create_account_denom_balance_key(
+    let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.atom_denom,
+        config.host_config.base_denom,
     )?;
-    let osmo_balance_key = create_account_denom_balance_key(
+    let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.osmo_denom,
+        config.host_config.quote_denom,
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
@@ -166,13 +166,13 @@ pub fn submit_icq_for_host(
             chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
-            query_key: Binary(atom_balance_key),
+            query_key: Binary(base_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
             chain_id: config.host_config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
-            query_key: Binary(osmo_balance_key),
+            query_key: Binary(quote_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
             chain_id: config.host_config.chain_id.to_string(),

@@ -1098,7 +1098,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "strategy-osmosis-atom-osmo"
+name = "strategy-osmosis-base"
 version = "1.0.0"
 dependencies = [
  "bech32",

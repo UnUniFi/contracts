@@ -13,7 +13,10 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
-use strategy_osmosis::msg::{join_pool_to_any, lock_tokens_msg_to_any, exit_pool_to_any, swap_msg_to_any, begin_unlocking_msg_to_any};
+use strategy_osmosis::msg::{
+    begin_unlocking_msg_to_any, exit_pool_to_any, join_pool_to_any, lock_tokens_msg_to_any,
+    swap_msg_to_any,
+};
 use strategy_osmosis::strategy::Phase;
 
 // Regular epoch operation (once per day)
@@ -57,16 +60,16 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
                 - config.controller_config.stacked_amount_to_deposit;
         }
         return IcaAmounts {
-            to_swap_atom: Uint128::from(0u128),
-            to_swap_osmo: config.host_config.free_atom_amount,
+            to_swap_base: Uint128::from(0u128),
+            to_swap_quote: config.host_config.free_base_amount,
             to_remove_lp: config.host_config.free_lp_amount,
             to_add_lp: Uint128::from(0u128),
-            to_transfer_to_controller: config.host_config.free_atom_amount,
+            to_transfer_to_controller: config.host_config.free_base_amount,
             to_transfer_to_host: Uint128::from(0u128),
             to_return_amount: amount_to_return,
         };
     } else {
-        let to_add_lp = config.host_config.free_atom_amount
+        let to_add_lp = config.host_config.free_base_amount
             * HOST_LP_RATE_MULTIPLIER
             * Uint128::from(2u128)
             * Uint128::from(9u128)
@@ -74,8 +77,8 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             / config.host_config.lp_redemption_rate;
 
         return IcaAmounts {
-            to_swap_atom: config.host_config.free_atom_amount / Uint128::from(2u128),
-            to_swap_osmo: config.host_config.free_osmo_amount / Uint128::from(2u128),
+            to_swap_base: config.host_config.free_base_amount / Uint128::from(2u128),
+            to_swap_quote: config.host_config.free_quote_amount / Uint128::from(2u128),
             to_add_lp: to_add_lp,
             to_remove_lp: Uint128::from(0u128),
             to_transfer_to_controller: Uint128::from(0u128),
@@ -99,7 +102,7 @@ pub fn execute_ibc_transfer_to_controller(
         source_port: "transfer".to_string(),
         source_channel: config.host_config.transfer_channel_id,
         token: Some(ProtoCoin {
-            denom: config.host_config.atom_denom,
+            denom: config.host_config.base_denom,
             amount: to_transfer_to_controller.to_string(),
         }),
         sender: config.ica_account,
@@ -135,12 +138,12 @@ pub fn execute_ica_add_and_bond_liquidity(
 
     let mut tokens_in: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
-            denom: config.host_config.osmo_denom,
-            amount: config.host_config.free_osmo_amount.to_string(),
+            denom: config.host_config.quote_denom,
+            amount: config.host_config.free_quote_amount.to_string(),
         },
         OsmosisCoin {
-            denom: config.host_config.atom_denom.to_string(),
-            amount: config.host_config.free_atom_amount.to_string(),
+            denom: config.host_config.base_denom.to_string(),
+            amount: config.host_config.free_base_amount.to_string(),
         },
     ];
     tokens_in.sort_by_key(|d| d.denom.to_string());
@@ -195,11 +198,11 @@ pub fn execute_ica_remove_liquidity(
 
     let mut tokens_out: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
-            denom: config.host_config.osmo_denom,
+            denom: config.host_config.quote_denom,
             amount: "1".to_string(),
         },
         OsmosisCoin {
-            denom: config.host_config.atom_denom.to_string(),
+            denom: config.host_config.base_denom.to_string(),
             amount: "1".to_string(),
         },
     ];
@@ -226,24 +229,24 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
-    let to_swap_osmo = ica_amounts.to_swap_osmo;
-    if to_swap_osmo.is_zero() {
+    let to_swap_quote = ica_amounts.to_swap_quote;
+    if to_swap_quote.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgSwapExactAmountIn {
         sender: config.ica_account.to_string(),
         token_in: Some(OsmosisCoin {
-            denom: config.host_config.osmo_denom,
-            amount: to_swap_osmo.to_string(),
+            denom: config.host_config.quote_denom,
+            amount: to_swap_quote.to_string(),
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
             pool_id: config.host_config.pool_id,
-            token_out_denom: config.host_config.atom_denom,
+            token_out_denom: config.host_config.base_denom,
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        return send_ica_tx(store, env, "swap_to_atom".to_string(), vec![msg_any]);
+        return send_ica_tx(store, env, "swap_to_base".to_string(), vec![msg_any]);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -257,21 +260,21 @@ pub fn execute_ica_swap_balance_to_two_tokens(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(store)?;
     let ica_amounts = determine_ica_amounts(config.to_owned());
-    let to_swap_atom = ica_amounts.to_swap_atom;
-    let to_swap_osmo = ica_amounts.to_swap_osmo;
+    let to_swap_base = ica_amounts.to_swap_base;
+    let to_swap_quote = ica_amounts.to_swap_quote;
 
     let mut msgs: Vec<Any> = vec![];
-    if !to_swap_osmo.is_zero() {
+    if !to_swap_quote.is_zero() {
         let msg = MsgSwapExactAmountIn {
             sender: config.ica_account.to_string(),
             token_in: Some(OsmosisCoin {
-                denom: config.host_config.osmo_denom.to_string(),
-                amount: to_swap_osmo.to_string(),
+                denom: config.host_config.quote_denom.to_string(),
+                amount: to_swap_quote.to_string(),
             }),
             token_out_min_amount: "1".to_string(),
             routes: vec![SwapAmountInRoute {
                 pool_id: config.host_config.pool_id,
-                token_out_denom: config.host_config.atom_denom.to_string(),
+                token_out_denom: config.host_config.base_denom.to_string(),
             }],
         };
         if let Ok(msg_any) = swap_msg_to_any(msg) {
@@ -279,17 +282,17 @@ pub fn execute_ica_swap_balance_to_two_tokens(
         }
     }
 
-    if !to_swap_atom.is_zero() {
+    if !to_swap_base.is_zero() {
         let msg = MsgSwapExactAmountIn {
             sender: config.ica_account.to_string(),
             token_in: Some(OsmosisCoin {
-                denom: config.host_config.atom_denom,
-                amount: to_swap_atom.to_string(),
+                denom: config.host_config.base_denom,
+                amount: to_swap_base.to_string(),
             }),
             token_out_min_amount: "1".to_string(),
             routes: vec![SwapAmountInRoute {
                 pool_id: config.host_config.pool_id,
-                token_out_denom: config.host_config.osmo_denom,
+                token_out_denom: config.host_config.quote_denom,
             }],
         };
         if let Ok(msg_any) = swap_msg_to_any(msg) {

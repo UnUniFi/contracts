@@ -224,8 +224,8 @@ pub fn execute_epoch(
             }
             // - swap half atom to osmo & half osmo to atom in a single ica tx
             let ica_amounts = determine_ica_amounts(config.to_owned());
-            let to_swap_atom = ica_amounts.to_swap_atom;
-            let to_swap_osmo = ica_amounts.to_swap_osmo;
+            let to_swap_atom = ica_amounts.to_swap_base;
+            let to_swap_osmo = ica_amounts.to_swap_quote;
             if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
                 next_phase_step = config.phase_step + 2;
             } else {

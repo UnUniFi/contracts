@@ -20,8 +20,8 @@ pub struct HostConfig {
     pub transfer_channel_id: String,
 
     pub chain_id: String,
-    pub pool_id: u64,     // 1
-    pub lp_denom: String, // ATOM-OSMO
+    pub pool_id: u64,     // 1 for ATOM/OSMO
+    pub lp_denom: String, // "gamm/pool/1" for ATOM/OSMO
     pub bonded_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
@@ -29,13 +29,13 @@ pub struct HostConfig {
     pub lp_redemption_rate: Uint128,
     pub lock_id: u64,
 
-    pub osmo_denom: String, // OSMO
-    pub free_osmo_amount: Uint128,
-    pub pending_swap_to_atom_amount: Uint128, // pending swap from OSMO to ATOM
+    pub quote_denom: String, // OSMO for ATOM/OSMO
+    pub free_quote_amount: Uint128,
+    pub pending_swap_to_base_amount: Uint128, // pending swap from OSMO to ATOM
 
-    pub atom_denom: String,                    // ATOM
-    pub free_atom_amount: Uint128,             // free ATOM balance
-    pub pending_swap_to_osmo_amount: Uint128,  // pending swap from ATOM -> OSMO to add liquidity
+    pub base_denom: String,                    // ATOM for ATOM/OSMO
+    pub free_base_amount: Uint128,             // free ATOM balance
+    pub pending_swap_to_quote_amount: Uint128, // pending swap from ATOM -> OSMO to add liquidity
     pub pending_add_liquidity_amount: Uint128, // amount of ATOM used on liquidity addition
     pub pending_transfer_amount: Uint128, // pending transfer to controller - TODO: how to get hook for transfer finalization?
                                           // TODO: probably create two ica accounts for convenience
@@ -145,8 +145,8 @@ pub struct InterchainAccountPacketData {
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct IcaAmounts {
-    pub to_swap_atom: Uint128,
-    pub to_swap_osmo: Uint128,
+    pub to_swap_base: Uint128,
+    pub to_swap_quote: Uint128,
     pub to_add_lp: Uint128,
     pub to_remove_lp: Uint128,
     pub to_transfer_to_controller: Uint128,

@@ -5,8 +5,8 @@ use helpers::th_query;
 use strategy::error::{ContractError, NoDeposit};
 use strategy::strategy::{ExecuteMsg, StakeMsg};
 use strategy_osmosis::strategy::{QueryMsg, UpdateConfigMsg};
-use strategy_osmosis_atom_osmo::contract::{execute_stake, execute_unstake, execute_update_config};
-use strategy_osmosis_atom_osmo::state::Config;
+use strategy_osmosis_base::contract::{execute_stake, execute_unstake, execute_update_config};
+use strategy_osmosis_base::state::Config;
 
 use crate::helpers::setup;
 

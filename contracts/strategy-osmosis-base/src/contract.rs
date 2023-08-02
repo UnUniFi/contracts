@@ -54,12 +54,12 @@ pub fn instantiate(
             free_lp_amount: Uint128::from(0u128),
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
-            osmo_denom: "uosmo".to_string(),                 // OSMO
-            free_osmo_amount: Uint128::from(0u128),
-            pending_swap_to_atom_amount: Uint128::from(0u128), // Convert OSMO to ATOM
-            atom_denom: "stake".to_string(),                   // ATOM
-            free_atom_amount: Uint128::from(0u128),            // free ATOM balance
-            pending_swap_to_osmo_amount: Uint128::from(0u128), // pending swap from ATOM -> OSMO to add liquidity
+            quote_denom: "uosmo".to_string(),                // OSMO
+            free_quote_amount: Uint128::from(0u128),
+            pending_swap_to_base_amount: Uint128::from(0u128), // Convert OSMO to ATOM
+            base_denom: "stake".to_string(),                   // ATOM
+            free_base_amount: Uint128::from(0u128),            // free ATOM balance
+            pending_swap_to_quote_amount: Uint128::from(0u128), // pending swap from ATOM -> OSMO to add liquidity
             pending_add_liquidity_amount: Uint128::from(0u128), // amount of ATOM used on liquidity addition
             pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
         },
@@ -173,11 +173,11 @@ pub fn execute_update_config(
     if let Some(transfer_channel_id) = msg.transfer_channel_id {
         config.host_config.transfer_channel_id = transfer_channel_id;
     }
-    if let Some(osmo_denom) = msg.osmo_denom {
-        config.host_config.osmo_denom = osmo_denom;
+    if let Some(quote_denom) = msg.quote_denom {
+        config.host_config.quote_denom = quote_denom;
     }
-    if let Some(atom_denom) = msg.atom_denom {
-        config.host_config.atom_denom = atom_denom;
+    if let Some(base_denom) = msg.base_denom {
+        config.host_config.base_denom = base_denom;
     }
     if let Some(chain_id) = msg.chain_id {
         config.host_config.chain_id = chain_id;
