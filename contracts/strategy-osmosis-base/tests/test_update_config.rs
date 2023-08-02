@@ -43,6 +43,7 @@ fn update_config() {
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("uguu".to_string()),
             pool_id: None,
+            chain_id: None,
         },
     )
     .unwrap();
@@ -71,6 +72,7 @@ fn update_config() {
             controller_transfer_channel_id: None,
             controller_deposit_denom: Some("stake".to_string()),
             pool_id: None,
+            chain_id: None,
         },
     )
     .unwrap_err();
