@@ -179,6 +179,9 @@ pub fn execute_update_config(
     if let Some(base_denom) = msg.base_denom {
         config.host_config.base_denom = base_denom;
     }
+    if let Some(chain_id) = msg.chain_id {
+        config.host_config.chain_id = chain_id;
+    }
     if let Some(deposit_denom) = msg.controller_deposit_denom {
         config.controller_config.deposit_denom = deposit_denom;
     }
