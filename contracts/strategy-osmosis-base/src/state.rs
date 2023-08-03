@@ -23,6 +23,7 @@ pub struct HostConfig {
     pub pool_id: u64,     // 1 for ATOM/OSMO
     pub lp_denom: String, // "gamm/pool/1" for ATOM/OSMO
     pub bonded_lp_amount: Uint128,
+    pub unbonding_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
     pub pending_lp_removal_amount: Uint128, // pending removal from lp
@@ -78,6 +79,7 @@ pub struct Config {
     pub owner: Addr,
     pub unbond_period: u64,
     pub redemption_rate: Uint128,
+    pub total_shares: Uint128,
     pub total_deposit: Uint128,
     pub total_withdrawn: Uint128,
     pub last_unbonding_id: u64,

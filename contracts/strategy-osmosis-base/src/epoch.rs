@@ -7,7 +7,7 @@ use crate::ica::{
 use crate::icq::submit_icq_for_host;
 use crate::query::{query_balance, query_unbondings, DEFAULT_LIMIT};
 
-use crate::state::{Config, EpochCallSource, CONFIG, UNBONDINGS};
+use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use strategy_osmosis::strategy::Phase;
 
 use cosmwasm_std::{
@@ -48,6 +48,24 @@ pub fn execute_epoch(
         CONFIG.save(deps.storage, &config)?;
     }
 
+    // recalculate redemption rate on every icq callback
+    if called_from == EpochCallSource::IcqCallback {
+        if config.total_shares.is_zero() {
+            config.redemption_rate = STAKE_RATE_MULTIPLIER;
+        } else {
+            // active tvl is not unbonding tvl that is allocated to shares
+            let mut active_tvl =
+                config.host_config.bonded_lp_amount * config.host_config.lp_redemption_rate;
+            active_tvl += config.controller_config.stacked_amount_to_deposit
+                + config.controller_config.pending_transfer_amount;
+            if config.phase == Phase::Deposit {
+                active_tvl += config.host_config.free_base_amount;
+            }
+            config.redemption_rate = active_tvl * STAKE_RATE_MULTIPLIER / config.total_shares;
+        }
+        CONFIG.save(deps.storage, &config)?;
+    }
+
     let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());
     let mut next_phase = config.phase.to_owned();
     let mut next_phase_step = config.phase_step.to_owned();
@@ -75,10 +93,10 @@ pub fn execute_epoch(
                 let mut config: Config = CONFIG.load(deps.storage)?;
                 let pending_lp_removal_amount = config.host_config.pending_lp_removal_amount;
                 if success {
-                    if config.host_config.bonded_lp_amount < pending_lp_removal_amount {
-                        config.host_config.bonded_lp_amount = Uint128::from(0u128);
+                    if config.host_config.unbonding_lp_amount < pending_lp_removal_amount {
+                        config.host_config.unbonding_lp_amount = Uint128::from(0u128);
                     } else {
-                        config.host_config.bonded_lp_amount -= pending_lp_removal_amount;
+                        config.host_config.unbonding_lp_amount -= pending_lp_removal_amount;
                     }
                     next_phase_step = config.phase_step + 1;
                 } else {
@@ -207,6 +225,9 @@ pub fn execute_epoch(
         } else if config.phase_step == 2u64 {
             // handle Transfer callback
             if called_from == EpochCallSource::TransferCallback {
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                config.controller_config.pending_transfer_amount = Uint128::from(0u128);
+                CONFIG.save(deps.storage, &config)?;
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 3u64 {

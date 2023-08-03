@@ -32,9 +32,10 @@ pub fn instantiate(
     let config = Config {
         owner: info.sender,
         unbond_period: msg.unbond_period,
-        total_deposit: Uint128::from(0u128),
         last_unbonding_id: 1u64,
         redemption_rate: STAKE_RATE_MULTIPLIER,
+        total_shares: Uint128::from(0u128),
+        total_deposit: Uint128::from(0u128),
         total_withdrawn: Uint128::from(0u128),
         transfer_timeout: 300, // 300s
         ica_connection_id: "".to_string(),
@@ -51,6 +52,7 @@ pub fn instantiate(
             lock_id: 0u64,
             lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
+            unbonding_lp_amount: Uint128::from(0u128),
             free_lp_amount: Uint128::from(0u128),
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
@@ -223,6 +225,7 @@ pub fn execute_stake(
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
                 let stake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
+                config.total_shares += stake_amount;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_add(stake_amount)?,
@@ -278,6 +281,17 @@ pub fn execute_unstake(
     // increase last unbonding id
     // NOTE: eventually, we should remove these params from config because it's simply double counting
     config.last_unbonding_id += 1;
+    config.host_config.unbonding_lp_amount += unbonding.amount;
+    if config.host_config.bonded_lp_amount < unbonding.amount {
+        config.host_config.bonded_lp_amount = Uint128::from(0u128);
+    } else {
+        config.host_config.bonded_lp_amount -= unbonding.amount;
+    }
+    if config.total_shares > unstake_amount {
+        config.total_shares -= unstake_amount;
+    } else {
+        config.total_shares -= Uint128::from(0u128)
+    }
     CONFIG.save(deps.storage, &config)?;
 
     let rsp = Response::new()
