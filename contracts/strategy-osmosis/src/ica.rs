@@ -13,11 +13,11 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
 use strategy::error::ContractError;
-use strategy_osmosis::msg::{
+use strategy_osmosis_interface::msg::{
     begin_unlocking_msg_to_any, exit_pool_to_any, join_pool_to_any, lock_tokens_msg_to_any,
     swap_msg_to_any,
 };
-use strategy_osmosis::strategy::Phase;
+use strategy_osmosis_interface::strategy::Phase;
 
 // Regular epoch operation (once per day)
 // - icq balance of ica account when `Deposit` phase

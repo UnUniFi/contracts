@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use strategy::error::{ContractError, Never};
 
 use crate::state::CHANNEL_INFO;
-use strategy_osmosis::strategy::ChannelInfo;
+use strategy_osmosis_interface::strategy::ChannelInfo;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {

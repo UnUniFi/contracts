@@ -4,19 +4,19 @@ use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::Message;
 use prost_types::Any;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
-use strategy_osmosis::msg::join_pool_to_any;
+use strategy_osmosis_interface::msg::join_pool_to_any;
 // use cosmwasm_std::Overflow;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use crate::helpers::{setup, th_query};
-use strategy_osmosis::strategy::{Phase, QueryMsg};
-use strategy_osmosis_base::helpers::send_ica_tx;
-use strategy_osmosis_base::ica::{
+use strategy_osmosis::helpers::send_ica_tx;
+use strategy_osmosis::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
 };
-use strategy_osmosis_base::state::{
+use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, InterchainAccountPacketData, CONFIG,
     STAKE_RATE_MULTIPLIER,
 };
+use strategy_osmosis_interface::strategy::{Phase, QueryMsg};
 mod helpers;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
