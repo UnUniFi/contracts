@@ -1,7 +1,7 @@
 use crate::types::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use strategy::msgs::{BondedResp, FeeResp, UnbondingResp};
+use strategy::v0::{BondedResp, FeeResp, UnbondingResp};
 
 #[cw_serde]
 pub struct InstantiateMsg {

@@ -1,5 +1,5 @@
 use cosmwasm_std::{Decimal, Deps, StdResult};
-use strategy::msgs::FeeResp;
+use strategy::v0::FeeResp;
 
 #[cfg(not(feature = "library"))]
 pub fn query_fee(_: Deps) -> StdResult<FeeResp> {

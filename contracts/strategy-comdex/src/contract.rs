@@ -15,7 +15,7 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::traits::MessageExt;
-use strategy::msgs::FeeResp;
+use strategy::v0::FeeResp;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

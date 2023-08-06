@@ -18,8 +18,6 @@ pub struct UnstakeMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(DepositDenomResp)]
-    DepositDenom {},
     #[returns(BondedResp)]
     Bonded { addr: String },
     #[returns(UnbondingResp)]
@@ -28,21 +26,8 @@ pub enum QueryMsg {
     Fee {},
 }
 
-#[cw_serde]
-pub struct DepositDenomResp {
-    pub denom: String,
-}
-
-// #[cw_serde]
-// pub struct BondedResp {
-//     pub amount: Uint128,
-// }
 pub type BondedResp = Uint128;
 
-// #[cw_serde]
-// pub struct UnbondingResp {
-//     pub amount: Uint128,
-// }
 pub type UnbondingResp = Uint128;
 
 #[cw_serde]
