@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use crate::contract::instantiate;
 use strategy::strategy::InstantiateMsg;
+use strategy_example::contract::instantiate;
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
