@@ -1,4 +1,5 @@
-use crate::state::{Config, CONFIG};
+use crate::state::CONFIG;
+use crate::types::Config;
 use cosmwasm_std::{Deps, StdResult};
 
 #[cfg(not(feature = "library"))]

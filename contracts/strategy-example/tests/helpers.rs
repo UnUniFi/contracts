@@ -1,12 +1,11 @@
 #![cfg(test)]
 
-use strategy::msgs::InstantiateMsg;
-use strategy_example::contract::instantiate;
-
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::OwnedDeps;
+use strategy_example::contract::instantiate;
+use strategy_example::msgs::InstantiateMsg;
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";

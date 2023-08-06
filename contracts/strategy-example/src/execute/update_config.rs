@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use crate::state::{Config, CONFIG};
+use crate::state::CONFIG;
+use crate::types::Config;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 /// Only owner can execute it.

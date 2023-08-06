@@ -1,5 +1,7 @@
 use crate::error::ContractError;
-use crate::state::{DepositInfo, CONFIG, DEPOSITS};
+use crate::state::{CONFIG, DEPOSITS};
+use crate::types::DepositInfo;
+use cosmwasm_std::coins;
 use cosmwasm_std::{Addr, BankMsg, CosmosMsg, DepsMut, Response, StdResult, Uint128};
 
 #[cfg(not(feature = "library"))]
@@ -8,8 +10,6 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    use cosmwasm_std::coins;
-
     let mut config = CONFIG.load(deps.storage)?;
     let redemption_rate_multiplier = Uint128::from(1000000u128);
     DEPOSITS.update(

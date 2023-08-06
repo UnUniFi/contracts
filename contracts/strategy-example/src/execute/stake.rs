@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use crate::state::{DepositInfo, CONFIG, DEPOSITS};
+use crate::state::{CONFIG, DEPOSITS};
+use crate::types::DepositInfo;
 use cosmwasm_std::{Addr, Coin, DepsMut, Response, StdResult, Uint128};
 
 #[cfg(not(feature = "library"))]

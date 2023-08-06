@@ -3,17 +3,18 @@ use crate::execute::add_rewards::execute_add_rewards;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_config::execute_update_config;
+use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::bonded::query_bonded;
 use crate::query::config::query_config;
 use crate::query::fee_info::query_fee_info;
 use crate::query::unbonding::query_unbonding;
-use crate::state::{Config, CONFIG};
+use crate::state::CONFIG;
+use crate::types::Config;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
