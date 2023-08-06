@@ -1,7 +1,7 @@
 use crate::types::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use strategy::types::FeeInfo;
+use strategy::msgs::{BondedResp, FeeResp, UnbondingResp};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -37,11 +37,11 @@ pub struct AddRewardsMsg {}
 pub enum QueryMsg {
     #[returns(Config)]
     Config {},
-    #[returns(Uint128)]
+    #[returns(BondedResp)]
     Bonded { addr: String },
-    #[returns(Uint128)]
+    #[returns(UnbondingResp)]
     Unbonding { addr: String },
-    #[returns(FeeInfo)]
+    #[returns(FeeResp)]
     Fee {},
 }
 

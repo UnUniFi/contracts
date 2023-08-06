@@ -6,7 +6,7 @@ use crate::execute::update_config::execute_update_config;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::bonded::query_bonded;
 use crate::query::config::query_config;
-use crate::query::fee_info::query_fee_info;
+use crate::query::fee::query_fee;
 use crate::query::unbonding::query_unbonding;
 use crate::state::CONFIG;
 use crate::types::Config;
@@ -69,7 +69,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
         QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
-        QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
+        QueryMsg::Fee {} => to_binary(&query_fee(deps)?),
     }
 }
 

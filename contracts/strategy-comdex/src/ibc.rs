@@ -9,7 +9,7 @@ use cosmwasm_std::{
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> Result<Response, ContractError> {
     Ok(Response::new())
 }
 
@@ -54,8 +54,8 @@ pub fn ibc_channel_connect(
 }
 
 fn enforce_order_and_version(
-    channel: &IbcChannel,
-    counterparty_version: Option<&str>,
+    _channel: &IbcChannel,
+    _counterparty_version: Option<&str>,
 ) -> Result<(), ContractError> {
     Ok(())
 }

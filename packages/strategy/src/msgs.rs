@@ -1,23 +1,10 @@
-use crate::types::FeeInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub unbond_period: u64,
-    pub deposit_denom: String,
-}
+use cosmwasm_std::{Decimal, Uint128};
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig {
-        owner: Option<String>,
-        unbond_period: Option<u64>,
-        deposit_denom: Option<String>,
-    },
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
-    AddRewards(AddRewardsMsg),
 }
 
 #[cw_serde]
@@ -29,19 +16,38 @@ pub struct UnstakeMsg {
 }
 
 #[cw_serde]
-pub struct AddRewardsMsg {}
-
-#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Uint128)]
+    #[returns(DepositDenomResp)]
+    DepositDenom {},
+    #[returns(BondedResp)]
     Bonded { addr: String },
-    #[returns(Uint128)]
+    #[returns(UnbondingResp)]
     Unbonding { addr: String },
-    #[returns(FeeInfo)]
+    #[returns(FeeResp)]
     Fee {},
 }
 
-/// We currently take no arguments for migrations
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct DepositDenomResp {
+    pub denom: String,
+}
+
+// #[cw_serde]
+// pub struct BondedResp {
+//     pub amount: Uint128,
+// }
+pub type BondedResp = Uint128;
+
+// #[cw_serde]
+// pub struct UnbondingResp {
+//     pub amount: Uint128,
+// }
+pub type UnbondingResp = Uint128;
+
+#[cw_serde]
+pub struct FeeResp {
+    pub deposit_fee_rate: Decimal,
+    pub withdraw_fee_rate: Decimal,
+    pub interest_fee_rate: Decimal,
+}

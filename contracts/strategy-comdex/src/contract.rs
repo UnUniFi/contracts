@@ -15,7 +15,7 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::traits::MessageExt;
-use strategy::types::FeeInfo;
+use strategy::msgs::FeeResp;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -417,8 +417,8 @@ pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
     Ok(ChannelResponse { info })
 }
 
-pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
-    Ok(FeeInfo {
+pub fn query_fee_info(_: Deps) -> StdResult<FeeResp> {
+    Ok(FeeResp {
         deposit_fee_rate: Decimal::zero(),
         withdraw_fee_rate: Decimal::zero(),
         interest_fee_rate: Decimal::zero(),
