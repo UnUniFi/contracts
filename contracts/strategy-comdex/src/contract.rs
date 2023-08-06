@@ -1,11 +1,9 @@
 use crate::error::ContractError;
-use crate::msg::{
-    ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
-    QueryMsg,
+use crate::msgs::{
+    ChannelResponse, ExecuteMsg, InstantiateMsg, ListChannelsResponse, MigrateMsg, QueryMsg,
 };
-use crate::state::InterchainAccountPacketData;
-use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
-#[cfg(not(feature = "library"))]
+use crate::state::{CHANNEL_INFO, CONFIG, DEPOSITS};
+use crate::types::{Config, DepositInfo, InterchainAccountPacketData};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
@@ -17,6 +15,7 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::traits::MessageExt;
+use strategy::types::FeeInfo;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

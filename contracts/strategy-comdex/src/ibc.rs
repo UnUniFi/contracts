@@ -1,17 +1,12 @@
 // use crate::proto::comdex::Metadata;
 use crate::error::{ContractError, Never};
-use crate::state::Metadata;
+use crate::state::CHANNEL_INFO;
+use crate::types::{ChannelInfo, Metadata};
 use cosmwasm_std::{
-    attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
-    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
-    IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacket, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
-use cw20::{Balance, Cw20ExecuteMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-use crate::state::{ChannelInfo, CHANNEL_INFO};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {

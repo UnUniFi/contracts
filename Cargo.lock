@@ -959,11 +959,7 @@ dependencies = [
  "cw-utils",
  "cw20",
  "prost",
- "prost-types",
  "proto",
- "protobuf",
- "schemars",
- "serde",
  "strategy",
  "thiserror",
 ]
@@ -976,8 +972,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
  "cw-utils",
- "prost",
- "prost-types",
  "strategy",
  "thiserror",
 ]
