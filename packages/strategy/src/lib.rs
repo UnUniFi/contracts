@@ -1,2 +1,2 @@
-pub mod querier;
-pub mod strategy;
+pub mod msgs;
+pub mod types;

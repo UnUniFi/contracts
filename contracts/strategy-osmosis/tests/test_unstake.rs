@@ -2,7 +2,7 @@ use cosmwasm_std::{coins, OverflowError, StdError, Uint128};
 // use cosmwasm_std::Overflow;
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
-use strategy::strategy::{ExecuteMsg, StakeMsg};
+use strategy::msgs::{ExecuteMsg, StakeMsg};
 use strategy_osmosis::contract::{execute_stake, execute_unstake, execute_update_config};
 use strategy_osmosis::error::{ContractError, NoDeposit};
 use strategy_osmosis::state::Config;

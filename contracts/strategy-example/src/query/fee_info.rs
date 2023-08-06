@@ -1,5 +1,5 @@
 use cosmwasm_std::{Decimal, Deps, StdResult};
-use strategy::strategy::FeeInfo;
+use strategy::types::FeeInfo;
 
 #[cfg(not(feature = "library"))]
 pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {

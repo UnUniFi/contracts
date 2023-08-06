@@ -13,7 +13,7 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use strategy::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, Uint128};
 use helpers::th_query;
-use strategy::strategy::{ExecuteMsg, StakeMsg};
+use strategy::msgs::{ExecuteMsg, StakeMsg};
 use strategy_osmosis::contract::{execute_stake, execute_update_config};
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis::state::Config;

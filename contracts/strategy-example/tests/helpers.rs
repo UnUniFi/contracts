@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use strategy::strategy::InstantiateMsg;
+use strategy::msgs::InstantiateMsg;
 use strategy_example::contract::instantiate;
 
 use cosmwasm_std::testing::{

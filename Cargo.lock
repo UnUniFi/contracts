@@ -945,16 +945,8 @@ dependencies = [
 name = "strategy"
 version = "1.0.0"
 dependencies = [
- "bech32",
+ "cosmwasm-schema",
  "cosmwasm-std",
- "cw-utils",
- "cw20",
- "prost",
- "prost-types",
- "protobuf",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
