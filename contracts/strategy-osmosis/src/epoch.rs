@@ -6,10 +6,7 @@ use crate::ica::{
 };
 use crate::icq::submit_icq_for_host;
 use crate::query::{query_balance, query_unbondings, DEFAULT_LIMIT};
-
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
-use strategy_osmosis::strategy::Phase;
-
 use cosmwasm_std::{
     coin, coins, BankMsg, CosmosMsg, DepsMut, Env, IbcTimeout, Response, StdResult, Storage,
     Uint128,
@@ -18,6 +15,7 @@ use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use strategy::error::ContractError;
+use strategy_osmosis_interface::strategy::Phase;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;

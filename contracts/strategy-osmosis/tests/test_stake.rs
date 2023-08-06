@@ -3,9 +3,9 @@ use cosmwasm_std::{coins, Uint128};
 use helpers::th_query;
 use strategy::error::ContractError;
 use strategy::strategy::{ExecuteMsg, StakeMsg};
-use strategy_osmosis::strategy::{QueryMsg, UpdateConfigMsg};
-use strategy_osmosis_base::contract::{execute_stake, execute_update_config};
-use strategy_osmosis_base::state::Config;
+use strategy_osmosis::contract::{execute_stake, execute_update_config};
+use strategy_osmosis::state::Config;
+use strategy_osmosis_interface::strategy::{QueryMsg, UpdateConfigMsg};
 
 use crate::helpers::setup;
 

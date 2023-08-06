@@ -17,7 +17,7 @@ use cosmwasm_std::{
 };
 use cw_utils::one_coin;
 use strategy::error::{ContractError, NoDeposit};
-use strategy_osmosis::strategy::{
+use strategy_osmosis_interface::strategy::{
     ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
 };
 

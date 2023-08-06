@@ -7,7 +7,7 @@ use cosmwasm_std::{
     Addr, BalanceResponse, BankQuery, Decimal, Deps, Order, QuerierWrapper, QueryRequest,
     StdResult, Storage, Uint128,
 };
-use strategy_osmosis::strategy::{ChannelResponse, FeeInfo, ListChannelsResponse};
+use strategy_osmosis_interface::strategy::{ChannelResponse, FeeInfo, ListChannelsResponse};
 
 pub fn query_balance(
     querier: &QuerierWrapper,

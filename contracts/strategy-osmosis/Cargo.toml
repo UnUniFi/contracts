@@ -1,5 +1,5 @@
 [package]
-name = "strategy-base"
+name = "strategy-osmosis"
 version = "1.0.0"
 authors = []
 edition = "2018"
@@ -23,6 +23,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
+bech32 = "0.9.0"
 cw-utils = "1.0.1"
 cw20 = "1.1.0"
 cosmwasm-std = { version = "1.2.5", features = ["stargate"] }
@@ -31,7 +32,12 @@ schemars = "0.8.10"
 serde = { version = "1.0.144", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.23" }
 protobuf = { version = "3.2.0", features = ["with-bytes"] }
+prost = "0.11"
+prost-types = "0.11"
 strategy = { path = "../../packages/strategy" }
+strategy-osmosis-interface = {version = "1.0.0", path = "../../packages/strategy-osmosis-interface"}
+proto = { path = "../../packages/proto", features = ["cosmwasm"] }
+osmosis-std	= { version = "0.16.1" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

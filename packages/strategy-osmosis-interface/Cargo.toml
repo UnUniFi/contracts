@@ -1,5 +1,5 @@
 [package]
-name = "strategy-osmosis"
+name = "strategy-osmosis-interface"
 version = "1.0.0"
 authors = []
 edition = "2018"

@@ -4,7 +4,7 @@ use cosmwasm_std::{
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strategy_osmosis::strategy::{ChannelInfo, Phase};
+use strategy_osmosis_interface::strategy::{ChannelInfo, Phase};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ControllerConfig {
