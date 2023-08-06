@@ -1,4 +1,7 @@
-use super::{ibc_hooks::IBCLifecycleComplete, transfer_callback::TransferCallbackData};
+use super::sudo::{
+    ibc_hooks::IBCLifecycleComplete, interchainquery::KvIcqCallbackData,
+    records::TransferCallbackData,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
 
@@ -62,11 +65,8 @@ pub struct FeeResp {
 pub enum SudoMsg {
     #[serde(rename = "transfer_callback")]
     TransferCallback(TransferCallbackData),
-    #[serde(rename = "icq_result")]
-    ICQResult {
-        // TBD
-    },
-    /// From ibc-hooks
+    #[serde(rename = "kv_icq_callback")]
+    KvIcqCallback(KvIcqCallbackData),
     #[serde(rename = "ibc_lifecycle_complete")]
     IBCLifecycleComplete(IBCLifecycleComplete),
 }

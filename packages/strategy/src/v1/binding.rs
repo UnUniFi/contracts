@@ -1,16 +1,21 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Coin, CosmosMsg, CustomMsg, IbcTimeout};
+use cosmwasm_std::{Binary, Coin, CosmosMsg, CustomMsg, IbcTimeout};
 
 #[cw_serde]
 pub enum UnunifiMsg {
+    #[serde(rename = "ibc_transfer")]
     IbcTransfer {
         channel_id: String,
         to_address: String,
         amount: Coin,
         timeout: IbcTimeout,
     },
-    SubmitIcq {
-        // TBD
+    #[serde(rename = "request_kv_icq")]
+    RequestKvIcq {
+        connection_id: String,
+        chain_id: String,
+        query_prefix: String,
+        query_key: Binary,
     },
 }
 
