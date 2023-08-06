@@ -1,3 +1,4 @@
+use crate::error::ContractError;
 use crate::execute::add_rewards::execute_add_rewards;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
@@ -12,10 +13,7 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::{
-    error::ContractError,
-    strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-};
+use strategy::strategy::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,6 +1,6 @@
+use crate::error::ContractError;
 use crate::state::{Config, CONFIG};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
-use strategy::error::ContractError;
 
 /// Only owner can execute it.
 #[cfg(not(feature = "library"))]

@@ -1,6 +1,6 @@
+use crate::error::ContractError;
 use crate::state::{DepositInfo, CONFIG, DEPOSITS};
 use cosmwasm_std::{Addr, BankMsg, CosmosMsg, DepsMut, Response, StdResult, Uint128};
-use strategy::error::ContractError;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_unstake(

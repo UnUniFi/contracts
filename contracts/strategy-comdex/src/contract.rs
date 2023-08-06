@@ -1,3 +1,4 @@
+use crate::error::ContractError;
 use crate::msg::{
     ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
     QueryMsg,
@@ -16,7 +17,6 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::traits::MessageExt;
-use strategy::error::ContractError;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -440,28 +440,4 @@ pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::default())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::test_helpers::*;
-
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, StdError};
-
-    #[test]
-    fn execute_update_config() {}
-
-    #[test]
-    fn execute_stake() {}
-
-    #[test]
-    fn execute_unstake() {}
-
-    #[test]
-    fn query_unbonding() {}
-
-    #[test]
-    fn query_bonded() {}
 }

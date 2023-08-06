@@ -2,9 +2,9 @@ use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::EncodeError;
 use prost_types::Any;
 use proto::traits::MessageExt;
-use strategy::error::ContractError;
 use strategy_osmosis::binding::UnunifiMsg;
 use strategy_osmosis::contract::{execute_update_config, instantiate, query};
+use strategy_osmosis::error::ContractError;
 use strategy_osmosis_interface::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
 
 use cosmwasm_std::testing::{

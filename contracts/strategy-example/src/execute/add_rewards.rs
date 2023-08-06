@@ -1,6 +1,6 @@
+use crate::error::ContractError;
 use crate::state::CONFIG;
 use cosmwasm_std::{Coin, DepsMut, Response};
-use strategy::error::ContractError;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_add_rewards(deps: DepsMut, coin: Coin) -> Result<Response, ContractError> {

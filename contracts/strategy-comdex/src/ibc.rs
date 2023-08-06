@@ -1,4 +1,5 @@
 // use crate::proto::comdex::Metadata;
+use crate::error::{ContractError, Never};
 use crate::state::Metadata;
 use cosmwasm_std::{
     attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
@@ -9,7 +10,6 @@ use cosmwasm_std::{
 use cw20::{Balance, Cw20ExecuteMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strategy::error::{ContractError, Never};
 
 use crate::state::{ChannelInfo, CHANNEL_INFO};
 
