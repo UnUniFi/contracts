@@ -16,7 +16,7 @@ use cosmwasm_std::{
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;

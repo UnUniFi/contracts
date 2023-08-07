@@ -28,7 +28,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy_osmosis::state::{Config, CONFIG};
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";

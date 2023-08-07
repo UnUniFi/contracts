@@ -16,7 +16,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 cosmwasm-std = { version = "1.3.1", features = ["stargate"] }
 cosmwasm-schema = "1.3.1"
 proto = { path = "../proto", features = ["cosmwasm"] }
-ununifi-msg = { path = "../ununifi-msg" }
+ununifi-binding = { path = "../ununifi-binding" }
 prost = "0.11"
 prost-types = "0.11"
 serde = { version = "1.0.144", default-features = false, features = ["derive"] }

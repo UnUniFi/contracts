@@ -22,7 +22,7 @@ use cosmwasm_std::{
 };
 use cw_utils::one_coin;
 use strategy::v0::msgs::SudoMsg;
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -10,7 +10,7 @@ use strategy_osmosis::msgs::{Phase, QueryMsg};
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;
 mod helpers;

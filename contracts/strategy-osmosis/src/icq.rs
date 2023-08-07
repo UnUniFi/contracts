@@ -5,7 +5,7 @@ use crate::helpers::{
 };
 use crate::state::{Config, CONFIG};
 use cosmwasm_std::{Binary, Env, Response, Storage};
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 /// Creates balances Cosmos-SDK storage prefix for account with **addr**
 /// https://github.com/cosmos/cosmos-sdk/blob/ad9e5620fb3445c716e9de45cfcdb56e8f1745bf/x/bank/types/key.go#L55

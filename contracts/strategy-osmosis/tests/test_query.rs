@@ -12,7 +12,7 @@ use strategy_osmosis::query::list_channels::query_list_channels;
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CHANNEL_INFO, CONFIG, STAKE_RATE_MULTIPLIER,
 };
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;
 mod helpers;

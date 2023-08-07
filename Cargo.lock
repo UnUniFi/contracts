@@ -530,7 +530,7 @@ dependencies = [
  "prost-types",
  "proto",
  "serde",
- "ununifi-msg",
+ "ununifi-binding",
 ]
 
 [[package]]
@@ -1009,7 +1009,7 @@ dependencies = [
  "serde",
  "strategy",
  "thiserror",
- "ununifi-msg",
+ "ununifi-binding",
 ]
 
 [[package]]
@@ -1213,7 +1213,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
-name = "ununifi-msg"
+name = "ununifi-binding"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",

@@ -5,7 +5,7 @@ use crate::state::{
 };
 
 use cosmwasm_std::{Addr, DepsMut, Response, StdResult, Uint128};
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub fn execute_unstake(
     deps: DepsMut,
