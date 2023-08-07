@@ -1,4 +1,12 @@
 use crate::error::ContractError;
+use crate::msgs::{ChannelResponse, FeeInfo, ListChannelsResponse};
+use crate::state::{
+    Config, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS, HOST_LP_RATE_MULTIPLIER,
+    STAKE_RATE_MULTIPLIER, UNBONDINGS,
+};
+use cosmwasm_std::{
+    Addr, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdResult, Uint128,
+};
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use prost::EncodeError;
@@ -56,6 +64,18 @@ pub fn length_prefix<AddrBytes: AsRef<[u8]>>(addr: AddrBytes) -> Result<Vec<u8>,
     p.extend_from_slice(addr.as_ref());
 
     Ok(p)
+}
+
+pub fn query_balance(
+    querier: &QuerierWrapper,
+    account_addr: Addr,
+    denom: String,
+) -> StdResult<Uint128> {
+    let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+        address: account_addr.to_string(),
+        denom,
+    }))?;
+    Ok(balance.amount.amount)
 }
 
 pub fn join_pool_to_any(msg: MsgJoinPool) -> Result<Any, EncodeError> {

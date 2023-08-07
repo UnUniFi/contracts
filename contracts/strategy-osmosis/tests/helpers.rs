@@ -2,7 +2,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::EncodeError;
 use prost_types::Any;
 use proto::traits::MessageExt;
-use strategy_osmosis::contract::{execute_update_config, instantiate, query};
+use strategy_osmosis::contract::{instantiate, query};
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis::msgs::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
 

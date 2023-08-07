@@ -1,22 +1,24 @@
 use crate::epoch::execute_epoch;
-use crate::error::{ContractError, NoDeposit};
-use crate::icq::{sudo_kv_query_result, sudo_transfer_callback};
-use crate::msgs::{
-    ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
-};
-use crate::query::{
-    query_bonded, query_channel, query_config, query_fee_info, query_list_channels,
-    query_unbonding, query_unbondings, DEFAULT_LIMIT,
-};
-use crate::state::{
-    Config, DepositInfo, EpochCallSource, Unbonding, CHANNEL_INFO, CONFIG, DEPOSITS,
-    HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, UNBONDINGS,
-};
+use crate::error::ContractError;
+use crate::execute::stake::execute_stake;
+use crate::execute::unstake::execute_unstake;
+use crate::execute::update_config::execute_update_config;
+use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg};
+use crate::query::bonded::query_bonded;
+use crate::query::channel::query_channel;
+use crate::query::config::query_config;
+use crate::query::fee_info::query_fee_info;
+use crate::query::list_channels::query_list_channels;
+use crate::query::unbonding::query_unbonding;
+use crate::query::unbondings::{query_unbondings, DEFAULT_LIMIT};
+use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER};
 use crate::state::{ControllerConfig, HostConfig};
+use crate::sudo::kv_query_result::sudo_kv_query_result;
+use crate::sudo::transfer_callback::sudo_transfer_callback;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
 use strategy::v0::msgs::SudoMsg;
@@ -127,182 +129,6 @@ pub fn execute(
             execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
         }
     }
-}
-
-/// Only owner can execute it.
-pub fn execute_update_config(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: UpdateConfigMsg,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
-
-    // Permission check
-    if info.sender != config.owner {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    if let Some(owner) = msg.owner {
-        config.owner = deps.api.addr_validate(&owner)?;
-    }
-    if let Some(unbond_period) = msg.unbond_period {
-        config.unbond_period = unbond_period;
-    }
-    if let Some(pool_id) = msg.pool_id {
-        config.host_config.pool_id = pool_id;
-    }
-    if let Some(ica_channel_id) = msg.ica_channel_id {
-        let info: ChannelInfo = CHANNEL_INFO.load(deps.storage, ica_channel_id.as_str())?;
-        config.ica_account = info.address.to_string();
-        config.ica_channel_id = info.id;
-        config.ica_connection_id = info.connection_id.to_string();
-    }
-    if let Some(phase) = msg.phase {
-        config.phase = phase;
-    }
-    if let Some(phase_step) = msg.phase_step {
-        config.phase_step = phase_step;
-    }
-    if let Some(transfer_timeout) = msg.transfer_timeout {
-        config.transfer_timeout = transfer_timeout;
-    }
-    if let Some(lp_denom) = msg.lp_denom {
-        config.host_config.lp_denom = lp_denom;
-    }
-    if let Some(lp_redemption_rate) = msg.lp_redemption_rate {
-        config.host_config.lp_redemption_rate = lp_redemption_rate;
-    }
-    if let Some(transfer_channel_id) = msg.transfer_channel_id {
-        config.host_config.transfer_channel_id = transfer_channel_id;
-    }
-    if let Some(quote_denom) = msg.quote_denom {
-        config.host_config.quote_denom = quote_denom;
-    }
-    if let Some(base_denom) = msg.base_denom {
-        config.host_config.base_denom = base_denom;
-    }
-    if let Some(chain_id) = msg.chain_id {
-        config.host_config.chain_id = chain_id;
-    }
-    if let Some(deposit_denom) = msg.controller_deposit_denom {
-        config.controller_config.deposit_denom = deposit_denom;
-    }
-    if let Some(transfer_channel_id) = msg.controller_transfer_channel_id {
-        config.controller_config.transfer_channel_id = transfer_channel_id;
-    }
-
-    CONFIG.save(deps.storage, &config)?;
-    let resp = Response::new()
-        .add_attribute("action", "update_config")
-        .add_attribute("owner", config.owner.to_string())
-        .add_attribute("unbond_period", config.unbond_period.to_string())
-        .add_attribute(
-            "lp_redemption_rate",
-            config.host_config.lp_redemption_rate.to_string(),
-        )
-        .add_attribute(
-            "deposit_denom",
-            config.controller_config.deposit_denom.to_string(),
-        );
-
-    Ok(resp)
-}
-
-pub fn execute_stake(
-    deps: DepsMut,
-    env: Env,
-    coin: Coin,
-    sender: Addr,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
-    if config.controller_config.deposit_denom != coin.denom {
-        return Err(ContractError::NoAllowedToken {});
-    }
-    let amount = coin.amount;
-    DEPOSITS.update(
-        deps.storage,
-        sender.to_string(),
-        |deposit: Option<DepositInfo>| -> StdResult<_> {
-            if let Some(unwrapped) = deposit {
-                let stake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
-                config.total_shares += stake_amount;
-                return Ok(DepositInfo {
-                    sender: sender.clone(),
-                    amount: unwrapped.amount.checked_add(stake_amount)?,
-                });
-            }
-            Ok(DepositInfo {
-                sender: sender.clone(),
-                amount: amount,
-            })
-        },
-    )?;
-    config.total_deposit += amount;
-    CONFIG.save(deps.storage, &config)?;
-
-    let rsp = Response::default()
-        .add_attribute("action", "stake")
-        .add_attribute("sender", sender)
-        .add_attribute("amount", amount);
-    Ok(rsp)
-}
-
-pub fn execute_unstake(
-    deps: DepsMut,
-    amount: Uint128,
-    sender: Addr,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
-    let unstake_amount = amount * STAKE_RATE_MULTIPLIER / config.redemption_rate;
-    DEPOSITS.update(
-        deps.storage,
-        sender.to_string(),
-        |deposit: Option<DepositInfo>| -> StdResult<_> {
-            if let Some(unwrapped) = deposit {
-                return Ok(DepositInfo {
-                    sender: sender.clone(),
-                    amount: unwrapped.amount.checked_sub(unstake_amount)?,
-                });
-            }
-            Err(NoDeposit {}.into())
-        },
-    )?;
-
-    let unbonding = &Unbonding {
-        id: config.last_unbonding_id + 1,
-        sender: sender.to_owned(),
-        amount: amount * HOST_LP_RATE_MULTIPLIER / config.host_config.lp_redemption_rate,
-        pending_start: false,
-        start_time: 0u64,
-        marked: false,
-    };
-    UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
-
-    // increase last unbonding id
-    // NOTE: eventually, we should remove these params from config because it's simply double counting
-    config.last_unbonding_id += 1;
-    config.host_config.unbonding_lp_amount += unbonding.amount;
-    if config.host_config.bonded_lp_amount < unbonding.amount {
-        config.host_config.bonded_lp_amount = Uint128::from(0u128);
-    } else {
-        config.host_config.bonded_lp_amount = config
-            .host_config
-            .bonded_lp_amount
-            .checked_sub(unbonding.amount)
-            .unwrap_or(Uint128::from(0u128));
-    }
-    config.total_shares = config
-        .total_shares
-        .checked_sub(unstake_amount)
-        .unwrap_or(Uint128::from(0u128));
-
-    CONFIG.save(deps.storage, &config)?;
-
-    let rsp = Response::new()
-        .add_attribute("sender", sender.to_string())
-        .add_attribute("amount", amount);
-    Ok(rsp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

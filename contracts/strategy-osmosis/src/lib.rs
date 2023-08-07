@@ -1,6 +1,7 @@
 pub mod contract;
 pub mod epoch;
 pub mod error;
+pub mod execute;
 pub mod helpers;
 pub mod ibc;
 pub mod ica;
@@ -8,4 +9,5 @@ pub mod icq;
 pub mod msgs;
 pub mod query;
 pub mod state;
+pub mod sudo;
 pub mod test_helpers;

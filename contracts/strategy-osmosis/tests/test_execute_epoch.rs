@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
-use strategy_osmosis::contract::{execute, execute_stake, execute_unstake, execute_update_config};
+use strategy_osmosis::contract::execute;
 use strategy_osmosis::epoch::execute_epoch;
 use strategy_osmosis::msgs::{ExecuteEpochMsg, ExecuteMsg, Phase, QueryMsg, UpdateConfigMsg};
 use strategy_osmosis::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
