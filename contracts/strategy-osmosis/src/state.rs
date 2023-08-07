@@ -138,13 +138,6 @@ pub struct Metadata {
     pub tx_type: String,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-pub struct InterchainAccountPacketData {
-    pub r#type: i32,
-    pub data: Vec<u8>,
-    pub memo: String,
-}
-
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct IcaAmounts {
     pub to_swap_base: Uint128,

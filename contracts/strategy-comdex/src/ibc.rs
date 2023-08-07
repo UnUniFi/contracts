@@ -4,7 +4,7 @@ use crate::state::CHANNEL_INFO;
 use crate::types::{ChannelInfo, Metadata};
 use cosmwasm_std::{
     entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
-    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacket, IbcPacketAckMsg,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
 
@@ -23,7 +23,6 @@ pub fn ibc_channel_open(
     _deps
         .api
         .debug(format!("WASMDEBUG: ibc_channel_open: {:?}", msg).as_str());
-    enforce_order_and_version(msg.channel(), msg.counterparty_version())?;
     Ok(())
 }
 
@@ -51,13 +50,6 @@ pub fn ibc_channel_connect(
         return Ok(IbcBasicResponse::default());
     }
     return Ok(IbcBasicResponse::default());
-}
-
-fn enforce_order_and_version(
-    _channel: &IbcChannel,
-    _counterparty_version: Option<&str>,
-) -> Result<(), ContractError> {
-    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -110,22 +102,5 @@ pub fn ibc_packet_timeout(
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_timeout: {:?}", msg).as_str());
 
-    Ok(IbcBasicResponse::new())
-}
-
-// update the balance stored on this (channel, denom) index
-fn on_packet_success(deps: DepsMut, packet: IbcPacket) -> Result<IbcBasicResponse, ContractError> {
-    deps.api
-        .debug(format!("WASMDEBUG: on_packet_success: {:?}", packet).as_str());
-    Ok(IbcBasicResponse::new())
-}
-
-fn on_packet_failure(
-    deps: DepsMut,
-    packet: IbcPacket,
-    err: String,
-) -> Result<IbcBasicResponse, ContractError> {
-    deps.api
-        .debug(format!("WASMDEBUG: on_packet_success: {:?}", err).as_str());
     Ok(IbcBasicResponse::new())
 }

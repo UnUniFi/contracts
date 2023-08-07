@@ -209,7 +209,10 @@ pub fn execute_unstake(
         },
     )?;
 
-    config.total_deposit -= amount;
+    config.total_deposit = config
+        .total_deposit
+        .checked_sub(amount)
+        .unwrap_or(Uint128::from(0u128));
     CONFIG.save(deps.storage, &config)?;
     let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender.to_string(),
