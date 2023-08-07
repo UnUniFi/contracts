@@ -57,8 +57,10 @@ pub struct AmountsResp {
 #[cw_serde]
 pub struct FeeResp {
     pub deposit_fee_rate: Decimal,
-    pub withdraw_fee_rate: Decimal,
     pub interest_fee_rate: Decimal,
+    pub withdraw_fee_rate: Decimal,
+    pub min_withdraw_fee: Option<Uint128>,
+    pub max_withdraw_fee: Option<Uint128>,
 }
 
 #[cw_serde]
