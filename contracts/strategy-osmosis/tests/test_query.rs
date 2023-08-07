@@ -6,11 +6,11 @@ use strategy_osmosis::ica::determine_ica_amounts;
 use strategy_osmosis::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
 };
+use strategy_osmosis::msgs::{ChannelInfo, Phase, QueryMsg};
 use strategy_osmosis::query::{query_balance, query_config, query_list_channels};
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CHANNEL_INFO, CONFIG, STAKE_RATE_MULTIPLIER,
 };
-use strategy_osmosis_interface::strategy::{ChannelInfo, Phase, QueryMsg};
 use ununifi_msg::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;

@@ -5,6 +5,7 @@ use crate::ica::{
     execute_ica_swap_balance_to_two_tokens, execute_ica_swap_two_tokens_to_deposit_token,
 };
 use crate::icq::submit_icq_for_host;
+use crate::msgs::Phase;
 use crate::query::{query_balance, query_unbondings, DEFAULT_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use cosmwasm_std::{
@@ -14,7 +15,6 @@ use cosmwasm_std::{
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
-use strategy_osmosis_interface::strategy::Phase;
 use ununifi_msg::v0::binding::UnunifiMsg;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {

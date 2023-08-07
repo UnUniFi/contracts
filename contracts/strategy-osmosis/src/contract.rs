@@ -1,6 +1,9 @@
 use crate::epoch::execute_epoch;
 use crate::error::{ContractError, NoDeposit};
 use crate::icq::{sudo_kv_query_result, sudo_transfer_callback};
+use crate::msgs::{
+    ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
+};
 use crate::query::{
     query_bonded, query_channel, query_config, query_fee_info, query_list_channels,
     query_unbonding, query_unbondings, DEFAULT_LIMIT,
@@ -17,9 +20,6 @@ use cosmwasm_std::{
 };
 use cw_utils::one_coin;
 use strategy::v0::msgs::SudoMsg;
-use strategy_osmosis_interface::strategy::{
-    ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
-};
 use ununifi_msg::v0::binding::UnunifiMsg;
 
 //Initialize the contract.
@@ -38,7 +38,7 @@ pub fn instantiate(
         total_shares: Uint128::from(0u128),
         total_deposit: Uint128::from(0u128),
         total_withdrawn: Uint128::from(0u128),
-        transfer_timeout: 300, // 300s
+        transfer_timeout: msg.transfer_timeout, // 300s
         ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
@@ -46,32 +46,32 @@ pub fn instantiate(
         phase_step: 1u64,
         pending_icq: 0u64,
         host_config: HostConfig {
-            chain_id: "test-1".to_string(),
-            pool_id: 1,
-            transfer_channel_id: "channel-1".to_string(),
+            chain_id: msg.chain_id,
+            pool_id: msg.pool_id,
+            transfer_channel_id: msg.transfer_channel_id,
             lp_redemption_rate: Uint128::from(200000u128),
             lock_id: 0u64,
-            lp_denom: "gamm/pool/1".to_string(), // ATOM-OSMO
+            lp_denom: msg.lp_denom, // ATOM-OSMO
             bonded_lp_amount: Uint128::from(0u128),
             unbonding_lp_amount: Uint128::from(0u128),
             free_lp_amount: Uint128::from(0u128),
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
-            quote_denom: "uosmo".to_string(),                // OSMO
+            quote_denom: msg.quote_denom,                    // OSMO
             free_quote_amount: Uint128::from(0u128),
             pending_swap_to_base_amount: Uint128::from(0u128), // Convert OSMO to ATOM
-            base_denom: "stake".to_string(),                   // ATOM
+            base_denom: msg.base_denom,                        // ATOM
             free_base_amount: Uint128::from(0u128),            // free ATOM balance
             pending_swap_to_quote_amount: Uint128::from(0u128), // pending swap from ATOM -> OSMO to add liquidity
             pending_add_liquidity_amount: Uint128::from(0u128), // amount of ATOM used on liquidity addition
             pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
         },
         controller_config: ControllerConfig {
-            transfer_channel_id: "channel-1".to_string(),
-            deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
+            transfer_channel_id: msg.controller_transfer_channel_id,
+            deposit_denom: msg.controller_deposit_denom, // `ibc/xxxxuatom`
             free_amount: Uint128::from(0u128),
-            pending_transfer_amount: Uint128::from(0u128), // TODO: where to get hook for transfer finalization?
-            stacked_amount_to_deposit: Uint128::from(0u128), // TODO: to be set to 0 when deposit happens at `Deposit` phase
+            pending_transfer_amount: Uint128::from(0u128),
+            stacked_amount_to_deposit: Uint128::from(0u128),
         },
     };
     CONFIG.save(deps.storage, &config)?;

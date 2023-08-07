@@ -4,8 +4,8 @@ use helpers::th_query;
 use strategy::v0::msgs::{ExecuteMsg, StakeMsg};
 use strategy_osmosis::contract::{execute_stake, execute_update_config};
 use strategy_osmosis::error::ContractError;
+use strategy_osmosis::msgs::{QueryMsg, UpdateConfigMsg};
 use strategy_osmosis::state::Config;
-use strategy_osmosis_interface::strategy::{QueryMsg, UpdateConfigMsg};
 
 use crate::helpers::setup;
 
@@ -28,7 +28,7 @@ fn stake() {
     assert_eq!(err, ContractError::NoAllowedToken {});
 
     // Success:
-    let info = mock_info(sender, &coins(10000 as u128, "stake"));
+    let info = mock_info(sender, &coins(10000 as u128, "uguu"));
     let res = execute_stake(
         deps.as_mut(),
         mock_env(),

@@ -6,10 +6,10 @@ use strategy_osmosis::ica::determine_ica_amounts;
 use strategy_osmosis::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
 };
+use strategy_osmosis::msgs::{Phase, QueryMsg};
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
-use strategy_osmosis_interface::strategy::{Phase, QueryMsg};
 use ununifi_msg::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;

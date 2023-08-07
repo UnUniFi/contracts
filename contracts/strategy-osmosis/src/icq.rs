@@ -1,7 +1,9 @@
-use crate::binding::{BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX};
 use crate::epoch::execute_epoch;
 use crate::error::ContractError;
-use crate::helpers::{decode_and_convert, length_prefix};
+use crate::helpers::{
+    decode_and_convert, length_prefix, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY,
+    POOLS_PREFIX,
+};
 use crate::state::{Config, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Storage, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::Pool as OsmosisBalancerPool;

@@ -1008,26 +1008,8 @@ dependencies = [
  "schemars",
  "serde",
  "strategy",
- "strategy-osmosis-interface",
  "thiserror",
  "ununifi-msg",
-]
-
-[[package]]
-name = "strategy-osmosis-interface"
-version = "1.0.0"
-dependencies = [
- "bech32",
- "cosmwasm-std",
- "cw-utils",
- "cw20",
- "osmosis-std",
- "prost",
- "prost-types",
- "protobuf",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
