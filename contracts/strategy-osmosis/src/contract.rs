@@ -1,4 +1,3 @@
-use crate::binding::{SudoMsg, UnunifiMsg};
 use crate::epoch::execute_epoch;
 use crate::error::{ContractError, NoDeposit};
 use crate::icq::{sudo_kv_query_result, sudo_transfer_callback};
@@ -17,9 +16,11 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
+use strategy::v0::msgs::SudoMsg;
 use strategy_osmosis_interface::strategy::{
     ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
 };
+use ununifi_msg::v0::binding::UnunifiMsg;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -285,13 +286,17 @@ pub fn execute_unstake(
     if config.host_config.bonded_lp_amount < unbonding.amount {
         config.host_config.bonded_lp_amount = Uint128::from(0u128);
     } else {
-        config.host_config.bonded_lp_amount -= unbonding.amount;
+        config.host_config.bonded_lp_amount = config
+            .host_config
+            .bonded_lp_amount
+            .checked_sub(unbonding.amount)
+            .unwrap_or(Uint128::from(0u128));
     }
-    if config.total_shares > unstake_amount {
-        config.total_shares -= unstake_amount;
-    } else {
-        config.total_shares -= Uint128::from(0u128)
-    }
+    config.total_shares = config
+        .total_shares
+        .checked_sub(unstake_amount)
+        .unwrap_or(Uint128::from(0u128));
+
     CONFIG.save(deps.storage, &config)?;
 
     let rsp = Response::new()

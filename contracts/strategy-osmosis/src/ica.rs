@@ -1,12 +1,12 @@
-use crate::binding::UnunifiMsg;
-use crate::helpers::send_ica_tx;
 use crate::state::{Config, IcaAmounts, CONFIG, HOST_LP_RATE_MULTIPLIER};
 use cosmwasm_std::{Env, Response, StdError, Storage, Uint128};
+use ica_tx::helpers::send_ica_tx;
 use osmosis_std::shim::Duration;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
+use ununifi_msg::v0::binding::UnunifiMsg;
 // use prost::EncodeError;
 use crate::error::ContractError;
 use prost_types::Any;
@@ -53,12 +53,12 @@ use strategy_osmosis_interface::strategy::Phase;
 // - switch to `Deposit` phase
 pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
     if config.phase == Phase::Withdraw {
-        let mut amount_to_return = Uint128::from(0u128);
-        if config.controller_config.free_amount > config.controller_config.stacked_amount_to_deposit
-        {
-            amount_to_return = config.controller_config.free_amount
-                - config.controller_config.stacked_amount_to_deposit;
-        }
+        let amount_to_return = config
+            .controller_config
+            .free_amount
+            .checked_sub(config.controller_config.stacked_amount_to_deposit)
+            .unwrap_or(Uint128::from(0u128));
+
         return IcaAmounts {
             to_swap_base: Uint128::from(0u128),
             to_swap_quote: config.host_config.free_base_amount,
@@ -111,12 +111,13 @@ pub fn execute_ibc_transfer_to_controller(
         timeout_timestamp: env.block.time.nanos() + config.transfer_timeout * 1000_000_000,
     };
     if let Ok(msg_any) = msg.to_any() {
-        return send_ica_tx(
-            store,
+        return Ok(send_ica_tx(
             env,
+            config.ica_channel_id,
+            config.transfer_timeout,
             "transfer_to_controller".to_string(),
             vec![msg_any],
-        );
+        )?);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -168,12 +169,13 @@ pub fn execute_ica_add_and_bond_liquidity(
     };
     if let Ok(msg_any1) = join_pool_to_any(msg1) {
         if let Ok(msg_any2) = lock_tokens_msg_to_any(msg2) {
-            return send_ica_tx(
-                store,
+            return Ok(send_ica_tx(
                 env,
+                config.ica_channel_id,
+                config.transfer_timeout,
                 "add_and_bond_lp_tokens".to_string(),
                 vec![msg_any1, msg_any2],
-            );
+            )?);
         }
     }
     Err(ContractError::Std(StdError::SerializeErr {
@@ -215,7 +217,13 @@ pub fn execute_ica_remove_liquidity(
         token_out_mins: tokens_out,
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {
-        return send_ica_tx(store, env, "remove_liquidity".to_string(), vec![msg_any]);
+        return Ok(send_ica_tx(
+            env,
+            config.ica_channel_id,
+            config.transfer_timeout,
+            "remove_liquidity".to_string(),
+            vec![msg_any],
+        )?);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -246,7 +254,13 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
-        return send_ica_tx(store, env, "swap_to_base".to_string(), vec![msg_any]);
+        return Ok(send_ica_tx(
+            env,
+            config.ica_channel_id,
+            config.transfer_timeout,
+            "swap_to_base".to_string(),
+            vec![msg_any],
+        )?);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -300,7 +314,13 @@ pub fn execute_ica_swap_balance_to_two_tokens(
         }
     }
     if msgs.len() > 0 {
-        return send_ica_tx(store, env, "swap_to_lp_underlyings".to_string(), msgs);
+        return Ok(send_ica_tx(
+            env,
+            config.ica_channel_id,
+            config.transfer_timeout,
+            "swap_to_lp_underlyings".to_string(),
+            msgs,
+        )?);
     }
     return Ok(Response::new());
 }
@@ -323,7 +343,13 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
         }],
     };
     if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {
-        return send_ica_tx(store, env, "begin_unbonding_lp".to_string(), vec![msg_any]);
+        return Ok(send_ica_tx(
+            env,
+            config.ica_channel_id,
+            config.transfer_timeout,
+            "begin_unbonding_lp".to_string(),
+            vec![msg_any],
+        )?);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),

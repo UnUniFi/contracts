@@ -1,5 +1,6 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{from_binary, to_binary, Addr, Binary, CosmosMsg, IbcMsg, SubMsg, Uint128};
+use ica_tx::helpers::{send_ica_tx, InterchainAccountPacketData};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::Message;
 use prost_types::Any;
@@ -8,13 +9,11 @@ use strategy_osmosis_interface::msg::join_pool_to_any;
 // use cosmwasm_std::Overflow;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use crate::helpers::{setup, th_query};
-use strategy_osmosis::helpers::send_ica_tx;
 use strategy_osmosis::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
 };
 use strategy_osmosis::state::{
-    Config, ControllerConfig, HostConfig, InterchainAccountPacketData, CONFIG,
-    STAKE_RATE_MULTIPLIER,
+    Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
 use strategy_osmosis_interface::strategy::{Phase, QueryMsg};
 mod helpers;
@@ -214,8 +213,9 @@ fn test_send_ica_tx() {
 
     let mut deps = setup();
     let res = send_ica_tx(
-        deps.as_mut().storage,
         mock_env(),
+        "channel-1".to_string(),
+        300,
         "test".to_string(),
         vec![join_pool_to_any(msg1.clone()).unwrap()],
     );

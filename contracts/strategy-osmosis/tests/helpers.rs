@@ -2,7 +2,6 @@ use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::EncodeError;
 use prost_types::Any;
 use proto::traits::MessageExt;
-use strategy_osmosis::binding::UnunifiMsg;
 use strategy_osmosis::contract::{execute_update_config, instantiate, query};
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis_interface::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
@@ -29,6 +28,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy_osmosis::state::{Config, CONFIG};
+use ununifi_msg::v0::binding::UnunifiMsg;
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";

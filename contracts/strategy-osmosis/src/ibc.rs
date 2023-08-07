@@ -29,7 +29,6 @@ pub fn ibc_channel_open(
     _deps
         .api
         .debug(format!("WASMDEBUG: ibc_channel_open: {:?}", msg).as_str());
-    enforce_order_and_version(msg.channel(), msg.counterparty_version())?;
     Ok(())
 }
 
@@ -66,13 +65,6 @@ pub fn ibc_channel_connect(
         return Ok(IbcBasicResponse::default());
     }
     return Ok(IbcBasicResponse::default());
-}
-
-fn enforce_order_and_version(
-    channel: &IbcChannel,
-    counterparty_version: Option<&str>,
-) -> Result<(), ContractError> {
-    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

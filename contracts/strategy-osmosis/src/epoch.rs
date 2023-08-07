@@ -1,4 +1,3 @@
-use crate::binding::UnunifiMsg;
 use crate::error::ContractError;
 use crate::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
@@ -16,6 +15,7 @@ use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use strategy_osmosis_interface::strategy::Phase;
+use ununifi_msg::v0::binding::UnunifiMsg;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;
@@ -91,11 +91,11 @@ pub fn execute_epoch(
                 let mut config: Config = CONFIG.load(deps.storage)?;
                 let pending_lp_removal_amount = config.host_config.pending_lp_removal_amount;
                 if success {
-                    if config.host_config.unbonding_lp_amount < pending_lp_removal_amount {
-                        config.host_config.unbonding_lp_amount = Uint128::from(0u128);
-                    } else {
-                        config.host_config.unbonding_lp_amount -= pending_lp_removal_amount;
-                    }
+                    config.host_config.unbonding_lp_amount = config
+                        .host_config
+                        .unbonding_lp_amount
+                        .checked_sub(pending_lp_removal_amount)
+                        .unwrap_or(Uint128::from(0u128));
                     next_phase_step = config.phase_step + 1;
                 } else {
                     next_phase_step = config.phase_step - 1;
@@ -168,8 +168,11 @@ pub fn execute_epoch(
             }
             // 13u64
             // - calculate amount to return, contract balance - stacked atom balance for deposit
-            let amount_to_return = config.controller_config.free_amount
-                - config.controller_config.stacked_amount_to_deposit;
+            let amount_to_return = config
+                .controller_config
+                .free_amount
+                .checked_sub(config.controller_config.stacked_amount_to_deposit)
+                .unwrap_or(Uint128::from(0u128));
             // - send amounts to marked unbond ending items proportionally
             let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
             let mut total_marked_lp_amount = Uint128::from(0u128);

@@ -1,7 +1,6 @@
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{coins, Addr, Api, Binary, CosmosMsg, IbcEndpoint, Uint128};
 use helpers::setup;
-use strategy_osmosis::binding::UnunifiMsg;
 use strategy_osmosis::helpers::decode_and_convert;
 use strategy_osmosis::ica::determine_ica_amounts;
 use strategy_osmosis::icq::{
@@ -12,6 +11,7 @@ use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CHANNEL_INFO, CONFIG, STAKE_RATE_MULTIPLIER,
 };
 use strategy_osmosis_interface::strategy::{ChannelInfo, Phase, QueryMsg};
+use ununifi_msg::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;
 mod helpers;
