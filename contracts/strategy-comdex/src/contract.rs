@@ -1,10 +1,9 @@
-use crate::msg::{
-    ChannelResponse, ExecuteMsg, FeeInfo, InstantiateMsg, ListChannelsResponse, MigrateMsg,
-    QueryMsg,
+use crate::error::ContractError;
+use crate::msgs::{
+    ChannelResponse, ExecuteMsg, InstantiateMsg, ListChannelsResponse, MigrateMsg, QueryMsg,
 };
-use crate::state::InterchainAccountPacketData;
-use crate::state::{Config, DepositInfo, CHANNEL_INFO, CONFIG, DEPOSITS};
-#[cfg(not(feature = "library"))]
+use crate::state::{CHANNEL_INFO, CONFIG, DEPOSITS};
+use crate::types::{Config, DepositInfo, InterchainAccountPacketData};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
@@ -16,7 +15,7 @@ use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::cosmos::staking::v1beta1::MsgDelegate;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use proto::traits::MessageExt;
-use strategy::error::ContractError;
+use strategy::v0::msgs::FeeResp;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -418,8 +417,8 @@ pub fn query_channel(deps: Deps, id: String) -> StdResult<ChannelResponse> {
     Ok(ChannelResponse { info })
 }
 
-pub fn query_fee_info(_: Deps) -> StdResult<FeeInfo> {
-    Ok(FeeInfo {
+pub fn query_fee_info(_: Deps) -> StdResult<FeeResp> {
+    Ok(FeeResp {
         deposit_fee_rate: Decimal::zero(),
         withdraw_fee_rate: Decimal::zero(),
         interest_fee_rate: Decimal::zero(),
@@ -440,28 +439,4 @@ pub fn query_bonded(deps: Deps, addr: String) -> StdResult<Uint128> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::default())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::test_helpers::*;
-
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, StdError};
-
-    #[test]
-    fn execute_update_config() {}
-
-    #[test]
-    fn execute_stake() {}
-
-    #[test]
-    fn execute_unstake() {}
-
-    #[test]
-    fn query_unbonding() {}
-
-    #[test]
-    fn query_bonded() {}
 }

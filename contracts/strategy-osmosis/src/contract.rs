@@ -1,5 +1,6 @@
 use crate::binding::{SudoMsg, UnunifiMsg};
 use crate::epoch::execute_epoch;
+use crate::error::{ContractError, NoDeposit};
 use crate::icq::{sudo_kv_query_result, sudo_transfer_callback};
 use crate::query::{
     query_bonded, query_channel, query_config, query_fee_info, query_list_channels,
@@ -16,7 +17,6 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::error::{ContractError, NoDeposit};
 use strategy_osmosis_interface::strategy::{
     ChannelInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg, UpdateConfigMsg,
 };

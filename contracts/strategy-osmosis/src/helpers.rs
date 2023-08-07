@@ -1,4 +1,5 @@
 use crate::binding::AddressBytes;
+use crate::error::ContractError;
 use crate::state::InterchainAccountPacketData;
 use crate::{
     binding::UnunifiMsg,
@@ -8,7 +9,6 @@ use cosmwasm_std::{to_binary, Env, IbcMsg, IbcTimeout, Response, Storage};
 use prost::Message;
 use prost_types::Any;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
-use strategy::error::ContractError;
 
 /// Maximum length of address
 pub const MAX_ADDR_LEN: usize = 255;

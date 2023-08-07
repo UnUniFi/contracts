@@ -1,5 +1,6 @@
 use crate::binding::{UnunifiMsg, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY, POOLS_PREFIX};
 use crate::epoch::execute_epoch;
+use crate::error::ContractError;
 use crate::helpers::{decode_and_convert, length_prefix};
 use crate::state::{Config, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Storage, Uint128};
@@ -8,7 +9,6 @@ use prost::Message;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use std::str::FromStr;
-use strategy::error::ContractError;
 
 pub fn sudo_transfer_callback(
     deps: DepsMut,

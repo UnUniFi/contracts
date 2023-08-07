@@ -1,20 +1,15 @@
 // use crate::proto::comdex::Metadata;
-use crate::state::Metadata;
+use crate::error::{ContractError, Never};
+use crate::state::CHANNEL_INFO;
+use crate::types::{ChannelInfo, Metadata};
 use cosmwasm_std::{
-    attr, entry_point, from_binary, to_binary, Addr, BankMsg, Binary, DepsMut, Env,
-    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
-    IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacket, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
-use cw20::{Balance, Cw20ExecuteMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use strategy::error::{ContractError, Never};
-
-use crate::state::{ChannelInfo, CHANNEL_INFO};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> Result<Response, ContractError> {
     Ok(Response::new())
 }
 
@@ -59,8 +54,8 @@ pub fn ibc_channel_connect(
 }
 
 fn enforce_order_and_version(
-    channel: &IbcChannel,
-    counterparty_version: Option<&str>,
+    _channel: &IbcChannel,
+    _counterparty_version: Option<&str>,
 ) -> Result<(), ContractError> {
     Ok(())
 }

@@ -1,4 +1,6 @@
 // use crate::proto::comdex::Metadata;
+use crate::error::{ContractError, Never};
+use crate::state::CHANNEL_INFO;
 use crate::{
     epoch::execute_epoch,
     state::{Config, Metadata, CONFIG},
@@ -10,9 +12,6 @@ use cosmwasm_std::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strategy::error::{ContractError, Never};
-
-use crate::state::CHANNEL_INFO;
 use strategy_osmosis_interface::strategy::ChannelInfo;
 
 #[cfg_attr(not(feature = "library"), entry_point)]

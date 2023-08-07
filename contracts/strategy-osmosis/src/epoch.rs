@@ -1,4 +1,5 @@
 use crate::binding::UnunifiMsg;
+use crate::error::ContractError;
 use crate::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
     execute_ica_begin_unbonding_lp_tokens, execute_ica_remove_liquidity,
@@ -14,7 +15,6 @@ use cosmwasm_std::{
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
-use strategy::error::ContractError;
 use strategy_osmosis_interface::strategy::Phase;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {

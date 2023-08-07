@@ -1,8 +1,8 @@
+use crate::error::ContractError;
 use cosmwasm_std::{Binary, Coin, IbcTimeout};
 use cosmwasm_std::{CosmosMsg, CustomMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strategy::error::ContractError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
