@@ -1,1 +1,2 @@
-# Interchain YieldFarming Contract
+# Contracts
+
