@@ -1,10 +1,10 @@
+use crate::msgs::{ChannelInfo, Phase};
 use cosmwasm_std::{
     Addr, Binary, BlockInfo, IbcEndpoint, Order, StdResult, Storage, Timestamp, Uint128,
 };
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strategy_osmosis_interface::strategy::{ChannelInfo, Phase};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ControllerConfig {

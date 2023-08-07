@@ -1,5 +1,5 @@
 [package]
-name = "ununifi-msg"
+name = "ununifi-binding"
 version = "1.0.0"
 authors = []
 edition = "2018"

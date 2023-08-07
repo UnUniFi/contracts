@@ -1,11 +1,13 @@
 use crate::error::ContractError;
+use crate::helpers::query_balance;
 use crate::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
     execute_ica_begin_unbonding_lp_tokens, execute_ica_remove_liquidity,
     execute_ica_swap_balance_to_two_tokens, execute_ica_swap_two_tokens_to_deposit_token,
 };
 use crate::icq::submit_icq_for_host;
-use crate::query::{query_balance, query_unbondings, DEFAULT_LIMIT};
+use crate::msgs::Phase;
+use crate::query::unbondings::{query_unbondings, DEFAULT_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use cosmwasm_std::{
     coin, coins, BankMsg, CosmosMsg, DepsMut, Env, IbcTimeout, Response, StdResult, Storage,
@@ -14,8 +16,7 @@ use cosmwasm_std::{
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
-use strategy_osmosis_interface::strategy::Phase;
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;

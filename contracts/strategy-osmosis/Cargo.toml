@@ -35,8 +35,7 @@ protobuf = { version = "3.2.0", features = ["with-bytes"] }
 prost = "0.11"
 prost-types = "0.11"
 strategy = { path = "../../packages/strategy" }
-ununifi-msg = { path = "../../packages/ununifi-msg" }
-strategy-osmosis-interface = {version = "1.0.0", path = "../../packages/strategy-osmosis-interface"}
+ununifi-binding = { path = "../../packages/ununifi-binding" }
 proto = { path = "../../packages/proto", features = ["cosmwasm"] }
 ica-tx = { path = "../../packages/ica-tx" }
 osmosis-std	= { version = "0.16.1" }

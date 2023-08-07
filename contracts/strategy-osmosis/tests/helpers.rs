@@ -2,9 +2,9 @@ use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::EncodeError;
 use prost_types::Any;
 use proto::traits::MessageExt;
-use strategy_osmosis::contract::{execute_update_config, instantiate, query};
+use strategy_osmosis::contract::{instantiate, query};
 use strategy_osmosis::error::ContractError;
-use strategy_osmosis_interface::strategy::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
+use strategy_osmosis::msgs::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -28,7 +28,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy_osmosis::state::{Config, CONFIG};
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
 pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";
@@ -39,7 +39,15 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     // instantiate an empty contract
     let instantiate_msg = InstantiateMsg {
         unbond_period: 0u64,
-        deposit_denom: "uguu".to_string(), // this value is not set in the contract as long as "stake" is set no matter what
+        transfer_timeout: 300u64,
+        controller_deposit_denom: "uguu".to_string(), // this value is not set in the contract as long as "stake" is set no matter what
+        quote_denom: "uosmo".to_string(),             // OSMO
+        base_denom: "stake".to_string(),
+        chain_id: "test-1".to_string(),
+        pool_id: 1u64,
+        lp_denom: "gamm/pool/1".to_string(),
+        transfer_channel_id: "channel-1".to_string(),
+        controller_transfer_channel_id: "channel-1".to_string(),
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
