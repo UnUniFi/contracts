@@ -1,17 +1,18 @@
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{coins, Addr, Api, Binary, CosmosMsg, IbcEndpoint, Uint128};
 use helpers::setup;
-use strategy_osmosis::helpers::decode_and_convert;
+use strategy_osmosis::helpers::{decode_and_convert, query_balance};
 use strategy_osmosis::ica::determine_ica_amounts;
 use strategy_osmosis::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
 };
-use strategy_osmosis::query::{query_balance, query_config, query_list_channels};
+use strategy_osmosis::msgs::{ChannelInfo, Phase, QueryMsg};
+use strategy_osmosis::query::config::query_config;
+use strategy_osmosis::query::list_channels::query_list_channels;
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CHANNEL_INFO, CONFIG, STAKE_RATE_MULTIPLIER,
 };
-use strategy_osmosis_interface::strategy::{ChannelInfo, Phase, QueryMsg};
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 
 use crate::helpers::th_query;
 mod helpers;

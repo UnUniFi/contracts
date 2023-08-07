@@ -530,7 +530,7 @@ dependencies = [
  "prost-types",
  "proto",
  "serde",
- "ununifi-msg",
+ "ununifi-binding",
 ]
 
 [[package]]
@@ -1008,26 +1008,8 @@ dependencies = [
  "schemars",
  "serde",
  "strategy",
- "strategy-osmosis-interface",
  "thiserror",
- "ununifi-msg",
-]
-
-[[package]]
-name = "strategy-osmosis-interface"
-version = "1.0.0"
-dependencies = [
- "bech32",
- "cosmwasm-std",
- "cw-utils",
- "cw20",
- "osmosis-std",
- "prost",
- "prost-types",
- "protobuf",
- "schemars",
- "serde",
- "thiserror",
+ "ununifi-binding",
 ]
 
 [[package]]
@@ -1231,7 +1213,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
-name = "ununifi-msg"
+name = "ununifi-binding"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",

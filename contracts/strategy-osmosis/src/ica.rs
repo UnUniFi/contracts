@@ -6,18 +6,18 @@ use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
-use ununifi_msg::v0::binding::UnunifiMsg;
+use ununifi_binding::v0::binding::UnunifiMsg;
 // use prost::EncodeError;
 use crate::error::ContractError;
+use crate::helpers::{
+    begin_unlocking_msg_to_any, exit_pool_to_any, join_pool_to_any, lock_tokens_msg_to_any,
+    swap_msg_to_any,
+};
+use crate::msgs::Phase;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
-use strategy_osmosis_interface::msg::{
-    begin_unlocking_msg_to_any, exit_pool_to_any, join_pool_to_any, lock_tokens_msg_to_any,
-    swap_msg_to_any,
-};
-use strategy_osmosis_interface::strategy::Phase;
 
 // Regular epoch operation (once per day)
 // - icq balance of ica account when `Deposit` phase
