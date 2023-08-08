@@ -1,5 +1,5 @@
 [package]
-name = "outpost-nftbackedloan-receiver"
+name = "outpost-nftbackedloan-axelar-internal"
 version = "1.0.0"
 authors = []
 edition = "2018"

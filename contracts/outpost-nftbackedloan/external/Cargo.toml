@@ -1,5 +1,5 @@
 [package]
-name = "outpost-nftbackedloan-cw20"
+name = "outpost-nftbackedloan-external"
 version = "1.0.0"
 authors = []
 edition = "2018"

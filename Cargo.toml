@@ -1,8 +1,6 @@
 [workspace]
 members = ["contracts/*"]
 
-exclude = ["contracts/outpost-nftbackedloan-axelar"]
-
 [profile.release]
 rpath = false
 lto = true
