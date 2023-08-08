@@ -11,9 +11,6 @@ contract NftBackedLoan {
     IERC20 public immutable usdc;
     IAxelarGasService public immutable gasService;
 
-    mapping(address => mapping(uint256 => address)) public nftListers;
-    uint256 public constant NO_MIN = type(uint256).max;
-
     constructor(
         address usdc_,
         address gateway_,
@@ -26,15 +23,14 @@ contract NftBackedLoan {
     function listNft(
         string calldata destinationChain,
         string calldata destinationAddress,
-        address operator,
+        address nftContract,
         uint256 tokenId,
         uint256 minDeposit
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
 
         // Collateralize NFT
-        IERC721(operator).transferFrom(msg.sender, address(this), tokenId);
-        nftListers[operator][tokenId] = msg.sender;
+        IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
         bytes memory payload = abi.encode(value_);
         gasService.payNativeGasForContractCall{value: msg.value}(
@@ -50,6 +46,8 @@ contract NftBackedLoan {
     function borrow(
         string calldata destinationChain,
         string calldata destinationAddress,
+        address nftContract,
+        uint256 tokenId,
         uint256 amount
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
@@ -71,6 +69,8 @@ contract NftBackedLoan {
     function repay(
         string calldata destinationChain,
         string calldata destinationAddress,
+        address nftContract,
+        uint256 tokenId,
         uint256 amount
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
@@ -91,21 +91,55 @@ contract NftBackedLoan {
         gateway.callContract(destinationChain, destinationAddress, payload);
     }
 
+    function endListing(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        address nftContract,
+        uint256 tokenId
+    ) external payable {
+        require(msg.value > 0, "Gas payment is required");
+
+        // Just messaging to the gateway that the sender want to end listing
+        // Destination CosmWasm will call back to this contract in _execute
+
+        bytes memory payload = abi.encode(value_);
+        gasService.payNativeGasForContractCall{value: msg.value}(
+            address(this),
+            destinationChain,
+            destinationAddress,
+            payload,
+            msg.sender
+        );
+        gateway.callContract(destinationChain, destinationAddress, payload);
+    }
+
+    function withdrawNft(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        address nftContract,
+        uint256 tokenId
+    ) external payable {
+        require(msg.value > 0, "Gas payment is required");
+
+        // Just messaging to the gateway that the sender want to withdraw NFT
+        // Destination CosmWasm will call back to this contract in _execute
+
+        bytes memory payload = abi.encode(value_);
+        gasService.payNativeGasForContractCall{value: msg.value}(
+            address(this),
+            destinationChain,
+            destinationAddress,
+            payload,
+            msg.sender
+        );
+        gateway.callContract(destinationChain, destinationAddress, payload);
+    }
+
     function _sendBorrowedAmount(
         address recipient,
         uint256 amount
     ) internal virtual {
         usdc.transfer(recipient, amount);
-    }
-
-    function _endNftListing(
-        address operator,
-        uint256 tokenId
-    ) internal virtual {
-        address auctioneer = nftListers[operator][tokenId];
-        require(auctioneer != address(0), "NOT_AUCTIONING");
-        minAmounts[operator][tokenId] = 0;
-        nftListers[operator][tokenId] = address(0);
     }
 
     function _withdrawNft(
@@ -126,8 +160,8 @@ contract NftBackedLoan {
         sourceAddress = sourceAddress_;
 
         // switch case
-        // case endNftListing
-        //   call _endNftListing
+        // case endListing
+        //   call _endListing
         // case withdrawNft
         //   call _withdrawNft
         // default
