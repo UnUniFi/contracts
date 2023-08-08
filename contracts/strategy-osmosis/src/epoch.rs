@@ -338,7 +338,9 @@ pub fn execute_epoch(
                 unbonding_lp_amount += unbonding.amount;
             }
 
-            if !unbonding_lp_amount.is_zero() {
+            if !unbonding_lp_amount.is_zero()
+                && unbonding_lp_amount <= config.host_config.bonded_lp_amount
+            {
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
                 next_phase_step = config.phase_step + 1;
             } else {
