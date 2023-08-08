@@ -1,9 +1,9 @@
 use crate::state::{Unbonding, UNBONDINGS};
 use cosmwasm_std::{Order, StdResult, Storage};
 
-pub const DEFAULT_LIMIT: u32 = 50;
+pub const UNBONDING_ITEM_LIMIT: u32 = 500;
 pub fn query_unbondings(storage: &dyn Storage, limit: Option<u32>) -> StdResult<Vec<Unbonding>> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let limit = limit.unwrap_or(UNBONDING_ITEM_LIMIT) as usize;
 
     UNBONDINGS
         .range(storage, None, None, Order::Ascending)

@@ -7,7 +7,7 @@ use crate::ica::{
 };
 use crate::icq::submit_icq_for_host;
 use crate::msgs::Phase;
-use crate::query::unbondings::{query_unbondings, DEFAULT_LIMIT};
+use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use cosmwasm_std::{
     coin, coins, BankMsg, CosmosMsg, DepsMut, Env, IbcTimeout, Response, StdResult, Storage,
@@ -21,7 +21,7 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;
     let mut total_matured_unbondings = Uint128::new(0);
-    let unbondings = query_unbondings(store, Some(DEFAULT_LIMIT))?;
+    let unbondings = query_unbondings(store, Some(UNBONDING_ITEM_LIMIT))?;
     for unbonding in unbondings {
         if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
             total_matured_unbondings += unbonding.amount;
@@ -76,7 +76,7 @@ pub fn execute_epoch(
             }
             // - Mark unbond ending queue items on contract
             // assumption: matured unbondings on the contract is same as matured unbondings on host chain
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             for mut unbonding in unbondings {
                 if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
                     unbonding.marked = true;
@@ -175,7 +175,7 @@ pub fn execute_epoch(
                 .checked_sub(config.controller_config.stacked_amount_to_deposit)
                 .unwrap_or(Uint128::from(0u128));
             // - send amounts to marked unbond ending items proportionally
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             let mut total_marked_lp_amount = Uint128::from(0u128);
             for unbonding in unbondings.as_slice() {
                 if unbonding.marked {
@@ -326,7 +326,7 @@ pub fn execute_epoch(
             }
             // Unbonding epoch operation
             // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             let mut unbonding_lp_amount = Uint128::from(0u128);
             for mut unbonding in unbondings {
                 if unbonding.start_time != 0 || unbonding.pending_start == true {
@@ -350,7 +350,7 @@ pub fn execute_epoch(
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
                         if unbonding.pending_start == true {
                             unbonding.start_time = env.block.time.seconds();
@@ -361,7 +361,7 @@ pub fn execute_epoch(
 
                     next_phase_step = config.phase_step + 1;
                 } else {
-                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
                         if unbonding.start_time != 0 && unbonding.pending_start == true {
                             unbonding.pending_start = false;
