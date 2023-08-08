@@ -42,33 +42,33 @@ pub fn execute(
         ExecuteMsg::ListNft {
             sender,
             source_chain,
-            erc721_contract,
-            erc721_token_id,
+            class_id,
+            token_id,
         } => execute_list_nft(deps, env, info),
         ExecuteMsg::Borrow {
             sender,
             source_chain,
-            erc721_contract,
-            erc721_token_id,
+            class_id,
+            token_id,
             amount,
         } => execute_borrow(deps, env, info),
         ExecuteMsg::Repay {
             source_chain,
-            erc721_contract,
-            erc721_token_id,
+            class_id,
+            token_id,
             amount,
         } => execute_repay(deps, env, info),
         ExecuteMsg::EndListing {
             sender,
             source_chain,
-            erc721_contract,
-            erc721_token_id,
+            class_id,
+            token_id,
         } => execute_end_listing(deps, env, info),
         ExecuteMsg::WithdrawNft {
             sender,
             source_chain,
-            erc721_contract,
-            erc721_token_id,
+            class_id,
+            token_id,
         } => execute_withdraw_nft(deps, env, info),
     }
 }

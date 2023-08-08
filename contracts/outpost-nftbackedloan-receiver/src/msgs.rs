@@ -16,33 +16,33 @@ pub enum ExecuteMsg {
     ListNft {
         sender: String,
         source_chain: String,
-        erc721_contract: String,
-        erc721_token_id: String,
+        class_id: String,
+        token_id: String,
     },
     Borrow {
         sender: String,
         source_chain: String,
-        erc721_contract: String,
-        erc721_token_id: String,
+        class_id: String,
+        token_id: String,
         amount: Uint128,
     },
     Repay {
         source_chain: String,
-        erc721_contract: String,
-        erc721_token_id: String,
+        class_id: String,
+        token_id: String,
         amount: Uint128,
     },
     EndListing {
         sender: String,
         source_chain: String,
-        erc721_contract: String,
-        erc721_token_id: String,
+        class_id: String,
+        token_id: String,
     },
     WithdrawNft {
         sender: String,
         source_chain: String,
-        erc721_contract: String,
-        erc721_token_id: String,
+        class_id: String,
+        token_id: String,
     },
 }
 

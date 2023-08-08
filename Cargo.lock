@@ -628,7 +628,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "outpost-nftbackedloan-axelar"
+name = "outpost-nftbackedloan-cw20"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "thiserror",
+]
+
+[[package]]
+name = "outpost-nftbackedloan-receiver"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
