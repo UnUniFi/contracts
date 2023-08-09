@@ -177,6 +177,7 @@ fn epoch_deposit_phase_flow() {
     // take a step forward to 7
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.phase_step = 7;
+    config.host_config.pending_bond_lp_amount = Uint128::from(100000u128);
     CONFIG.save(deps.as_mut().storage, &config);
 
     let res = execute_epoch(
@@ -187,6 +188,7 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
+
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(config.phase_step, 8);
 
@@ -194,7 +196,7 @@ fn epoch_deposit_phase_flow() {
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
-        epoch_call_source_icq.clone(),
+        epoch_call_source_ica.clone(),
         true,
         None,
     );
@@ -202,36 +204,6 @@ fn epoch_deposit_phase_flow() {
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(config.phase_step, 9);
 
-    // CASE: When the step is 9
-    // And, when the contract doens't have any deposit toke to be swapped in this step of this phase
-    let res = execute_epoch(
-        deps.as_mut(),
-        mock_env(),
-        epoch_call_source_normal.clone(),
-        true,
-        None,
-    );
-    assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 11);
-
-    // CASE: When the step is 9 with some amount of free atom in host account
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.host_config.free_base_amount = Uint128::from(1000000u128);
-    config.phase_step = 9;
-    CONFIG.save(deps.as_mut().storage, &config);
-
-    let res = execute_epoch(
-        deps.as_mut(),
-        mock_env(),
-        epoch_call_source_normal.clone(),
-        true,
-        None,
-    );
-    assert!(res.is_ok());
-
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 10);
     // remove free_atom_amount since it's supposed to be in real execution
     remove_free_atom_from_host_account(deps.as_mut());
 
@@ -246,9 +218,9 @@ fn epoch_deposit_phase_flow() {
     assert!(res.is_ok());
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 11);
+    assert_eq!(config.phase_step, 10);
 
-    // CASE: When the step is 11
+    // CASE: When the step is 10
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -258,7 +230,7 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 12);
+    assert_eq!(config.phase_step, 10);
 
     // CASE: When the step is 12
     let res = execute_epoch(
@@ -270,9 +242,9 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 13);
+    assert_eq!(config.phase_step, 11);
 
-    // CASE: when the step is 13
+    // CASE: when the step is 11
     // And, when the contract doens't have any deposit toke to be swapped in this step of this phase
     let res = execute_epoch(
         deps.as_mut(),
@@ -283,12 +255,12 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 15);
+    assert_eq!(config.phase_step, 13);
 
-    // CASE: when the step is 13 and there're unbondinds
-    // take a step back to 13
+    // CASE: when the step is 11 and there're unbondinds
+    // take a step back to 11
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = 13;
+    config.phase_step = 11;
     CONFIG.save(deps.as_mut().storage, &config);
     // register unbonding
     let sender = deps
@@ -315,9 +287,9 @@ fn epoch_deposit_phase_flow() {
     assert!(res.is_ok());
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 14);
+    assert_eq!(config.phase_step, 12);
 
-    // CASE: when the step is 14 in ica_call_back
+    // CASE: when the step is 12 in ica_call_back
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -328,9 +300,9 @@ fn epoch_deposit_phase_flow() {
     assert!(res.is_ok());
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, 15);
+    assert_eq!(config.phase_step, 13);
 
-    // CASE: When the step is 15
+    // CASE: When the step is 13
     // And when  free lp amount is 0
     let res = execute_epoch(
         deps.as_mut(),
@@ -344,12 +316,12 @@ fn epoch_deposit_phase_flow() {
     assert_eq!(config.phase, Phase::Deposit);
     assert_eq!(config.phase_step, 1);
 
-    // CASE: When the step is 15
+    // CASE: When the step is 13
     // And when  free lp amount is not 0 and matured unbondings are not empty
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.host_config.free_lp_amount = Uint128::from(100 as u32);
-    // take a step back to 15
-    config.phase_step = 15;
+    // take a step back to 13
+    config.phase_step = 13;
     // change unbonding_time to useful configure for this test
     config.unbond_period = 1;
     CONFIG.save(deps.as_mut().storage, &config);

@@ -1,17 +1,19 @@
-use crate::state::{Config, IcaAmounts, CONFIG, HOST_LP_RATE_MULTIPLIER};
+use crate::state::{Config, IcaAmounts, CONFIG};
 use cosmwasm_std::{Env, Response, StdError, Storage, Uint128};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::shim::Duration;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
-use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
+use osmosis_std::types::osmosis::gamm::v1beta1::{
+    MsgExitPool, MsgJoinSwapExternAmountIn, MsgSwapExactAmountIn,
+};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 use ununifi_binding::v0::binding::UnunifiMsg;
 // use prost::EncodeError;
 use crate::error::ContractError;
 use crate::helpers::{
-    begin_unlocking_msg_to_any, exit_pool_to_any, join_pool_to_any, lock_tokens_msg_to_any,
-    swap_msg_to_any,
+    begin_unlocking_msg_to_any, exit_pool_to_any, join_swap_extern_amount_in_to_any,
+    lock_tokens_msg_to_any, swap_msg_to_any,
 };
 use crate::msgs::Phase;
 use prost_types::Any;
@@ -63,23 +65,14 @@ pub fn determine_ica_amounts(config: Config) -> IcaAmounts {
             to_swap_base: Uint128::from(0u128),
             to_swap_quote: config.host_config.free_base_amount,
             to_remove_lp: config.host_config.free_lp_amount,
-            to_add_lp: Uint128::from(0u128),
             to_transfer_to_controller: config.host_config.free_base_amount,
             to_transfer_to_host: Uint128::from(0u128),
             to_return_amount: amount_to_return,
         };
     } else {
-        let to_add_lp = config.host_config.free_base_amount
-            * HOST_LP_RATE_MULTIPLIER
-            * Uint128::from(2u128)
-            * Uint128::from(9u128)
-            / Uint128::from(10u128)
-            / config.host_config.lp_redemption_rate;
-
         return IcaAmounts {
             to_swap_base: config.host_config.free_base_amount / Uint128::from(2u128),
             to_swap_quote: config.host_config.free_quote_amount / Uint128::from(2u128),
-            to_add_lp: to_add_lp,
             to_remove_lp: Uint128::from(0u128),
             to_transfer_to_controller: Uint128::from(0u128),
             to_transfer_to_host: config.controller_config.free_amount,
@@ -125,17 +118,15 @@ pub fn execute_ibc_transfer_to_controller(
     }))
 }
 
-pub fn execute_ica_add_and_bond_liquidity(
+pub fn execute_ica_bond_liquidity(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(store)?;
-    let share_out_amount = determine_ica_amounts(config.to_owned()).to_add_lp;
+    let config: Config = CONFIG.load(store)?;
+    let share_out_amount = config.host_config.pending_bond_lp_amount;
     if share_out_amount.is_zero() {
         return Ok(Response::new());
     }
-    config.host_config.pending_bond_lp_amount = share_out_amount;
-    CONFIG.save(store, &config)?;
 
     let mut tokens_in: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
@@ -149,14 +140,7 @@ pub fn execute_ica_add_and_bond_liquidity(
     ];
     tokens_in.sort_by_key(|d| d.denom.to_string());
 
-    let msg1 = MsgJoinPool {
-        sender: config.ica_account.to_string(),
-        share_out_amount: share_out_amount.to_string(),
-        pool_id: config.host_config.pool_id,
-        token_in_maxs: tokens_in,
-    };
-
-    let msg2 = MsgLockTokens {
+    let msg = MsgLockTokens {
         owner: config.ica_account.to_string(),
         coins: vec![OsmosisCoin {
             denom: config.host_config.lp_denom,
@@ -167,16 +151,14 @@ pub fn execute_ica_add_and_bond_liquidity(
             nanos: 0,
         }),
     };
-    if let Ok(msg_any1) = join_pool_to_any(msg1) {
-        if let Ok(msg_any2) = lock_tokens_msg_to_any(msg2) {
-            return Ok(send_ica_tx(
-                env,
-                config.ica_channel_id,
-                config.transfer_timeout,
-                "add_and_bond_lp_tokens".to_string(),
-                vec![msg_any1, msg_any2],
-            )?);
-        }
+    if let Ok(msg_any) = lock_tokens_msg_to_any(msg) {
+        return Ok(send_ica_tx(
+            env,
+            config.ica_channel_id,
+            config.transfer_timeout,
+            "bond_lp_tokens".to_string(),
+            vec![msg_any],
+        )?);
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
@@ -268,57 +250,48 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
     }))
 }
 
-pub fn execute_ica_swap_balance_to_two_tokens(
+pub fn execute_ica_join_swap_extern_amount_in(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
-    let to_swap_base = ica_amounts.to_swap_base;
-    let to_swap_quote = ica_amounts.to_swap_quote;
+    let mut config: Config = CONFIG.load(store)?;
 
     let mut msgs: Vec<Any> = vec![];
-    if !to_swap_quote.is_zero() {
-        let msg = MsgSwapExactAmountIn {
+    if !config.host_config.free_quote_amount.is_zero() {
+        let msg = MsgJoinSwapExternAmountIn {
             sender: config.ica_account.to_string(),
+            share_out_min_amount: "1".to_string(),
+            pool_id: config.host_config.pool_id,
             token_in: Some(OsmosisCoin {
-                denom: config.host_config.quote_denom.to_string(),
-                amount: to_swap_quote.to_string(),
+                denom: config.host_config.quote_denom,
+                amount: config.host_config.free_quote_amount.to_string(),
             }),
-            token_out_min_amount: "1".to_string(),
-            routes: vec![SwapAmountInRoute {
-                pool_id: config.host_config.pool_id,
-                token_out_denom: config.host_config.base_denom.to_string(),
-            }],
         };
-        if let Ok(msg_any) = swap_msg_to_any(msg) {
+        if let Ok(msg_any) = join_swap_extern_amount_in_to_any(msg) {
+            msgs.push(msg_any);
+        }
+    }
+    if !config.host_config.free_base_amount.is_zero() {
+        let msg = MsgJoinSwapExternAmountIn {
+            sender: config.ica_account.to_string(),
+            share_out_min_amount: "1".to_string(),
+            pool_id: config.host_config.pool_id,
+            token_in: Some(OsmosisCoin {
+                denom: config.host_config.base_denom,
+                amount: config.host_config.free_base_amount.to_string(),
+            }),
+        };
+        if let Ok(msg_any) = join_swap_extern_amount_in_to_any(msg) {
             msgs.push(msg_any);
         }
     }
 
-    if !to_swap_base.is_zero() {
-        let msg = MsgSwapExactAmountIn {
-            sender: config.ica_account.to_string(),
-            token_in: Some(OsmosisCoin {
-                denom: config.host_config.base_denom,
-                amount: to_swap_base.to_string(),
-            }),
-            token_out_min_amount: "1".to_string(),
-            routes: vec![SwapAmountInRoute {
-                pool_id: config.host_config.pool_id,
-                token_out_denom: config.host_config.quote_denom,
-            }],
-        };
-        if let Ok(msg_any) = swap_msg_to_any(msg) {
-            msgs.push(msg_any);
-        }
-    }
     if msgs.len() > 0 {
         return Ok(send_ica_tx(
             env,
             config.ica_channel_id,
             config.transfer_timeout,
-            "swap_to_lp_underlyings".to_string(),
+            "join_swap_extern_amount_in".to_string(),
             msgs,
         )?);
     }

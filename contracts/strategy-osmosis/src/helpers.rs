@@ -7,7 +7,9 @@ use crate::state::{
 use cosmwasm_std::{
     Addr, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdResult, Uint128,
 };
-use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinPool, MsgSwapExactAmountIn};
+use osmosis_std::types::osmosis::gamm::v1beta1::{
+    MsgExitPool, MsgJoinPool, MsgJoinSwapExternAmountIn, MsgSwapExactAmountIn,
+};
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use prost::EncodeError;
 use prost_types::Any;
@@ -109,6 +111,15 @@ pub fn lock_tokens_msg_to_any(msg: MsgLockTokens) -> Result<Any, EncodeError> {
 pub fn begin_unlocking_msg_to_any(msg: MsgBeginUnlocking) -> Result<Any, EncodeError> {
     return Ok(Any {
         type_url: "/osmosis.lockup.MsgBeginUnlocking".to_owned(),
+        value: msg.to_proto_bytes(),
+    });
+}
+
+pub fn join_swap_extern_amount_in_to_any(
+    msg: MsgJoinSwapExternAmountIn,
+) -> Result<Any, EncodeError> {
+    return Ok(Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgJoinSwapExternAmountIn".to_owned(),
         value: msg.to_proto_bytes(),
     });
 }
