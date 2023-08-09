@@ -7,11 +7,11 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 pub fn sudo_transfer_callback(
     deps: DepsMut,
     env: Env,
-    denom: String,
-    amount: String,
-    sender: String,
-    receiver: String,
-    memo: String,
+    _denom: String,
+    _amount: String,
+    _sender: String,
+    _receiver: String,
+    _memo: String,
     success: bool,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     deps.api
