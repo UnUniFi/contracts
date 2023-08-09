@@ -45,11 +45,11 @@ pub fn register_ica(
     // save config directly
 
     CONFIG.save(deps.storage, &config)?;
-    Ok((Response::default()))
+    Ok(Response::default())
 }
 
 pub fn remove_free_atom_from_host_account(deps: DepsMut) {
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.host_config.free_base_amount = Uint128::zero();
-    CONFIG.save(deps.storage, &config);
+    _ = CONFIG.save(deps.storage, &config);
 }
