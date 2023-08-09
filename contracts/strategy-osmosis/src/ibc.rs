@@ -1,11 +1,9 @@
 // use crate::proto::comdex::Metadata;
 use crate::error::{ContractError, Never};
+use crate::execute::epoch::epoch::execute_epoch;
 use crate::msgs::ChannelInfo;
 use crate::state::CHANNEL_INFO;
-use crate::{
-    epoch::execute_epoch,
-    state::{Config, Metadata, CONFIG},
-};
+use crate::state::{Config, Metadata, CONFIG};
 use cosmwasm_std::{
     entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
     IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacketAckMsg,

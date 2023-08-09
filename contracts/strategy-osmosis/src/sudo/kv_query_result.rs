@@ -1,5 +1,5 @@
-use crate::epoch::execute_epoch;
 use crate::error::ContractError;
+use crate::execute::epoch::epoch::execute_epoch;
 use crate::helpers::{decode_and_convert, BANK_STORE_KEY};
 use crate::icq::create_account_denom_balance_key;
 use crate::state::{Config, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER};

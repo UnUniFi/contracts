@@ -1,5 +1,4 @@
 pub mod contract;
-pub mod epoch;
 pub mod error;
 pub mod execute;
 pub mod helpers;

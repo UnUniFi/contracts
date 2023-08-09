@@ -141,6 +141,38 @@ pub enum Phase {
     Withdraw,
 }
 
+pub enum PhaseStep {
+    // Deposit operations
+    IbcTransferToHost,
+    IbcTransferToHostCallback,
+    RequestICQAfterIbcTransferToHost,
+    ResponseICQAfterIbcTransferToHost,
+    AddLiquidity,
+    AddLiquidityCallback,
+    BondLiquidity,
+    BondLiquidityCallback,
+    RequestICQAfterBondLiquidity,
+    ResponseICQAfterBondLiquidity,
+    BeginUnbondingForPendingRequests,
+    BeginUnbondingForPendingRequestsCallback,
+    CheckMaturedUnbondings,
+
+    // Withdraw operations
+    RemoveLiquidity,
+    RemoveLiquidityCallback,
+    RequestICQAfterRemoveLiquidity,
+    ResponseICQAfterRemoveLiquidity,
+    SwapTwoTokensToDepositToken,
+    SwapTwoTokensToDepositTokenCallback,
+    RequestICQAfterSwapTwoTokensToDepositToken,
+    ResponseICQAfterSwapTwoTokensToDepositToken,
+    IbcTransferToController,
+    IbcTransferToControllerCallback,
+    RequestICQAfterIbcTransferToController,
+    ResponseICQAfterIbcTransferToController,
+    DistributeToUnbondedUsers,
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ChannelInfo {
     /// id of this channel
