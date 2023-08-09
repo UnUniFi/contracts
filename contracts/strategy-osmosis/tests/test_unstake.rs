@@ -21,7 +21,7 @@ fn unstake() {
 
     // Error: because of insufficient deposit
     let stake_info = mock_info(sender, &coins(100 as u128, "uguu"));
-    execute_stake(
+    _ = execute_stake(
         deps.as_mut(),
         mock_env(),
         stake_info.funds[0].clone(),
