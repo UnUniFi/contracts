@@ -1,13 +1,8 @@
-use cosmwasm_std::{
-    coins, Api, BankMsg, CosmosMsg, DepsMut, OverflowError, StdError, Timestamp, Uint128,
-};
-// use cosmwasm_std::Overflow;
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::mock_env;
+use cosmwasm_std::{coins, Api, DepsMut, Uint128};
 use helpers::th_query;
-// use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
-use strategy_osmosis::contract::execute;
 use strategy_osmosis::epoch::execute_epoch;
-use strategy_osmosis::msgs::{ExecuteEpochMsg, ExecuteMsg, Phase, QueryMsg, UpdateConfigMsg};
+use strategy_osmosis::msgs::{Phase, QueryMsg};
 use strategy_osmosis::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
 
 use crate::helpers::{register_ica, remove_free_atom_from_host_account, setup};

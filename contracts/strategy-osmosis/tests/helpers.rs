@@ -1,37 +1,13 @@
-use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
-use prost::EncodeError;
-use prost_types::Any;
-use proto::traits::MessageExt;
 use strategy_osmosis::contract::{instantiate, query};
 use strategy_osmosis::error::ContractError;
-use strategy_osmosis::msgs::{InstantiateMsg, QueryMsg, UpdateConfigMsg};
+use strategy_osmosis::msgs::{InstantiateMsg, QueryMsg};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{
-    from_binary,
-    // testing::{MockApi, MockStorage},
-    Addr,
-    BankMsg,
-    Coin,
-    CosmosMsg,
-    Decimal,
-    Deps,
-    DepsMut,
-    Env,
-    Event,
-    MessageInfo,
-    OwnedDeps,
-    Response,
-    StdResult,
-    Uint128,
-};
+use cosmwasm_std::{from_binary, Deps, DepsMut, OwnedDeps, Response, Uint128};
 use strategy_osmosis::state::{Config, CONFIG};
 use ununifi_binding::v0::binding::UnunifiMsg;
-
-pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
-pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
