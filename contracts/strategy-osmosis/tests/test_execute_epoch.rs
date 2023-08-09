@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{coins, Api, DepsMut, Uint128};
 use helpers::th_query;
-use strategy_osmosis::epoch::execute_epoch;
+use strategy_osmosis::execute::epoch::epoch::execute_epoch;
 use strategy_osmosis::msgs::{Phase, QueryMsg};
 use strategy_osmosis::state::{Config, EpochCallSource, Unbonding, CONFIG, UNBONDINGS};
 

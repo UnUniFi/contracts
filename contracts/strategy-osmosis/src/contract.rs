@@ -1,5 +1,5 @@
-use crate::epoch::execute_epoch;
 use crate::error::ContractError;
+use crate::execute::epoch::epoch::execute_epoch;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_config::execute_update_config;

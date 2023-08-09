@@ -1,6 +1,5 @@
-use crate::epoch::execute_epoch;
-use crate::error::ContractError;
 use crate::state::EpochCallSource;
+use crate::{error::ContractError, execute::epoch::epoch::execute_epoch};
 use cosmwasm_std::{DepsMut, Env, Response};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
