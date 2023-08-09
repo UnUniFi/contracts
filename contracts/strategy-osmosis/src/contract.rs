@@ -10,7 +10,7 @@ use crate::query::config::query_config;
 use crate::query::fee_info::query_fee_info;
 use crate::query::list_channels::query_list_channels;
 use crate::query::unbonding::query_unbonding;
-use crate::query::unbondings::{query_unbondings, DEFAULT_LIMIT};
+use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER};
 use crate::state::{ControllerConfig, HostConfig};
 use crate::sudo::kv_query_result::sudo_kv_query_result;
@@ -140,7 +140,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
         QueryMsg::ListChannels {} => to_binary(&query_list_channels(deps)?),
         QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
-        QueryMsg::Unbondings {} => to_binary(&query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?),
+        QueryMsg::Unbondings {} => {
+            to_binary(&query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?)
+        }
     }
 }
 

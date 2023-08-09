@@ -40,6 +40,9 @@ pub enum ContractError {
 
     #[error("Maximum address length")]
     MaxAddrLength {},
+
+    #[error("Unbonding item limitation reached")]
+    UnbondingItemLimitReached {},
 }
 
 impl From<FromUtf8Error> for ContractError {

@@ -142,7 +142,6 @@ pub struct Metadata {
 pub struct IcaAmounts {
     pub to_swap_base: Uint128,
     pub to_swap_quote: Uint128,
-    pub to_add_lp: Uint128,
     pub to_remove_lp: Uint128,
     pub to_transfer_to_controller: Uint128,
     pub to_transfer_to_host: Uint128,

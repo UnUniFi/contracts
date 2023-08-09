@@ -4,13 +4,13 @@ use ica_tx::helpers::{send_ica_tx, InterchainAccountPacketData};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::Message;
 use prost_types::Any;
-use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
 use strategy_osmosis::helpers::join_pool_to_any;
 // use cosmwasm_std::Overflow;
 // use osmosis_std::types::osmosis::epochs::v1beta1::EpochInfo;
 use crate::helpers::{setup, th_query};
 use strategy_osmosis::ica::{
-    determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
+    determine_ica_amounts, execute_ibc_transfer_to_controller,
+    execute_ica_join_swap_extern_amount_in,
 };
 use strategy_osmosis::msgs::{Phase, QueryMsg};
 use strategy_osmosis::state::{
@@ -77,10 +77,6 @@ fn determine_ica_amounts_for_deposit() {
     // Of course, this doesn't assure the code itself is designed as intended
     assert_eq!(ica_amounts.to_swap_base, Uint128::from(5000u128));
     assert_eq!(ica_amounts.to_swap_quote, Uint128::from(2500u128));
-    assert_eq!(
-        ica_amounts.to_add_lp,
-        Uint128::from(9000000000000000000000u128)
-    );
     assert_eq!(ica_amounts.to_transfer_to_host, Uint128::from(10000u128));
 }
 
@@ -169,13 +165,13 @@ fn test_execute_transfer_to_controller() {
     assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 }
 
-// test of execute_ica_add_and_bond_liquidity
+// test of execute_ica_add_liquidity
 #[test]
-fn test_execute_ica_add_and_bond_liquidity() {
+fn test_execute_ica_add_liquidity() {
     let mut deps = setup();
 
     // When is to_transfer_to_controller is zero.
-    let res = execute_ica_add_and_bond_liquidity(deps.as_mut().storage, mock_env());
+    let res = execute_ica_join_swap_extern_amount_in(deps.as_mut().storage, mock_env());
     assert!(res.is_ok());
     assert_eq!(res.as_ref().unwrap().messages.len(), 0);
 
@@ -184,7 +180,7 @@ fn test_execute_ica_add_and_bond_liquidity() {
     config.host_config.free_base_amount = Uint128::from(100000u128);
     CONFIG.save(deps.as_mut().storage, &config).unwrap();
 
-    let res = execute_ica_add_and_bond_liquidity(deps.as_mut().storage, mock_env());
+    let res = execute_ica_join_swap_extern_amount_in(deps.as_mut().storage, mock_env());
     assert!(res.is_ok());
     assert_eq!(res.as_ref().unwrap().messages.len(), 1);
 }

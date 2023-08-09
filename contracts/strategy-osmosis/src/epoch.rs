@@ -1,27 +1,30 @@
 use crate::error::ContractError;
 use crate::helpers::query_balance;
 use crate::ica::{
-    determine_ica_amounts, execute_ibc_transfer_to_controller, execute_ica_add_and_bond_liquidity,
-    execute_ica_begin_unbonding_lp_tokens, execute_ica_remove_liquidity,
-    execute_ica_swap_balance_to_two_tokens, execute_ica_swap_two_tokens_to_deposit_token,
+    determine_ica_amounts, execute_ibc_transfer_to_controller,
+    execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity,
+    execute_ica_join_swap_extern_amount_in, execute_ica_remove_liquidity,
+    execute_ica_swap_two_tokens_to_deposit_token,
 };
 use crate::icq::submit_icq_for_host;
 use crate::msgs::Phase;
-use crate::query::unbondings::{query_unbondings, DEFAULT_LIMIT};
+use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use cosmwasm_std::{
     coin, coins, BankMsg, CosmosMsg, DepsMut, Env, IbcTimeout, Response, StdResult, Storage,
     Uint128,
 };
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinSwapExternAmountInResponse;
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
+use std::str::FromStr;
 use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;
     let mut total_matured_unbondings = Uint128::new(0);
-    let unbondings = query_unbondings(store, Some(DEFAULT_LIMIT))?;
+    let unbondings = query_unbondings(store, Some(UNBONDING_ITEM_LIMIT))?;
     for unbonding in unbondings {
         if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
             total_matured_unbondings += unbonding.amount;
@@ -76,7 +79,7 @@ pub fn execute_epoch(
             }
             // - Mark unbond ending queue items on contract
             // assumption: matured unbondings on the contract is same as matured unbondings on host chain
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             for mut unbonding in unbondings {
                 if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
                     unbonding.marked = true;
@@ -175,7 +178,7 @@ pub fn execute_epoch(
                 .checked_sub(config.controller_config.stacked_amount_to_deposit)
                 .unwrap_or(Uint128::from(0u128));
             // - send amounts to marked unbond ending items proportionally
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             let mut total_marked_lp_amount = Uint128::from(0u128);
             for unbonding in unbondings.as_slice() {
                 if unbonding.marked {
@@ -252,40 +255,47 @@ pub fn execute_epoch(
             if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
                 next_phase_step = config.phase_step + 2;
             } else {
-                rsp = execute_ica_swap_balance_to_two_tokens(deps.storage, env);
+                rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
                 next_phase_step = config.phase_step + 1;
             }
         } else if config.phase_step == 6u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
+                let mut config: Config = CONFIG.load(deps.storage)?;
                 if success {
+                    if let Some(ret_bytes) = ret {
+                        let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
+                        if let Ok(tx_msg_data) = tx_msg_data_result {
+                            for data in tx_msg_data.data {
+                                let msg_ret_result =
+                                    MsgJoinSwapExternAmountInResponse::decode(&data.data[..]);
+                                if let Ok(msg_ret) = msg_ret_result {
+                                    let share_out_amount =
+                                        Uint128::from_str(msg_ret.share_out_amount.as_str())?;
+                                    config.host_config.pending_bond_lp_amount += share_out_amount;
+                                }
+                            }
+                        }
+                    }
                     next_phase_step = config.phase_step + 1;
                 } else {
                     next_phase_step = config.phase_step - 1;
                 }
+                CONFIG.save(deps.storage, &config)?;
             }
         } else if config.phase_step == 7u64 {
-            // - initiate and wait for icq to update latest balances
-            rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 8u64 {
-            // handle ICQ callback
-            if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
-            }
-        } else if config.phase_step == 9u64 {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
-            // - add liquidity & bond in a single ica tx
-            let share_out_amount = determine_ica_amounts(config.to_owned()).to_add_lp;
+            // - add liquidity ica tx
+            let share_out_amount = config.host_config.pending_bond_lp_amount;
             if share_out_amount.is_zero() {
                 next_phase_step = config.phase_step + 2;
             } else {
-                rsp = execute_ica_add_and_bond_liquidity(deps.storage, env);
+                rsp = execute_ica_bond_liquidity(deps.storage, env);
                 next_phase_step = config.phase_step + 1;
             }
-        } else if config.phase_step == 10u64 {
+        } else if config.phase_step == 8u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 let mut config: Config = CONFIG.load(deps.storage)?;
@@ -294,9 +304,9 @@ pub fn execute_epoch(
                     if let Some(ret_bytes) = ret {
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
-                            if tx_msg_data.data.len() > 1 {
+                            if tx_msg_data.data.len() > 0 {
                                 let msg_ret_result =
-                                    MsgLockTokensResponse::decode(&tx_msg_data.data[1].data[..]);
+                                    MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
                                 if let Ok(msg_ret) = msg_ret_result {
                                     config.host_config.lock_id = msg_ret.id;
                                 }
@@ -304,29 +314,29 @@ pub fn execute_epoch(
                         }
                     }
                     config.host_config.bonded_lp_amount += pending_bond_lp_amount;
+                    config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
                     next_phase_step = config.phase_step + 1;
                 } else {
                     next_phase_step = config.phase_step - 1;
                 }
-                config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
                 CONFIG.save(deps.storage, &config)?;
             }
-        } else if config.phase_step == 11u64 {
+        } else if config.phase_step == 9u64 {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
             next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 12u64 {
+        } else if config.phase_step == 10u64 {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = config.phase_step + 1;
             }
-        } else if config.phase_step == 13u64 {
+        } else if config.phase_step == 11u64 {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
             // Unbonding epoch operation
             // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
-            let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             let mut unbonding_lp_amount = Uint128::from(0u128);
             for mut unbonding in unbondings {
                 if unbonding.start_time != 0 || unbonding.pending_start == true {
@@ -338,17 +348,19 @@ pub fn execute_epoch(
                 unbonding_lp_amount += unbonding.amount;
             }
 
-            if !unbonding_lp_amount.is_zero() {
+            if !unbonding_lp_amount.is_zero()
+                && unbonding_lp_amount <= config.host_config.bonded_lp_amount
+            {
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
                 next_phase_step = config.phase_step + 1;
             } else {
                 next_phase_step = config.phase_step + 2;
             }
-        } else if config.phase_step == 14u64 {
+        } else if config.phase_step == 12u64 {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
                         if unbonding.pending_start == true {
                             unbonding.start_time = env.block.time.seconds();
@@ -359,7 +371,7 @@ pub fn execute_epoch(
 
                     next_phase_step = config.phase_step + 1;
                 } else {
-                    let unbondings = query_unbondings(deps.storage, Some(DEFAULT_LIMIT))?;
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
                         if unbonding.start_time != 0 && unbonding.pending_start == true {
                             unbonding.pending_start = false;
@@ -370,7 +382,7 @@ pub fn execute_epoch(
                 }
             }
         } else {
-            // 15u64
+            // 13u64
             // when free lp amount and matured unbondings exist, move to withdraw phase
             let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
             if !config.host_config.free_lp_amount.is_zero()

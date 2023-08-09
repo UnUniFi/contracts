@@ -1,4 +1,5 @@
 use crate::error::{ContractError, NoDeposit};
+use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositInfo, Unbonding, CONFIG, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER,
     UNBONDINGS,
@@ -27,6 +28,11 @@ pub fn execute_unstake(
             Err(NoDeposit {}.into())
         },
     )?;
+
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    if unbondings.len() as u32 >= UNBONDING_ITEM_LIMIT {
+        return Err(ContractError::UnbondingItemLimitReached {});
+    }
 
     let unbonding = &Unbonding {
         id: config.last_unbonding_id + 1,
