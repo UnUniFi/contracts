@@ -39,7 +39,7 @@ pub fn create_pool_key(pool_id: u64) -> Result<Vec<u8>, ContractError> {
 // Submit the ICQ for the withdrawal account balance
 pub fn submit_icq_for_host(
     store: &mut dyn Storage,
-    env: Env,
+    _env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config: Config = CONFIG.load(store)?;
     config.pending_icq = 4u64;

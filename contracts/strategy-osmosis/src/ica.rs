@@ -254,7 +254,7 @@ pub fn execute_ica_join_swap_extern_amount_in(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(store)?;
+    let config: Config = CONFIG.load(store)?;
 
     let mut msgs: Vec<Any> = vec![];
     if !config.host_config.free_quote_amount.is_zero() {

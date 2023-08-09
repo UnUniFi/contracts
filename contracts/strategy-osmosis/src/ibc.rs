@@ -15,7 +15,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> Result<Response, ContractError> {
     Ok(Response::new())
 }
 
@@ -114,7 +114,7 @@ pub fn ibc_packet_ack(
     let ack: IcaPacketAcknowledgement = from_binary(&msg.acknowledgement.data)
         .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(msg.acknowledgement.data.to_base64()));
     match ack {
-        IcaPacketAcknowledgement::Error(e) => {
+        IcaPacketAcknowledgement::Error(_) => {
             execute_epoch(
                 deps,
                 env,

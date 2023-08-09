@@ -16,8 +16,8 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 pub fn sudo_kv_query_result(
     deps: DepsMut,
     env: Env,
-    connection_id: String,
-    chain_id: String,
+    _connection_id: String,
+    _chain_id: String,
     query_prefix: String,
     query_key: Binary,
     data: Binary,

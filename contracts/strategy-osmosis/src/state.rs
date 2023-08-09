@@ -1,7 +1,5 @@
 use crate::msgs::{ChannelInfo, Phase};
-use cosmwasm_std::{
-    Addr, Binary, BlockInfo, IbcEndpoint, Order, StdResult, Storage, Timestamp, Uint128,
-};
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
