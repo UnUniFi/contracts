@@ -7,7 +7,7 @@ use crate::ica::{
     execute_ica_swap_two_tokens_to_deposit_token,
 };
 use crate::icq::submit_icq_for_host;
-use crate::msgs::Phase;
+use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, UNBONDINGS};
 use cosmwasm_std::{
@@ -73,7 +73,7 @@ pub fn execute_epoch(
     let mut next_phase_step = config.phase_step.to_owned();
 
     if config.phase == Phase::Withdraw {
-        if config.phase_step == 1u64 {
+        if config.phase_step == PhaseStep::RemoveLiquidity {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
@@ -88,8 +88,8 @@ pub fn execute_epoch(
             }
             // - execute remove liquidity operation
             rsp = execute_ica_remove_liquidity(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 2u64 {
+            next_phase_step = PhaseStep::RemoveLiquidityCallback;
+        } else if config.phase_step == PhaseStep::RemoveLiquidityCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 let mut config: Config = CONFIG.load(deps.storage)?;
@@ -100,73 +100,74 @@ pub fn execute_epoch(
                         .unbonding_lp_amount
                         .checked_sub(pending_lp_removal_amount)
                         .unwrap_or(Uint128::from(0u128));
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::RequestICQAfterRemoveLiquidity;
                 } else {
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::RemoveLiquidity;
                 }
                 config.host_config.pending_lp_removal_amount = Uint128::from(0u128);
                 CONFIG.save(deps.storage, &config)?;
             }
-        } else if config.phase_step == 3u64 {
+        } else if config.phase_step == PhaseStep::RequestICQAfterRemoveLiquidity {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 4u64 {
+            next_phase_step = PhaseStep::ResponseICQAfterRemoveLiquidity;
+        } else if config.phase_step == PhaseStep::ResponseICQAfterRemoveLiquidity {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::SwapTwoTokensToDepositToken;
             }
-        } else if config.phase_step == 5u64 {
+        } else if config.phase_step == PhaseStep::SwapTwoTokensToDepositToken {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
             // - swap full osmo to atom
             rsp = execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 6u64 {
+            next_phase_step = PhaseStep::SwapTwoTokensToDepositTokenCallback;
+        } else if config.phase_step == PhaseStep::SwapTwoTokensToDepositTokenCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken;
                 } else {
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::SwapTwoTokensToDepositToken;
                 }
             }
-        } else if config.phase_step == 7u64 {
+        } else if config.phase_step == PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 8u64 {
+            next_phase_step = PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken;
+        } else if config.phase_step == PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::IbcTransferToController;
             }
-        } else if config.phase_step == 9u64 {
+        } else if config.phase_step == PhaseStep::IbcTransferToController {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
             // - ibc transfer full atom balance from ica to contract
             rsp = execute_ibc_transfer_to_controller(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 10u64 {
+            next_phase_step = PhaseStep::IbcTransferToControllerCallback;
+        } else if config.phase_step == PhaseStep::IbcTransferToControllerCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::RequestICQAfterIbcTransferToController;
                 } else {
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::IbcTransferToController;
                 }
             }
-        } else if config.phase_step == 11u64 {
+        } else if config.phase_step == PhaseStep::RequestICQAfterIbcTransferToController {
             // - refresh balance of host chain after ibc transfer callback
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 12u64 {
+            next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToController;
+        } else if config.phase_step == PhaseStep::ResponseICQAfterIbcTransferToController {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::DistributeToUnbondedUsers;
             }
         } else {
+            // PhaseStep::DistributeToUnbondedUsers
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
@@ -210,10 +211,10 @@ pub fn execute_epoch(
             }
             // - switch to `Deposit` phase
             next_phase = Phase::Deposit;
-            next_phase_step = 1u64;
+            next_phase_step = PhaseStep::IbcTransferToHost;
         }
     } else {
-        if config.phase_step == 1u64 {
+        if config.phase_step == PhaseStep::IbcTransferToHost {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
@@ -222,29 +223,29 @@ pub fn execute_epoch(
             let ica_amounts = determine_ica_amounts(config.to_owned());
             let to_transfer_to_host = ica_amounts.to_transfer_to_host;
             if to_transfer_to_host.is_zero() {
-                next_phase_step = config.phase_step + 2;
+                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
             } else {
                 rsp = execute_ibc_transfer_to_host(deps.storage, env);
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::IbcTransferToHostCallback;
             }
-        } else if config.phase_step == 2u64 {
+        } else if config.phase_step == PhaseStep::IbcTransferToHostCallback {
             // handle Transfer callback
             if called_from == EpochCallSource::TransferCallback {
                 let mut config: Config = CONFIG.load(deps.storage)?;
                 config.controller_config.pending_transfer_amount = Uint128::from(0u128);
                 CONFIG.save(deps.storage, &config)?;
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
             }
-        } else if config.phase_step == 3u64 {
+        } else if config.phase_step == PhaseStep::RequestICQAfterIbcTransferToHost {
             // - icq balance of ica account when `Deposit` phase
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 4u64 {
+            next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToHost;
+        } else if config.phase_step == PhaseStep::ResponseICQAfterIbcTransferToHost {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::AddLiquidity;
             }
-        } else if config.phase_step == 5u64 {
+        } else if config.phase_step == PhaseStep::AddLiquidity {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
@@ -253,12 +254,12 @@ pub fn execute_epoch(
             let to_swap_atom = ica_amounts.to_swap_base;
             let to_swap_osmo = ica_amounts.to_swap_quote;
             if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
-                next_phase_step = config.phase_step + 2;
+                next_phase_step = PhaseStep::BondLiquidity;
             } else {
                 rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::AddLiquidityCallback;
             }
-        } else if config.phase_step == 6u64 {
+        } else if config.phase_step == PhaseStep::AddLiquidityCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 let mut config: Config = CONFIG.load(deps.storage)?;
@@ -277,25 +278,25 @@ pub fn execute_epoch(
                             }
                         }
                     }
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::BondLiquidity;
                 } else {
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::AddLiquidity;
                 }
                 CONFIG.save(deps.storage, &config)?;
             }
-        } else if config.phase_step == 7u64 {
+        } else if config.phase_step == PhaseStep::BondLiquidity {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
             // - add liquidity ica tx
             let share_out_amount = config.host_config.pending_bond_lp_amount;
             if share_out_amount.is_zero() {
-                next_phase_step = config.phase_step + 2;
+                next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
             } else {
                 rsp = execute_ica_bond_liquidity(deps.storage, env);
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::BondLiquidityCallback;
             }
-        } else if config.phase_step == 8u64 {
+        } else if config.phase_step == PhaseStep::BondLiquidityCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 let mut config: Config = CONFIG.load(deps.storage)?;
@@ -315,22 +316,22 @@ pub fn execute_epoch(
                     }
                     config.host_config.bonded_lp_amount += pending_bond_lp_amount;
                     config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
                 } else {
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::BondLiquidity;
                 }
                 CONFIG.save(deps.storage, &config)?;
             }
-        } else if config.phase_step == 9u64 {
+        } else if config.phase_step == PhaseStep::RequestICQAfterBondLiquidity {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = config.phase_step + 1;
-        } else if config.phase_step == 10u64 {
+            next_phase_step = PhaseStep::ResponseICQAfterBondLiquidity;
+        } else if config.phase_step == PhaseStep::ResponseICQAfterBondLiquidity {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
             }
-        } else if config.phase_step == 11u64 {
+        } else if config.phase_step == PhaseStep::BeginUnbondingForPendingRequests {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
@@ -352,11 +353,11 @@ pub fn execute_epoch(
                 && unbonding_lp_amount <= config.host_config.bonded_lp_amount
             {
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
-                next_phase_step = config.phase_step + 1;
+                next_phase_step = PhaseStep::BeginUnbondingForPendingRequestsCallback;
             } else {
-                next_phase_step = config.phase_step + 2;
+                next_phase_step = PhaseStep::CheckMaturedUnbondings;
             }
-        } else if config.phase_step == 12u64 {
+        } else if config.phase_step == PhaseStep::BeginUnbondingForPendingRequestsCallback {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
@@ -369,7 +370,7 @@ pub fn execute_epoch(
                         }
                     }
 
-                    next_phase_step = config.phase_step + 1;
+                    next_phase_step = PhaseStep::CheckMaturedUnbondings;
                 } else {
                     let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
@@ -378,11 +379,11 @@ pub fn execute_epoch(
                             UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                         }
                     }
-                    next_phase_step = config.phase_step - 1;
+                    next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
                 }
             }
         } else {
-            // 13u64
+            // PhaseStep::CheckMaturedUnbondings
             // when free lp amount and matured unbondings exist, move to withdraw phase
             let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
             if !config.host_config.free_lp_amount.is_zero()
@@ -390,7 +391,7 @@ pub fn execute_epoch(
             {
                 next_phase = Phase::Withdraw;
             }
-            next_phase_step = 1u64;
+            next_phase_step = PhaseStep::RemoveLiquidity;
         }
     }
 

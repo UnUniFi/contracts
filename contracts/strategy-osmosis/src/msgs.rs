@@ -35,7 +35,7 @@ pub struct UpdateConfigMsg {
     pub lp_denom: Option<String>,
     pub lp_redemption_rate: Option<Uint128>,
     pub phase: Option<Phase>,
-    pub phase_step: Option<u64>,
+    pub phase_step: Option<PhaseStep>,
     pub transfer_timeout: Option<u64>,
     pub transfer_channel_id: Option<String>,
     pub quote_denom: Option<String>,
@@ -141,6 +141,7 @@ pub enum Phase {
     Withdraw,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum PhaseStep {
     // Deposit operations
     IbcTransferToHost,

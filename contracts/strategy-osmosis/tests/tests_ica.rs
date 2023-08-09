@@ -10,7 +10,7 @@ use strategy_osmosis::ica::{
     determine_ica_amounts, execute_ibc_transfer_to_controller,
     execute_ica_join_swap_extern_amount_in,
 };
-use strategy_osmosis::msgs::{Phase, QueryMsg};
+use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
@@ -65,7 +65,7 @@ fn determine_ica_amounts_for_deposit() {
         ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
-        phase_step: 1u64,
+        phase_step: PhaseStep::IbcTransferToHost,
         pending_icq: 0u64,
     };
 
@@ -125,7 +125,7 @@ fn determine_ica_amounts_for_withdraw() {
         ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
-        phase_step: 1u64,
+        phase_step: PhaseStep::RemoveLiquidity,
         pending_icq: 0u64,
     };
 

@@ -1,4 +1,4 @@
-use crate::msgs::{ChannelInfo, Phase};
+use crate::msgs::{ChannelInfo, Phase, PhaseStep};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -82,7 +82,7 @@ pub struct Config {
     pub total_withdrawn: Uint128,
     pub last_unbonding_id: u64,
     pub phase: Phase,
-    pub phase_step: u64, // counted from 1 for each phase
+    pub phase_step: PhaseStep, // counted from 1 for each phase
     pub pending_icq: u64,
 
     pub ica_channel_id: String,
