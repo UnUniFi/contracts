@@ -15,7 +15,7 @@ pub fn execute_withdraw_phase_epoch(
     env: Env,
     called_from: EpochCallSource,
     success: bool,
-    ret: Option<Vec<u8>>,
+    _: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());

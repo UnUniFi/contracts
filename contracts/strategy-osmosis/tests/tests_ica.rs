@@ -205,7 +205,7 @@ fn test_send_ica_tx() {
         token_in_maxs: tokens_in,
     };
 
-    let mut deps = setup();
+    _ = setup();
     let res = send_ica_tx(
         mock_env(),
         "channel-1".to_string(),

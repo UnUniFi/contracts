@@ -131,7 +131,7 @@ fn epoch_deposit_phase_flow() {
     config.phase_step = PhaseStep::AddLiquidity;
     // set some value in to_transfer_to_host in order to test the case when there is pending deposit
     config.host_config.free_base_amount = Uint128::from(1000000u128);
-    CONFIG.save(deps.as_mut().storage, &config);
+    _ = CONFIG.save(deps.as_mut().storage, &config);
 
     let res = execute_epoch(
         deps.as_mut(),
@@ -165,7 +165,7 @@ fn epoch_deposit_phase_flow() {
     // CASE: When the step is 6 and the callback status is failure
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.phase_step = PhaseStep::AddLiquidityCallback;
-    CONFIG.save(deps.as_mut().storage, &config);
+    _ = CONFIG.save(deps.as_mut().storage, &config);
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -183,7 +183,7 @@ fn epoch_deposit_phase_flow() {
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.phase_step = PhaseStep::BondLiquidity;
     config.host_config.pending_bond_lp_amount = Uint128::from(100000u128);
-    CONFIG.save(deps.as_mut().storage, &config);
+    _ = CONFIG.save(deps.as_mut().storage, &config);
 
     let res = execute_epoch(
         deps.as_mut(),
@@ -269,7 +269,7 @@ fn epoch_deposit_phase_flow() {
     // take a step back to PhaseStep::BeginUnbondingForPendingRequests
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.phase_step = PhaseStep::BeginUnbondingForPendingRequests;
-    CONFIG.save(deps.as_mut().storage, &config);
+    _ = CONFIG.save(deps.as_mut().storage, &config);
     // register unbonding
     let sender = deps
         .api
@@ -283,7 +283,7 @@ fn epoch_deposit_phase_flow() {
         start_time: 0,
         marked: false,
     };
-    UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
+    _ = UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
 
     let res = execute_epoch(
         deps.as_mut(),
@@ -336,7 +336,7 @@ fn epoch_deposit_phase_flow() {
 
     // change unbonding_time to useful configure for this test
     config.unbond_period = 1;
-    CONFIG.save(deps.as_mut().storage, &config);
+    _ = CONFIG.save(deps.as_mut().storage, &config);
     let sender = deps
         .api
         .addr_validate("ununifi1j9g3qkcxm2xzfc30z462av40vx8kmwakvd00jk")
@@ -349,9 +349,9 @@ fn epoch_deposit_phase_flow() {
         start_time: 0,
         marked: false,
     };
-    UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
+    _ = UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
 
-    let res = execute_epoch(
+    _ = execute_epoch(
         deps.as_mut(),
         mock_env(),
         epoch_call_source_normal.clone(),
@@ -409,7 +409,7 @@ fn epoch_withdraw_phase_flow() {
     // first, register ica_account so that it can be executed properly
     // NOTE: This is totally random address.
     let ica_addr = String::from("osmo1aqvlxpk8dc4m2nkmxkf63a5zez9jkzgm6amkgddhfk0qj9j4rw3q662wuk");
-    register_ica(deps.as_mut(), ica_addr);
+    _ = register_ica(deps.as_mut(), ica_addr);
 
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
