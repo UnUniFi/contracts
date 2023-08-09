@@ -71,184 +71,200 @@ pub fn execute_deposit_phase_epoch(
     let mut next_phase = config.phase.to_owned();
     let mut next_phase_step = config.phase_step.to_owned();
 
-    if config.phase_step == PhaseStep::IbcTransferToHost {
-        if called_from != EpochCallSource::NormalEpoch {
-            return rsp;
-        }
-        // - ibc transfer to host for newly incoming atoms
-        // - ibc transfer to host for stacked atoms during withdraw phases
-        let ica_amounts = determine_ica_amounts(config.to_owned());
-        let to_transfer_to_host = ica_amounts.to_transfer_to_host;
-        if to_transfer_to_host.is_zero() {
-            next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
-        } else {
-            rsp = execute_ibc_transfer_to_host(deps.storage, env);
-            next_phase_step = PhaseStep::IbcTransferToHostCallback;
-        }
-    } else if config.phase_step == PhaseStep::IbcTransferToHostCallback {
-        // handle Transfer callback
-        if called_from == EpochCallSource::TransferCallback {
-            let mut config: Config = CONFIG.load(deps.storage)?;
-            config.controller_config.pending_transfer_amount = Uint128::from(0u128);
-            CONFIG.save(deps.storage, &config)?;
-            next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
-        }
-    } else if config.phase_step == PhaseStep::RequestICQAfterIbcTransferToHost {
-        // - icq balance of ica account when `Deposit` phase
-        rsp = submit_icq_for_host(deps.storage, env);
-        next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToHost;
-    } else if config.phase_step == PhaseStep::ResponseICQAfterIbcTransferToHost {
-        // handle ICQ callback
-        if called_from == EpochCallSource::IcqCallback {
-            next_phase_step = PhaseStep::AddLiquidity;
-        }
-    } else if config.phase_step == PhaseStep::AddLiquidity {
-        if called_from != EpochCallSource::NormalEpoch {
-            return rsp;
-        }
-        // - swap half atom to osmo & half osmo to atom in a single ica tx
-        let ica_amounts = determine_ica_amounts(config.to_owned());
-        let to_swap_atom = ica_amounts.to_swap_base;
-        let to_swap_osmo = ica_amounts.to_swap_quote;
-        if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
-            next_phase_step = PhaseStep::BondLiquidity;
-        } else {
-            rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
-            next_phase_step = PhaseStep::AddLiquidityCallback;
-        }
-    } else if config.phase_step == PhaseStep::AddLiquidityCallback {
-        // handle ICA callback
-        if called_from == EpochCallSource::IcaCallback {
-            let mut config: Config = CONFIG.load(deps.storage)?;
-            if success {
-                if let Some(ret_bytes) = ret {
-                    let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
-                    if let Ok(tx_msg_data) = tx_msg_data_result {
-                        for data in tx_msg_data.data {
-                            let msg_ret_result =
-                                MsgJoinSwapExternAmountInResponse::decode(&data.data[..]);
-                            if let Ok(msg_ret) = msg_ret_result {
-                                let share_out_amount =
-                                    Uint128::from_str(msg_ret.share_out_amount.as_str())?;
-                                config.host_config.pending_bond_lp_amount += share_out_amount;
-                            }
-                        }
-                    }
-                }
-                next_phase_step = PhaseStep::BondLiquidity;
+    match config.phase_step {
+        PhaseStep::IbcTransferToHost => {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
+            // - ibc transfer to host for newly incoming atoms
+            // - ibc transfer to host for stacked atoms during withdraw phases
+            let ica_amounts = determine_ica_amounts(config.to_owned());
+            let to_transfer_to_host = ica_amounts.to_transfer_to_host;
+            if to_transfer_to_host.is_zero() {
+                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
             } else {
+                rsp = execute_ibc_transfer_to_host(deps.storage, env);
+                next_phase_step = PhaseStep::IbcTransferToHostCallback;
+            }
+        }
+        PhaseStep::IbcTransferToHostCallback => {
+            // handle Transfer callback
+            if called_from == EpochCallSource::TransferCallback {
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                config.controller_config.pending_transfer_amount = Uint128::from(0u128);
+                CONFIG.save(deps.storage, &config)?;
+                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
+            }
+        }
+        PhaseStep::RequestICQAfterIbcTransferToHost => {
+            // - icq balance of ica account when `Deposit` phase
+            rsp = submit_icq_for_host(deps.storage, env);
+            next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToHost;
+        }
+        PhaseStep::ResponseICQAfterIbcTransferToHost => {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::AddLiquidity;
             }
-            CONFIG.save(deps.storage, &config)?;
         }
-    } else if config.phase_step == PhaseStep::BondLiquidity {
-        if called_from != EpochCallSource::NormalEpoch {
-            return rsp;
+        PhaseStep::AddLiquidity => {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
+            // - swap half atom to osmo & half osmo to atom in a single ica tx
+            let ica_amounts = determine_ica_amounts(config.to_owned());
+            let to_swap_atom = ica_amounts.to_swap_base;
+            let to_swap_osmo = ica_amounts.to_swap_quote;
+            if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
+                next_phase_step = PhaseStep::BondLiquidity;
+            } else {
+                rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
+                next_phase_step = PhaseStep::AddLiquidityCallback;
+            }
         }
-        // - add liquidity ica tx
-        let share_out_amount = config.host_config.pending_bond_lp_amount;
-        if share_out_amount.is_zero() {
-            next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
-        } else {
-            rsp = execute_ica_bond_liquidity(deps.storage, env);
-            next_phase_step = PhaseStep::BondLiquidityCallback;
-        }
-    } else if config.phase_step == PhaseStep::BondLiquidityCallback {
-        // handle ICA callback
-        if called_from == EpochCallSource::IcaCallback {
-            let mut config: Config = CONFIG.load(deps.storage)?;
-            let pending_bond_lp_amount = config.host_config.pending_bond_lp_amount;
-            if success {
-                if let Some(ret_bytes) = ret {
-                    let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
-                    if let Ok(tx_msg_data) = tx_msg_data_result {
-                        if tx_msg_data.data.len() > 0 {
-                            let msg_ret_result =
-                                MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
-                            if let Ok(msg_ret) = msg_ret_result {
-                                config.host_config.lock_id = msg_ret.id;
+        PhaseStep::AddLiquidityCallback => {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                if success {
+                    if let Some(ret_bytes) = ret {
+                        let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
+                        if let Ok(tx_msg_data) = tx_msg_data_result {
+                            for data in tx_msg_data.data {
+                                let msg_ret_result =
+                                    MsgJoinSwapExternAmountInResponse::decode(&data.data[..]);
+                                if let Ok(msg_ret) = msg_ret_result {
+                                    let share_out_amount =
+                                        Uint128::from_str(msg_ret.share_out_amount.as_str())?;
+                                    config.host_config.pending_bond_lp_amount += share_out_amount;
+                                }
                             }
                         }
                     }
+                    next_phase_step = PhaseStep::BondLiquidity;
+                } else {
+                    next_phase_step = PhaseStep::AddLiquidity;
                 }
-                config.host_config.bonded_lp_amount += pending_bond_lp_amount;
-                config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
+                CONFIG.save(deps.storage, &config)?;
+            }
+        }
+        PhaseStep::BondLiquidity => {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
+            // - add liquidity ica tx
+            let share_out_amount = config.host_config.pending_bond_lp_amount;
+            if share_out_amount.is_zero() {
                 next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
             } else {
-                next_phase_step = PhaseStep::BondLiquidity;
+                rsp = execute_ica_bond_liquidity(deps.storage, env);
+                next_phase_step = PhaseStep::BondLiquidityCallback;
             }
-            CONFIG.save(deps.storage, &config)?;
         }
-    } else if config.phase_step == PhaseStep::RequestICQAfterBondLiquidity {
-        // - initiate and wait for icq to update latest balances
-        rsp = submit_icq_for_host(deps.storage, env);
-        next_phase_step = PhaseStep::ResponseICQAfterBondLiquidity;
-    } else if config.phase_step == PhaseStep::ResponseICQAfterBondLiquidity {
-        // handle ICQ callback
-        if called_from == EpochCallSource::IcqCallback {
-            next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
-        }
-    } else if config.phase_step == PhaseStep::BeginUnbondingForPendingRequests {
-        if called_from != EpochCallSource::NormalEpoch {
-            return rsp;
-        }
-        // Unbonding epoch operation
-        // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
-        let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
-        let mut unbonding_lp_amount = Uint128::from(0u128);
-        for mut unbonding in unbondings {
-            if unbonding.start_time != 0 || unbonding.pending_start == true {
-                continue;
+        PhaseStep::BondLiquidityCallback => {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                let mut config: Config = CONFIG.load(deps.storage)?;
+                let pending_bond_lp_amount = config.host_config.pending_bond_lp_amount;
+                if success {
+                    if let Some(ret_bytes) = ret {
+                        let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
+                        if let Ok(tx_msg_data) = tx_msg_data_result {
+                            if tx_msg_data.data.len() > 0 {
+                                let msg_ret_result =
+                                    MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
+                                if let Ok(msg_ret) = msg_ret_result {
+                                    config.host_config.lock_id = msg_ret.id;
+                                }
+                            }
+                        }
+                    }
+                    config.host_config.bonded_lp_amount += pending_bond_lp_amount;
+                    config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
+                    next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
+                } else {
+                    next_phase_step = PhaseStep::BondLiquidity;
+                }
+                CONFIG.save(deps.storage, &config)?;
             }
-            unbonding.start_time = env.block.time.seconds();
-            unbonding.pending_start = true;
-            UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
-            unbonding_lp_amount += unbonding.amount;
         }
-
-        if !unbonding_lp_amount.is_zero()
-            && unbonding_lp_amount <= config.host_config.bonded_lp_amount
-        {
-            rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
-            next_phase_step = PhaseStep::BeginUnbondingForPendingRequestsCallback;
-        } else {
-            next_phase_step = PhaseStep::CheckMaturedUnbondings;
+        PhaseStep::RequestICQAfterBondLiquidity => {
+            // - initiate and wait for icq to update latest balances
+            rsp = submit_icq_for_host(deps.storage, env);
+            next_phase_step = PhaseStep::ResponseICQAfterBondLiquidity;
         }
-    } else if config.phase_step == PhaseStep::BeginUnbondingForPendingRequestsCallback {
-        // handle ICA callback
-        if called_from == EpochCallSource::IcaCallback {
-            if success {
-                let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
-                for mut unbonding in unbondings {
-                    if unbonding.pending_start == true {
-                        unbonding.start_time = env.block.time.seconds();
-                        unbonding.pending_start = false;
-                        UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
-                    }
-                }
-
-                next_phase_step = PhaseStep::CheckMaturedUnbondings;
-            } else {
-                let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
-                for mut unbonding in unbondings {
-                    if unbonding.start_time != 0 && unbonding.pending_start == true {
-                        unbonding.pending_start = false;
-                        UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
-                    }
-                }
+        PhaseStep::ResponseICQAfterBondLiquidity => {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
             }
         }
-    } else {
-        // PhaseStep::CheckMaturedUnbondings
-        // when free lp amount and matured unbondings exist, move to withdraw phase
-        let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
-        if !config.host_config.free_lp_amount.is_zero() && matured_unbondings > Uint128::from(0u128)
-        {
-            next_phase = Phase::Withdraw;
+        PhaseStep::BeginUnbondingForPendingRequests => {
+            if called_from != EpochCallSource::NormalEpoch {
+                return rsp;
+            }
+            // Unbonding epoch operation
+            // - begin lp unbonding on host through ica tx per unbonding epoch - per day probably - (if to unbond lp is not enough, wait for icq to update bonded lp correctly)
+            let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+            let mut unbonding_lp_amount = Uint128::from(0u128);
+            for mut unbonding in unbondings {
+                if unbonding.start_time != 0 || unbonding.pending_start == true {
+                    continue;
+                }
+                unbonding.start_time = env.block.time.seconds();
+                unbonding.pending_start = true;
+                UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                unbonding_lp_amount += unbonding.amount;
+            }
+
+            if !unbonding_lp_amount.is_zero()
+                && unbonding_lp_amount <= config.host_config.bonded_lp_amount
+            {
+                rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
+                next_phase_step = PhaseStep::BeginUnbondingForPendingRequestsCallback;
+            } else {
+                next_phase_step = PhaseStep::CheckMaturedUnbondings;
+            }
         }
-        next_phase_step = PhaseStep::RemoveLiquidity;
+        PhaseStep::BeginUnbondingForPendingRequestsCallback => {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                if success {
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+                    for mut unbonding in unbondings {
+                        if unbonding.pending_start == true {
+                            unbonding.start_time = env.block.time.seconds();
+                            unbonding.pending_start = false;
+                            UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                        }
+                    }
+
+                    next_phase_step = PhaseStep::CheckMaturedUnbondings;
+                } else {
+                    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+                    for mut unbonding in unbondings {
+                        if unbonding.start_time != 0 && unbonding.pending_start == true {
+                            unbonding.pending_start = false;
+                            UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+                        }
+                    }
+                    next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
+                }
+            }
+        }
+        _ => {
+            // PhaseStep::CheckMaturedUnbondings
+            // when free lp amount and matured unbondings exist, move to withdraw phase
+            let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
+            if !config.host_config.free_lp_amount.is_zero()
+                && matured_unbondings > Uint128::from(0u128)
+            {
+                next_phase = Phase::Withdraw;
+            }
+            next_phase_step = PhaseStep::RemoveLiquidity;
+        }
     }
+
     // update phase
     let mut config: Config = CONFIG.load(deps.storage)?;
     config.phase = next_phase;
