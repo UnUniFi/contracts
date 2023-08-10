@@ -36,22 +36,22 @@ pub fn instantiate(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config = Config {
         owner: info.sender,
-        deposit_token: DepositToken::Base, // ATOM
         unbond_period: msg.unbond_period,
-        transfer_timeout: msg.transfer_timeout, // 300s
-        ica_connection_id: "".to_string(),
-        ica_channel_id: "".to_string(),
-        ica_account: "".to_string(),
         phase: Phase::Deposit,
         phase_step: PhaseStep::IbcTransferToHost,
         chain_id: msg.chain_id,
         pool_id: msg.pool_id,
-        transfer_channel_id: msg.transfer_channel_id,
-        lp_denom: msg.lp_denom,       // ATOM-OSMO
-        quote_denom: msg.quote_denom, // OSMO
-        base_denom: msg.base_denom,   // ATOM
-        controller_transfer_channel_id: msg.controller_transfer_channel_id,
+        deposit_token: DepositToken::Base, // ATOM
         controller_deposit_denom: msg.controller_deposit_denom, // `ibc/xxxxuatom`
+        quote_denom: msg.quote_denom,      // OSMO
+        base_denom: msg.base_denom,        // ATOM
+        lp_denom: msg.lp_denom,            // ATOM-OSMO
+        transfer_timeout: msg.transfer_timeout, // 300s
+        transfer_channel_id: msg.transfer_channel_id,
+        controller_transfer_channel_id: msg.controller_transfer_channel_id,
+        ica_channel_id: "".to_string(),
+        ica_connection_id: "".to_string(),
+        ica_account: "".to_string(),
     };
     CONFIG.save(deps.storage, &config)?;
 
