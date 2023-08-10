@@ -12,6 +12,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aa-nft-bound-ununifi"
+version = "1.0.0"
+dependencies = [
+ "absacc",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+]
+
+[[package]]
 name = "absacc"
 version = "0.0.0"
 source = "git+https://github.com/larry0x/abstract-account.git#2ea462db913fff198900ad94ad27d533ccdd681b"
