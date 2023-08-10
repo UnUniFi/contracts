@@ -33,7 +33,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
 }
 
 #[allow(dead_code)]
-pub fn th_query<T: serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
+pub fn th_query<T: cosmwasm_schema::serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
     from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }
 

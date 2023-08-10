@@ -1,16 +1,15 @@
 use crate::msgs::{ChannelInfo, Phase, PhaseStep};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum DepositToken {
     Base,
     Quote,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     pub owner: Addr,
     pub unbond_period: u64,
@@ -34,7 +33,7 @@ pub struct Config {
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct State {
     pub last_unbonding_id: u64,
     pub redemption_rate: Uint128,
@@ -58,14 +57,14 @@ pub struct State {
 
 pub const STATE: Item<State> = Item::new("state");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct DepositInfo {
     pub sender: Addr,
     pub amount: Uint128, // contract deposit ratio
 }
 
 // Unbonding record is removed when bank send is finalized
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Unbonding {
     pub id: u64,
     pub sender: Addr,
@@ -82,7 +81,7 @@ pub const CHANNEL_INFO: Map<&str, ChannelInfo> = Map::new("channel_info");
 
 /// Metadata defines a set of protocol specific data encoded into the ICS27 channel version bytestring
 /// See ICS004: <https://github.com/cosmos/ibc/tree/master/spec/core/ics-004-channel-and-packet-semantics#Versioning>
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cw_serde]
 pub struct Metadata {
     /// version defines the ICS27 protocol version
     pub version: String,
@@ -99,7 +98,7 @@ pub struct Metadata {
     pub tx_type: String,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[cw_serde]
 pub struct IcaAmounts {
     pub to_swap_amount: Uint128,
     pub to_remove_lp: Uint128,
@@ -108,7 +107,7 @@ pub struct IcaAmounts {
     pub to_return_amount: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum EpochCallSource {
     NormalEpoch,
     IcqCallback,
