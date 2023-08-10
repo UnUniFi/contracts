@@ -33,7 +33,6 @@ pub struct UpdateConfigMsg {
     pub pool_id: Option<u64>,
     pub ica_channel_id: Option<String>,
     pub lp_denom: Option<String>,
-    pub lp_redemption_rate: Option<Uint128>,
     pub phase: Option<Phase>,
     pub phase_step: Option<PhaseStep>,
     pub transfer_timeout: Option<u64>,

@@ -61,12 +61,8 @@ pub fn instantiate(
             pending_lp_removal_amount: Uint128::from(0u128), // pending swap from lp to deposit token amount
             quote_denom: msg.quote_denom,                    // OSMO
             free_quote_amount: Uint128::from(0u128),
-            pending_swap_to_base_amount: Uint128::from(0u128), // Convert OSMO to ATOM
-            base_denom: msg.base_denom,                        // ATOM
-            free_base_amount: Uint128::from(0u128),            // free ATOM balance
-            pending_swap_to_quote_amount: Uint128::from(0u128), // pending swap from ATOM -> OSMO to add liquidity
-            pending_add_liquidity_amount: Uint128::from(0u128), // amount of ATOM used on liquidity addition
-            pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
+            base_denom: msg.base_denom,             // ATOM
+            free_base_amount: Uint128::from(0u128), // free ATOM balance
         },
         controller_config: ControllerConfig {
             transfer_channel_id: msg.controller_transfer_channel_id,

@@ -38,11 +38,7 @@ fn determine_ica_amounts_for_deposit() {
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128),
             quote_denom: "uosmo".to_string(),
-            pending_swap_to_base_amount: Uint128::from(0u128),
             base_denom: "stake".to_string(),
-            pending_swap_to_quote_amount: Uint128::from(0u128),
-            pending_add_liquidity_amount: Uint128::from(0u128),
-            pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
         },
         controller_config: ControllerConfig {
             free_amount: Uint128::from(10000u128),
@@ -98,11 +94,7 @@ fn determine_ica_amounts_for_withdraw() {
             pending_bond_lp_amount: Uint128::from(0u128),
             pending_lp_removal_amount: Uint128::from(0u128),
             quote_denom: "uosmo".to_string(),
-            pending_swap_to_base_amount: Uint128::from(0u128),
             base_denom: "stake".to_string(),
-            pending_swap_to_quote_amount: Uint128::from(0u128),
-            pending_add_liquidity_amount: Uint128::from(0u128),
-            pending_transfer_amount: Uint128::from(0u128), // pending transfer to controller - TODO: how to get hook for transfer finalization?
         },
         controller_config: ControllerConfig {
             free_amount: Uint128::from(10000u128),

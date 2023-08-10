@@ -46,9 +46,6 @@ pub fn execute_update_config(
     if let Some(lp_denom) = msg.lp_denom {
         config.host_config.lp_denom = lp_denom;
     }
-    if let Some(lp_redemption_rate) = msg.lp_redemption_rate {
-        config.host_config.lp_redemption_rate = lp_redemption_rate;
-    }
     if let Some(transfer_channel_id) = msg.transfer_channel_id {
         config.host_config.transfer_channel_id = transfer_channel_id;
     }
