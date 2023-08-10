@@ -1,8 +1,4 @@
 use crate::error::ContractError;
-use crate::ica::{
-    determine_ica_amounts, execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity,
-    execute_ica_join_swap_extern_amount_in,
-};
 use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
@@ -14,6 +10,10 @@ use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use std::str::FromStr;
 use ununifi_binding::v0::binding::UnunifiMsg;
+
+use super::helpers::determine_ica_amounts;
+use super::liquidity::execute_ica_join_swap_extern_amount_in;
+use super::lockup::{execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity};
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(store)?;

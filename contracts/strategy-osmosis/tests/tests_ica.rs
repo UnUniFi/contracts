@@ -5,11 +5,10 @@ use ica_tx::helpers::{send_ica_tx, InterchainAccountPacketData};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinPool;
 use prost::Message;
 use prost_types::Any;
+use strategy_osmosis::execute::epoch::helpers::determine_ica_amounts;
+use strategy_osmosis::execute::epoch::liquidity::execute_ica_join_swap_extern_amount_in;
+use strategy_osmosis::execute::epoch::token_transfer::execute_ibc_transfer_to_controller;
 use strategy_osmosis::helpers::join_pool_to_any;
-use strategy_osmosis::ica::{
-    determine_ica_amounts, execute_ibc_transfer_to_controller,
-    execute_ica_join_swap_extern_amount_in,
-};
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
 use strategy_osmosis::state::{
     Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,

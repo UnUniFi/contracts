@@ -1,14 +1,14 @@
 use crate::error::ContractError;
-use crate::ica::{
-    execute_ibc_transfer_to_controller, execute_ica_remove_liquidity,
-    execute_ica_swap_two_tokens_to_deposit_token,
-};
 use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{Config, EpochCallSource, CONFIG, UNBONDINGS};
 use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, Response, Uint128};
 use ununifi_binding::v0::binding::UnunifiMsg;
+
+use super::liquidity::execute_ica_remove_liquidity;
+use super::swap::execute_ica_swap_two_tokens_to_deposit_token;
+use super::token_transfer::execute_ibc_transfer_to_controller;
 
 pub fn execute_withdraw_phase_epoch(
     deps: DepsMut,
