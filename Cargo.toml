@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/*"]
+members = ["contracts/*", "packages/*"]
 
 exclude = ["contracts/outpost-nftbackedloan-axelar-external-evm"]
 
