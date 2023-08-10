@@ -15,7 +15,7 @@ fn initialized_state() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(0, config.unbond_period);
-    // assert_eq!("uguu", config.controller_config.deposit_denom);
+    // assert_eq!("uguu", config.controller_deposit_denom);
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn update_config() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
 
-    assert_eq!("uguu", config.controller_config.deposit_denom);
+    assert_eq!("uguu", config.controller_deposit_denom);
 
     let bad_sender = "bad_sender";
     let err = execute_update_config(

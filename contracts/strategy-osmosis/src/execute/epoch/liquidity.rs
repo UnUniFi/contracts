@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::{exit_pool_to_any, join_swap_extern_amount_in_to_any};
-use crate::state::{Config, CONFIG};
+use crate::state::{CONFIG, STATE};
 use cosmwasm_std::{Env, Response, StdError, Storage};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -14,31 +14,32 @@ pub fn execute_ica_join_swap_extern_amount_in(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
+    let config = CONFIG.load(store)?;
+    let state = STATE.load(store)?;
 
     let mut msgs: Vec<Any> = vec![];
-    if !config.host_config.free_quote_amount.is_zero() {
+    if !state.free_quote_amount.is_zero() {
         let msg = MsgJoinSwapExternAmountIn {
             sender: config.ica_account.to_string(),
             share_out_min_amount: "1".to_string(),
-            pool_id: config.host_config.pool_id,
+            pool_id: config.pool_id,
             token_in: Some(OsmosisCoin {
-                denom: config.host_config.quote_denom,
-                amount: config.host_config.free_quote_amount.to_string(),
+                denom: config.quote_denom,
+                amount: state.free_quote_amount.to_string(),
             }),
         };
         if let Ok(msg_any) = join_swap_extern_amount_in_to_any(msg) {
             msgs.push(msg_any);
         }
     }
-    if !config.host_config.free_base_amount.is_zero() {
+    if !state.free_base_amount.is_zero() {
         let msg = MsgJoinSwapExternAmountIn {
             sender: config.ica_account.to_string(),
             share_out_min_amount: "1".to_string(),
-            pool_id: config.host_config.pool_id,
+            pool_id: config.pool_id,
             token_in: Some(OsmosisCoin {
-                denom: config.host_config.base_denom,
-                amount: config.host_config.free_base_amount.to_string(),
+                denom: config.base_denom,
+                amount: state.free_base_amount.to_string(),
             }),
         };
         if let Ok(msg_any) = join_swap_extern_amount_in_to_any(msg) {
@@ -62,23 +63,24 @@ pub fn execute_ica_remove_liquidity(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let config = CONFIG.load(store)?;
+    let mut state = STATE.load(store)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
     let to_remove_lp = ica_amounts.to_remove_lp;
     if to_remove_lp.is_zero() {
         return Ok(Response::new());
     }
 
-    config.host_config.pending_lp_removal_amount = to_remove_lp;
-    CONFIG.save(store, &config)?;
+    state.pending_lp_removal_amount = to_remove_lp;
+    STATE.save(store, &state)?;
 
     let mut tokens_out: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
-            denom: config.host_config.quote_denom,
+            denom: config.quote_denom,
             amount: "1".to_string(),
         },
         OsmosisCoin {
-            denom: config.host_config.base_denom.to_string(),
+            denom: config.base_denom.to_string(),
             amount: "1".to_string(),
         },
     ];
@@ -87,7 +89,7 @@ pub fn execute_ica_remove_liquidity(
     let msg = MsgExitPool {
         sender: config.ica_account.to_string(),
         share_in_amount: to_remove_lp.to_string(),
-        pool_id: config.host_config.pool_id,
+        pool_id: config.pool_id,
         token_out_mins: tokens_out,
     };
     if let Ok(msg_any) = exit_pool_to_any(msg) {

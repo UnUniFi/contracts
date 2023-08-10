@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::{Config, CONFIG};
+use crate::state::{CONFIG, STATE};
 use cosmwasm_std::StdError;
 use cosmwasm_std::{coin, Env, IbcTimeout, Response, Storage, Uint128};
 use ica_tx::helpers::send_ica_tx;
@@ -14,27 +14,24 @@ pub fn execute_ibc_transfer_to_host(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let config = CONFIG.load(store)?;
+    let mut state = STATE.load(store)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
     let to_transfer_to_host = ica_amounts.to_transfer_to_host;
     if to_transfer_to_host.is_zero() {
         return Ok(Response::new());
     }
     let timeout = env.block.time.plus_seconds(config.transfer_timeout);
     let ibc_msg = UnunifiMsg::IbcTransfer {
-        channel_id: config.controller_config.transfer_channel_id,
+        channel_id: config.controller_transfer_channel_id,
         to_address: config.ica_account,
-        amount: coin(
-            to_transfer_to_host.u128(),
-            config.controller_config.deposit_denom,
-        ),
+        amount: coin(to_transfer_to_host.u128(), config.controller_deposit_denom),
         timeout: IbcTimeout::from(timeout),
     };
 
-    let mut config: Config = CONFIG.load(store)?;
-    config.controller_config.stacked_amount_to_deposit = Uint128::from(0u128);
-    config.controller_config.pending_transfer_amount += to_transfer_to_host;
-    CONFIG.save(store, &config)?;
+    state.controller_stacked_amount_to_deposit = Uint128::from(0u128);
+    state.controller_pending_transfer_amount += to_transfer_to_host;
+    STATE.save(store, &state)?;
 
     let res = Response::new()
         .add_message(ibc_msg)
@@ -46,17 +43,18 @@ pub fn execute_ibc_transfer_to_controller(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let config = CONFIG.load(store)?;
+    let state = STATE.load(store)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
     let to_transfer_to_controller = ica_amounts.to_transfer_to_controller;
     if to_transfer_to_controller.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgTransfer {
         source_port: "transfer".to_string(),
-        source_channel: config.host_config.transfer_channel_id,
+        source_channel: config.transfer_channel_id,
         token: Some(ProtoCoin {
-            denom: config.host_config.base_denom,
+            denom: config.base_denom,
             amount: to_transfer_to_controller.to_string(),
         }),
         sender: config.ica_account,

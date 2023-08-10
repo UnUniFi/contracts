@@ -3,6 +3,6 @@ use crate::state::{Config, CONFIG};
 use cosmwasm_std::{Deps, StdResult};
 
 pub fn query_config(deps: Deps) -> StdResult<Config> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     Ok(config)
 }

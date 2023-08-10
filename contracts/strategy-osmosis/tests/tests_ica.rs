@@ -10,9 +10,7 @@ use strategy_osmosis::execute::epoch::liquidity::execute_ica_join_swap_extern_am
 use strategy_osmosis::execute::epoch::token_transfer::execute_ibc_transfer_to_controller;
 use strategy_osmosis::helpers::join_pool_to_any;
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
-use strategy_osmosis::state::{
-    Config, ControllerConfig, DepositToken, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
-};
+use strategy_osmosis::state::{Config, DepositToken, State, CONFIG, STAKE_RATE_MULTIPLIER, STATE};
 mod helpers;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
@@ -21,51 +19,46 @@ fn determine_ica_amounts_for_deposit() {
     // Phase is Deposit
     let config = Config {
         phase: Phase::Deposit,
-        host_config: HostConfig {
-            lp_redemption_rate: Uint128::from(2u128),
-            free_base_amount: Uint128::from(10000u128),
-            free_lp_amount: Uint128::from(0u128),
-            free_quote_amount: Uint128::from(5000u128),
-
-            // unused fields
-            chain_id: "test-1".to_string(),
-            pool_id: 1,
-            transfer_channel_id: "channel-1".to_string(),
-            lock_id: 0u64,
-            lp_denom: "gamm/pool/1".to_string(),
-            bonded_lp_amount: Uint128::from(0u128),
-            unbonding_lp_amount: Uint128::from(0u128),
-            pending_bond_lp_amount: Uint128::from(0u128),
-            pending_lp_removal_amount: Uint128::from(0u128),
-            quote_denom: "uosmo".to_string(),
-            base_denom: "stake".to_string(),
-        },
-        controller_config: ControllerConfig {
-            free_amount: Uint128::from(10000u128),
-            pending_transfer_amount: Uint128::from(0u128),
-            stacked_amount_to_deposit: Uint128::from(0u128),
-
-            // unused fields
-            transfer_channel_id: "channel-1".to_string(),
-            deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
-        }, // unused fields
+        chain_id: "test-1".to_string(),
+        pool_id: 1,
+        transfer_channel_id: "channel-1".to_string(),
+        lp_denom: "gamm/pool/1".to_string(),
+        quote_denom: "uosmo".to_string(),
+        base_denom: "stake".to_string(),
+        controller_transfer_channel_id: "channel-1".to_string(),
+        controller_deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
         owner: Addr::unchecked("owner"),
         deposit_token: DepositToken::Base,
         unbond_period: 0,
-        total_deposit: Uint128::from(0u128),
-        last_unbonding_id: 1u64,
-        redemption_rate: STAKE_RATE_MULTIPLIER,
-        total_shares: Uint128::from(0u128),
-        total_withdrawn: Uint128::from(0u128),
         transfer_timeout: 300,
         ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         phase_step: PhaseStep::IbcTransferToHost,
+    };
+
+    let state = State {
+        lp_redemption_rate: Uint128::from(2u128),
+        free_base_amount: Uint128::from(10000u128),
+        free_lp_amount: Uint128::from(0u128),
+        free_quote_amount: Uint128::from(5000u128),
+        lock_id: 0u64,
+        bonded_lp_amount: Uint128::from(0u128),
+        unbonding_lp_amount: Uint128::from(0u128),
+        pending_bond_lp_amount: Uint128::from(0u128),
+        pending_lp_removal_amount: Uint128::from(0u128),
+        controller_free_amount: Uint128::from(10000u128),
+        controller_pending_transfer_amount: Uint128::from(0u128),
+        controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        total_deposit: Uint128::from(0u128),
+        last_unbonding_id: 1u64,
+        redemption_rate: STAKE_RATE_MULTIPLIER,
+        total_shares: Uint128::from(0u128),
+        total_withdrawn: Uint128::from(0u128),
         pending_icq: 0u64,
     };
 
-    let ica_amounts = determine_ica_amounts(config);
+    let ica_amounts = determine_ica_amounts(config, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -77,51 +70,46 @@ fn determine_ica_amounts_for_deposit() {
 fn determine_ica_amounts_for_withdraw() {
     let config = Config {
         phase: Phase::Withdraw,
-        host_config: HostConfig {
-            lp_redemption_rate: Uint128::from(2u128),
-            free_base_amount: Uint128::from(10000u128),
-            free_lp_amount: Uint128::from(10u128),
-            free_quote_amount: Uint128::from(5000u128),
-
-            // unused fields
-            chain_id: "test-1".to_string(),
-            pool_id: 1,
-            transfer_channel_id: "channel-1".to_string(),
-            lock_id: 0u64,
-            lp_denom: "gamm/pool/1".to_string(),
-            bonded_lp_amount: Uint128::from(0u128),
-            unbonding_lp_amount: Uint128::from(0u128),
-            pending_bond_lp_amount: Uint128::from(0u128),
-            pending_lp_removal_amount: Uint128::from(0u128),
-            quote_denom: "uosmo".to_string(),
-            base_denom: "stake".to_string(),
-        },
-        controller_config: ControllerConfig {
-            free_amount: Uint128::from(10000u128),
-            pending_transfer_amount: Uint128::from(0u128),
-            stacked_amount_to_deposit: Uint128::from(1000u128),
-
-            // unused fields
-            transfer_channel_id: "channel-1".to_string(),
-            deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
-        }, // unused fields
+        // unused fields
+        chain_id: "test-1".to_string(),
+        pool_id: 1,
+        transfer_channel_id: "channel-1".to_string(),
+        lp_denom: "gamm/pool/1".to_string(),
+        quote_denom: "uosmo".to_string(),
+        base_denom: "stake".to_string(),
+        controller_transfer_channel_id: "channel-1".to_string(),
+        controller_deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
         owner: Addr::unchecked("owner"),
         deposit_token: DepositToken::Base,
         unbond_period: 0,
-        total_deposit: Uint128::from(0u128),
-        last_unbonding_id: 1u64,
-        redemption_rate: STAKE_RATE_MULTIPLIER,
-        total_shares: Uint128::from(0u128),
-        total_withdrawn: Uint128::from(0u128),
         transfer_timeout: 300,
         ica_connection_id: "".to_string(),
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         phase_step: PhaseStep::RemoveLiquidity,
-        pending_icq: 0u64,
     };
 
-    let ica_amounts = determine_ica_amounts(config);
+    let state = State {
+        lock_id: 0u64,
+        bonded_lp_amount: Uint128::from(0u128),
+        unbonding_lp_amount: Uint128::from(0u128),
+        pending_bond_lp_amount: Uint128::from(0u128),
+        pending_lp_removal_amount: Uint128::from(0u128),
+        controller_free_amount: Uint128::from(10000u128),
+        controller_pending_transfer_amount: Uint128::from(0u128),
+        controller_stacked_amount_to_deposit: Uint128::from(1000u128),
+        lp_redemption_rate: Uint128::from(2u128),
+        free_base_amount: Uint128::from(10000u128),
+        free_lp_amount: Uint128::from(10u128),
+        free_quote_amount: Uint128::from(5000u128),
+        total_deposit: Uint128::from(0u128),
+        last_unbonding_id: 1u64,
+        redemption_rate: STAKE_RATE_MULTIPLIER,
+        total_shares: Uint128::from(0u128),
+        total_withdrawn: Uint128::from(0u128),
+        pending_icq: 0u64,
+    };
+    let ica_amounts = determine_ica_amounts(config, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -146,8 +134,11 @@ fn test_execute_transfer_to_controller() {
     // When is to_transfer_to_controller is not zero.
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.phase = Phase::Withdraw;
-    config.host_config.free_base_amount = Uint128::from(10000u128);
     CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.free_base_amount = Uint128::from(10000u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
 
     let res = execute_ibc_transfer_to_controller(deps.as_mut().storage, mock_env());
     assert!(res.is_ok());
@@ -165,9 +156,9 @@ fn test_execute_ica_add_liquidity() {
     assert_eq!(res.as_ref().unwrap().messages.len(), 0);
 
     // When is to_transfer_to_controller is not zero.
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.host_config.free_base_amount = Uint128::from(100000u128);
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.free_base_amount = Uint128::from(100000u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
 
     let res = execute_ica_join_swap_extern_amount_in(deps.as_mut().storage, mock_env());
     assert!(res.is_ok());

@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
-use crate::state::{Config, EpochCallSource, CONFIG, UNBONDINGS};
+use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
 use cosmwasm_std::{coin, DepsMut, Env, IbcTimeout, Response, StdResult, Storage, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinSwapExternAmountInResponse;
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
@@ -16,7 +16,7 @@ use super::liquidity::execute_ica_join_swap_extern_amount_in;
 use super::lockup::{execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity};
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
-    let config: Config = CONFIG.load(store)?;
+    let config = CONFIG.load(store)?;
     let mut total_matured_unbondings = Uint128::new(0);
     let unbondings = query_unbondings(store, Some(UNBONDING_ITEM_LIMIT))?;
     for unbonding in unbondings {
@@ -31,27 +31,24 @@ pub fn execute_ibc_transfer_to_host(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
+    let config = CONFIG.load(store)?;
+    let mut state = STATE.load(store)?;
+    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
     let to_transfer_to_host = ica_amounts.to_transfer_to_host;
     if to_transfer_to_host.is_zero() {
         return Ok(Response::new());
     }
     let timeout = env.block.time.plus_seconds(config.transfer_timeout);
     let ibc_msg = UnunifiMsg::IbcTransfer {
-        channel_id: config.controller_config.transfer_channel_id,
+        channel_id: config.controller_transfer_channel_id,
         to_address: config.ica_account,
-        amount: coin(
-            to_transfer_to_host.u128(),
-            config.controller_config.deposit_denom,
-        ),
+        amount: coin(to_transfer_to_host.u128(), config.controller_deposit_denom),
         timeout: IbcTimeout::from(timeout),
     };
 
-    let mut config: Config = CONFIG.load(store)?;
-    config.controller_config.stacked_amount_to_deposit = Uint128::from(0u128);
-    config.controller_config.pending_transfer_amount += to_transfer_to_host;
-    CONFIG.save(store, &config)?;
+    state.controller_stacked_amount_to_deposit = Uint128::from(0u128);
+    state.controller_pending_transfer_amount += to_transfer_to_host;
+    STATE.save(store, &state)?;
 
     let res = Response::new()
         .add_message(ibc_msg)
@@ -66,7 +63,8 @@ pub fn execute_deposit_phase_epoch(
     success: bool,
     ret: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());
     let mut next_phase = config.phase.to_owned();
     let mut next_phase_step = config.phase_step.to_owned();
@@ -78,7 +76,7 @@ pub fn execute_deposit_phase_epoch(
             }
             // - ibc transfer to host for newly incoming atoms
             // - ibc transfer to host for stacked atoms during withdraw phases
-            let ica_amounts = determine_ica_amounts(config.to_owned());
+            let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
             let to_transfer_to_host = ica_amounts.to_transfer_to_host;
             if to_transfer_to_host.is_zero() {
                 next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
@@ -90,9 +88,9 @@ pub fn execute_deposit_phase_epoch(
         PhaseStep::IbcTransferToHostCallback => {
             // handle Transfer callback
             if called_from == EpochCallSource::TransferCallback {
-                let mut config: Config = CONFIG.load(deps.storage)?;
-                config.controller_config.pending_transfer_amount = Uint128::from(0u128);
-                CONFIG.save(deps.storage, &config)?;
+                let mut state = STATE.load(deps.storage)?;
+                state.controller_pending_transfer_amount = Uint128::from(0u128);
+                STATE.save(deps.storage, &state)?;
                 next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
             }
         }
@@ -112,9 +110,7 @@ pub fn execute_deposit_phase_epoch(
                 return rsp;
             }
             // - add osmo and atom as liquidity in a single ica tx
-            if config.host_config.free_base_amount.is_zero()
-                && config.host_config.free_quote_amount.is_zero()
-            {
+            if state.free_base_amount.is_zero() && state.free_quote_amount.is_zero() {
                 next_phase_step = PhaseStep::BondLiquidity;
             } else {
                 rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
@@ -124,7 +120,7 @@ pub fn execute_deposit_phase_epoch(
         PhaseStep::AddLiquidityCallback => {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                let mut config: Config = CONFIG.load(deps.storage)?;
+                let mut state = STATE.load(deps.storage)?;
                 if success {
                     if let Some(ret_bytes) = ret {
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
@@ -135,7 +131,7 @@ pub fn execute_deposit_phase_epoch(
                                 if let Ok(msg_ret) = msg_ret_result {
                                     let share_out_amount =
                                         Uint128::from_str(msg_ret.share_out_amount.as_str())?;
-                                    config.host_config.pending_bond_lp_amount += share_out_amount;
+                                    state.pending_bond_lp_amount += share_out_amount;
                                 }
                             }
                         }
@@ -144,7 +140,7 @@ pub fn execute_deposit_phase_epoch(
                 } else {
                     next_phase_step = PhaseStep::AddLiquidity;
                 }
-                CONFIG.save(deps.storage, &config)?;
+                STATE.save(deps.storage, &state)?;
             }
         }
         PhaseStep::BondLiquidity => {
@@ -152,7 +148,7 @@ pub fn execute_deposit_phase_epoch(
                 return rsp;
             }
             // - add liquidity ica tx
-            let share_out_amount = config.host_config.pending_bond_lp_amount;
+            let share_out_amount = state.pending_bond_lp_amount;
             if share_out_amount.is_zero() {
                 next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
             } else {
@@ -163,8 +159,8 @@ pub fn execute_deposit_phase_epoch(
         PhaseStep::BondLiquidityCallback => {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                let mut config: Config = CONFIG.load(deps.storage)?;
-                let pending_bond_lp_amount = config.host_config.pending_bond_lp_amount;
+                let mut state = STATE.load(deps.storage)?;
+                let pending_bond_lp_amount = state.pending_bond_lp_amount;
                 if success {
                     if let Some(ret_bytes) = ret {
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
@@ -173,18 +169,18 @@ pub fn execute_deposit_phase_epoch(
                                 let msg_ret_result =
                                     MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
                                 if let Ok(msg_ret) = msg_ret_result {
-                                    config.host_config.lock_id = msg_ret.id;
+                                    state.lock_id = msg_ret.id;
                                 }
                             }
                         }
                     }
-                    config.host_config.bonded_lp_amount += pending_bond_lp_amount;
-                    config.host_config.pending_bond_lp_amount = Uint128::from(0u128);
+                    state.bonded_lp_amount += pending_bond_lp_amount;
+                    state.pending_bond_lp_amount = Uint128::from(0u128);
                     next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
                 } else {
                     next_phase_step = PhaseStep::BondLiquidity;
                 }
-                CONFIG.save(deps.storage, &config)?;
+                STATE.save(deps.storage, &state)?;
             }
         }
         PhaseStep::RequestICQAfterBondLiquidity => {
@@ -216,9 +212,7 @@ pub fn execute_deposit_phase_epoch(
                 unbonding_lp_amount += unbonding.amount;
             }
 
-            if !unbonding_lp_amount.is_zero()
-                && unbonding_lp_amount <= config.host_config.bonded_lp_amount
-            {
+            if !unbonding_lp_amount.is_zero() && unbonding_lp_amount <= state.bonded_lp_amount {
                 rsp = execute_ica_begin_unbonding_lp_tokens(deps.storage, env, unbonding_lp_amount);
                 next_phase_step = PhaseStep::BeginUnbondingForPendingRequestsCallback;
             } else {
@@ -255,9 +249,7 @@ pub fn execute_deposit_phase_epoch(
             // PhaseStep::CheckMaturedUnbondings
             // when free lp amount and matured unbondings exist, move to withdraw phase
             let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
-            if !config.host_config.free_lp_amount.is_zero()
-                && matured_unbondings > Uint128::from(0u128)
-            {
+            if !state.free_lp_amount.is_zero() && matured_unbondings > Uint128::from(0u128) {
                 next_phase = Phase::Withdraw;
             }
             next_phase_step = PhaseStep::RemoveLiquidity;
@@ -265,7 +257,7 @@ pub fn execute_deposit_phase_epoch(
     }
 
     // update phase
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
     config.phase = next_phase;
     config.phase_step = next_phase_step;
     CONFIG.save(deps.storage, &config)?;

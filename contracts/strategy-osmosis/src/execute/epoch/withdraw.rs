@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
-use crate::state::{Config, EpochCallSource, CONFIG, UNBONDINGS};
+use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
 use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, Response, Uint128};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
@@ -17,7 +17,8 @@ pub fn execute_withdraw_phase_epoch(
     success: bool,
     _: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());
     let mut next_phase = config.phase.to_owned();
     let mut next_phase_step = config.phase_step.to_owned();
@@ -43,11 +44,10 @@ pub fn execute_withdraw_phase_epoch(
         PhaseStep::RemoveLiquidityCallback => {
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
-                let mut config: Config = CONFIG.load(deps.storage)?;
-                let pending_lp_removal_amount = config.host_config.pending_lp_removal_amount;
+                let mut state = STATE.load(deps.storage)?;
+                let pending_lp_removal_amount = state.pending_lp_removal_amount;
                 if success {
-                    config.host_config.unbonding_lp_amount = config
-                        .host_config
+                    state.unbonding_lp_amount = state
                         .unbonding_lp_amount
                         .checked_sub(pending_lp_removal_amount)
                         .unwrap_or(Uint128::from(0u128));
@@ -55,8 +55,8 @@ pub fn execute_withdraw_phase_epoch(
                 } else {
                     next_phase_step = PhaseStep::RemoveLiquidity;
                 }
-                config.host_config.pending_lp_removal_amount = Uint128::from(0u128);
-                CONFIG.save(deps.storage, &config)?;
+                state.pending_lp_removal_amount = Uint128::from(0u128);
+                STATE.save(deps.storage, &state)?;
             }
         }
         PhaseStep::RequestICQAfterRemoveLiquidity => {
@@ -134,10 +134,9 @@ pub fn execute_withdraw_phase_epoch(
                 return rsp;
             }
             // - calculate amount to return, contract balance - stacked atom balance for deposit
-            let amount_to_return = config
-                .controller_config
-                .free_amount
-                .checked_sub(config.controller_config.stacked_amount_to_deposit)
+            let amount_to_return = state
+                .controller_free_amount
+                .checked_sub(state.controller_stacked_amount_to_deposit)
                 .unwrap_or(Uint128::from(0u128));
             // - send amounts to marked unbond ending items proportionally
             let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
@@ -148,7 +147,7 @@ pub fn execute_withdraw_phase_epoch(
                 }
             }
             if !total_marked_lp_amount.is_zero() {
-                let mut config: Config = CONFIG.load(deps.storage)?;
+                let mut state = STATE.load(deps.storage)?;
                 let mut resp: Response<UnunifiMsg> = Response::new();
                 for unbonding in unbondings {
                     if unbonding.marked {
@@ -158,17 +157,17 @@ pub fn execute_withdraw_phase_epoch(
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
                                 returning_amount.into(),
-                                &config.controller_config.deposit_denom,
+                                &config.controller_deposit_denom,
                             ),
                         });
                         resp = resp.add_message(bank_send_msg);
                         UNBONDINGS.remove(deps.storage, unbonding.id);
                         // update the total_withdrawn amount in config just for the record
                         // memo: this param can be deleted in the future
-                        config.total_withdrawn += returning_amount;
+                        state.total_withdrawn += returning_amount;
                     }
                 }
-                CONFIG.save(deps.storage, &config)?;
+                STATE.save(deps.storage, &state)?;
                 rsp = Ok(resp);
             }
             // - switch to `Deposit` phase
@@ -178,7 +177,7 @@ pub fn execute_withdraw_phase_epoch(
     }
 
     // update phase
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
     config.phase = next_phase;
     config.phase_step = next_phase_step;
     CONFIG.save(deps.storage, &config)?;

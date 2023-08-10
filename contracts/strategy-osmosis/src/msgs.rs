@@ -99,6 +99,7 @@ pub struct IcaBeginUnbondLpTokensMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
+    State {},
     Bonded {
         addr: String,
     },

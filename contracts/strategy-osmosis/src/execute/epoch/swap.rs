@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::swap_msg_to_any;
-use crate::state::{Config, DepositToken, CONFIG};
+use crate::state::{DepositToken, CONFIG, STATE};
 use cosmwasm_std::{Env, Response, StdError, Storage};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -14,13 +14,15 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned());
-    let mut in_denom = config.host_config.quote_denom.to_string();
-    let mut out_denom = config.host_config.base_denom.to_string();
+    let config = CONFIG.load(store)?;
+    let state = STATE.load(store)?;
+    let ica_amounts: crate::state::IcaAmounts =
+        determine_ica_amounts(config.to_owned(), state.to_owned());
+    let mut in_denom = config.quote_denom.to_string();
+    let mut out_denom = config.base_denom.to_string();
     if config.deposit_token == DepositToken::Quote {
-        in_denom = config.host_config.base_denom.to_string();
-        out_denom = config.host_config.quote_denom.to_string();
+        in_denom = config.base_denom.to_string();
+        out_denom = config.quote_denom.to_string();
     }
     let to_swap_amount = ica_amounts.to_swap_amount;
     if to_swap_amount.is_zero() {
@@ -34,7 +36,7 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
-            pool_id: config.host_config.pool_id,
+            pool_id: config.pool_id,
             token_out_denom: out_denom,
         }],
     };

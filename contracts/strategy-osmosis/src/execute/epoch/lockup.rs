@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::{begin_unlocking_msg_to_any, lock_tokens_msg_to_any};
-use crate::state::{Config, CONFIG};
+use crate::state::{CONFIG, STATE};
 use cosmwasm_std::{Env, Response, StdError, Storage, Uint128};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::shim::Duration;
@@ -12,20 +12,21 @@ pub fn execute_ica_bond_liquidity(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
-    let share_out_amount = config.host_config.pending_bond_lp_amount;
+    let config = CONFIG.load(store)?;
+    let state = STATE.load(store)?;
+    let share_out_amount = state.pending_bond_lp_amount;
     if share_out_amount.is_zero() {
         return Ok(Response::new());
     }
 
     let mut tokens_in: Vec<OsmosisCoin> = vec![
         OsmosisCoin {
-            denom: config.host_config.quote_denom,
-            amount: config.host_config.free_quote_amount.to_string(),
+            denom: config.quote_denom,
+            amount: state.free_quote_amount.to_string(),
         },
         OsmosisCoin {
-            denom: config.host_config.base_denom.to_string(),
-            amount: config.host_config.free_base_amount.to_string(),
+            denom: config.base_denom.to_string(),
+            amount: state.free_base_amount.to_string(),
         },
     ];
     tokens_in.sort_by_key(|d| d.denom.to_string());
@@ -33,7 +34,7 @@ pub fn execute_ica_bond_liquidity(
     let msg = MsgLockTokens {
         owner: config.ica_account.to_string(),
         coins: vec![OsmosisCoin {
-            denom: config.host_config.lp_denom,
+            denom: config.lp_denom,
             amount: share_out_amount.to_string(),
         }],
         duration: Some(Duration {
@@ -61,15 +62,16 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
     env: Env,
     unbonding_lp_amount: Uint128,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config: Config = CONFIG.load(store)?;
+    let config = CONFIG.load(store)?;
+    let state = STATE.load(store)?;
     if unbonding_lp_amount.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgBeginUnlocking {
         owner: config.ica_account.to_string(),
-        id: config.host_config.lock_id,
+        id: state.lock_id,
         coins: vec![OsmosisCoin {
-            denom: config.host_config.lp_denom,
+            denom: config.lp_denom,
             amount: unbonding_lp_amount.to_string(),
         }],
     };

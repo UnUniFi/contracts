@@ -11,59 +11,52 @@ pub enum DepositToken {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ControllerConfig {
-    pub transfer_channel_id: String,
-    pub deposit_denom: String, // `ibc/xxxxuatom`
-    pub free_amount: Uint128,
-    pub stacked_amount_to_deposit: Uint128,
-    pub pending_transfer_amount: Uint128, // TODO: where to get hook for transfer finalization?
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct HostConfig {
-    pub transfer_channel_id: String,
-
-    pub chain_id: String,
-    pub pool_id: u64,     // 1 for ATOM/OSMO
-    pub lp_denom: String, // "gamm/pool/1" for ATOM/OSMO
-    pub bonded_lp_amount: Uint128,
-    pub unbonding_lp_amount: Uint128,
-    pub free_lp_amount: Uint128,
-    pub pending_bond_lp_amount: Uint128,
-    pub pending_lp_removal_amount: Uint128, // pending removal from lp
-    pub lp_redemption_rate: Uint128,
-    pub lock_id: u64,
-
-    pub quote_denom: String, // OSMO for ATOM/OSMO
-    pub free_quote_amount: Uint128,
-
-    pub base_denom: String,        // ATOM for ATOM/OSMO
-    pub free_base_amount: Uint128, // free ATOM balance
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-    pub deposit_token: DepositToken, // Base | Quote
     pub unbond_period: u64,
+    pub phase: Phase,
+    pub phase_step: PhaseStep, // counted from 1 for each phase
+    pub chain_id: String,
+    pub pool_id: u64, // 1 for ATOM/OSMO
+
+    pub deposit_token: DepositToken,      // Base | Quote
+    pub controller_deposit_denom: String, // `ibc/xxxxuatom`
+    pub quote_denom: String,              // OSMO for ATOM/OSMO
+    pub base_denom: String,               // ATOM for ATOM/OSMO
+    pub lp_denom: String,                 // "gamm/pool/1" for ATOM/OSMO
+
+    pub transfer_timeout: u64,
+    pub transfer_channel_id: String,
+    pub controller_transfer_channel_id: String,
+    pub ica_channel_id: String,
+    pub ica_connection_id: String,
+    pub ica_account: String,
+}
+pub const CONFIG: Item<Config> = Item::new("config");
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct State {
+    pub last_unbonding_id: u64,
     pub redemption_rate: Uint128,
     pub total_shares: Uint128,
     pub total_deposit: Uint128,
     pub total_withdrawn: Uint128,
-    pub last_unbonding_id: u64,
-    pub phase: Phase,
-    pub phase_step: PhaseStep, // counted from 1 for each phase
     pub pending_icq: u64,
-
-    pub ica_channel_id: String,
-    pub ica_connection_id: String,
-    pub ica_account: String,
-    pub transfer_timeout: u64,
-    pub host_config: HostConfig,
-    pub controller_config: ControllerConfig,
+    pub lp_redemption_rate: Uint128,
+    pub lock_id: u64,
+    pub bonded_lp_amount: Uint128,
+    pub unbonding_lp_amount: Uint128,
+    pub free_lp_amount: Uint128,
+    pub pending_bond_lp_amount: Uint128,
+    pub pending_lp_removal_amount: Uint128,
+    pub free_quote_amount: Uint128,
+    pub free_base_amount: Uint128,
+    pub controller_free_amount: Uint128,
+    pub controller_pending_transfer_amount: Uint128,
+    pub controller_stacked_amount_to_deposit: Uint128,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const STATE: Item<State> = Item::new("state");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositInfo {
