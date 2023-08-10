@@ -32,10 +32,12 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     deps
 }
 
+#[allow(dead_code)]
 pub fn th_query<T: serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
     from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }
 
+#[allow(dead_code)]
 pub fn register_ica(
     deps: DepsMut,
     ica_addr: String,
@@ -45,11 +47,12 @@ pub fn register_ica(
     // save config directly
 
     CONFIG.save(deps.storage, &config)?;
-    Ok((Response::default()))
+    Ok(Response::default())
 }
 
+#[allow(dead_code)]
 pub fn remove_free_atom_from_host_account(deps: DepsMut) {
     let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     config.host_config.free_base_amount = Uint128::zero();
-    CONFIG.save(deps.storage, &config);
+    _ = CONFIG.save(deps.storage, &config);
 }

@@ -51,9 +51,9 @@ fn test_submit_icq_for_host() {
     let mut i = 0;
     for message in res.as_ref().unwrap().messages.clone() {
         if let CosmosMsg::Custom(UnunifiMsg::SubmitICQRequest {
-            chain_id,
-            connection_id,
-            query_prefix,
+            chain_id: _,
+            connection_id: _,
+            query_prefix: _,
             query_key,
         }) = &message.msg
         {

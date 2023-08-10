@@ -3,7 +3,7 @@ use crate::execute::epoch::epoch::execute_epoch;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_config::execute_update_config;
-use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, QueryMsg};
+use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, PhaseStep, QueryMsg};
 use crate::query::bonded::query_bonded;
 use crate::query::channel::query_channel;
 use crate::query::config::query_config;
@@ -45,7 +45,7 @@ pub fn instantiate(
         ica_channel_id: "".to_string(),
         ica_account: "".to_string(),
         phase: Phase::Deposit,
-        phase_step: 1u64,
+        phase_step: PhaseStep::IbcTransferToHost,
         pending_icq: 0u64,
         host_config: HostConfig {
             chain_id: msg.chain_id,
