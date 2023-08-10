@@ -5,6 +5,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum DepositToken {
+    Base,
+    Quote,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ControllerConfig {
     pub transfer_channel_id: String,
     pub deposit_denom: String, // `ibc/xxxxuatom`
@@ -38,6 +44,7 @@ pub struct HostConfig {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
+    pub deposit_token: DepositToken, // Base | Quote
     pub unbond_period: u64,
     pub redemption_rate: Uint128,
     pub total_shares: Uint128,
@@ -101,8 +108,7 @@ pub struct Metadata {
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct IcaAmounts {
-    pub to_swap_base: Uint128,
-    pub to_swap_quote: Uint128,
+    pub to_swap_amount: Uint128,
     pub to_remove_lp: Uint128,
     pub to_transfer_to_controller: Uint128,
     pub to_transfer_to_host: Uint128,

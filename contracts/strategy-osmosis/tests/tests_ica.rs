@@ -11,7 +11,7 @@ use strategy_osmosis::execute::epoch::token_transfer::execute_ibc_transfer_to_co
 use strategy_osmosis::helpers::join_pool_to_any;
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
 use strategy_osmosis::state::{
-    Config, ControllerConfig, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
+    Config, ControllerConfig, DepositToken, HostConfig, CONFIG, STAKE_RATE_MULTIPLIER,
 };
 mod helpers;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -50,6 +50,7 @@ fn determine_ica_amounts_for_deposit() {
             deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
         }, // unused fields
         owner: Addr::unchecked("owner"),
+        deposit_token: DepositToken::Base,
         unbond_period: 0,
         total_deposit: Uint128::from(0u128),
         last_unbonding_id: 1u64,
@@ -68,8 +69,7 @@ fn determine_ica_amounts_for_deposit() {
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
-    assert_eq!(ica_amounts.to_swap_base, Uint128::from(5000u128));
-    assert_eq!(ica_amounts.to_swap_quote, Uint128::from(2500u128));
+    assert_eq!(ica_amounts.to_swap_amount, Uint128::from(0u128));
     assert_eq!(ica_amounts.to_transfer_to_host, Uint128::from(10000u128));
 }
 
@@ -106,6 +106,7 @@ fn determine_ica_amounts_for_withdraw() {
             deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
         }, // unused fields
         owner: Addr::unchecked("owner"),
+        deposit_token: DepositToken::Base,
         unbond_period: 0,
         total_deposit: Uint128::from(0u128),
         last_unbonding_id: 1u64,
@@ -124,8 +125,7 @@ fn determine_ica_amounts_for_withdraw() {
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
-    assert_eq!(ica_amounts.to_swap_base, Uint128::zero());
-    assert_eq!(ica_amounts.to_swap_quote, Uint128::from(10000u128));
+    assert_eq!(ica_amounts.to_swap_amount, Uint128::from(5000u128));
     assert_eq!(ica_amounts.to_remove_lp, Uint128::from(10u128));
     assert_eq!(
         ica_amounts.to_transfer_to_controller,

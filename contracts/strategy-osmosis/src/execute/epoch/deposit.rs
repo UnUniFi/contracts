@@ -111,11 +111,10 @@ pub fn execute_deposit_phase_epoch(
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
-            // - swap half atom to osmo & half osmo to atom in a single ica tx
-            let ica_amounts = determine_ica_amounts(config.to_owned());
-            let to_swap_atom = ica_amounts.to_swap_base;
-            let to_swap_osmo = ica_amounts.to_swap_quote;
-            if to_swap_atom.is_zero() && to_swap_osmo.is_zero() {
+            // - add osmo and atom as liquidity in a single ica tx
+            if config.host_config.free_base_amount.is_zero()
+                && config.host_config.free_quote_amount.is_zero()
+            {
                 next_phase_step = PhaseStep::BondLiquidity;
             } else {
                 rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);

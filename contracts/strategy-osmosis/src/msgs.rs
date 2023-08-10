@@ -3,6 +3,8 @@ use cosmwasm_std::{Coin, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::state::DepositToken;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub unbond_period: u64,
@@ -29,6 +31,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
+    pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
     pub pool_id: Option<u64>,
     pub ica_channel_id: Option<String>,

@@ -22,6 +22,9 @@ pub fn execute_update_config(
     if let Some(owner) = msg.owner {
         config.owner = deps.api.addr_validate(&owner)?;
     }
+    if let Some(deposit_token) = msg.deposit_token {
+        config.deposit_token = deposit_token;
+    }
     if let Some(unbond_period) = msg.unbond_period {
         config.unbond_period = unbond_period;
     }

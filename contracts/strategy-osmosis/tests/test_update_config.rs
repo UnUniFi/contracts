@@ -30,6 +30,7 @@ fn update_config() {
         mock_info(sender, &[]),
         UpdateConfigMsg {
             owner: None,
+            deposit_token: None,
             unbond_period: None,
             lp_denom: None,
             ica_channel_id: None,
@@ -58,6 +59,7 @@ fn update_config() {
         mock_info(bad_sender, &[]),
         UpdateConfigMsg {
             owner: None,
+            deposit_token: None,
             unbond_period: None,
             lp_denom: None,
             ica_channel_id: None,

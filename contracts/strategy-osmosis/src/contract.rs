@@ -11,7 +11,7 @@ use crate::query::fee_info::query_fee_info;
 use crate::query::list_channels::query_list_channels;
 use crate::query::unbonding::query_unbonding;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
-use crate::state::{Config, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER};
+use crate::state::{Config, DepositToken, EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER};
 use crate::state::{ControllerConfig, HostConfig};
 use crate::sudo::kv_query_result::sudo_kv_query_result;
 use crate::sudo::transfer_callback::sudo_transfer_callback;
@@ -34,6 +34,7 @@ pub fn instantiate(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config = Config {
         owner: info.sender,
+        deposit_token: DepositToken::Base, // ATOM
         unbond_period: msg.unbond_period,
         last_unbonding_id: 1u64,
         redemption_rate: STAKE_RATE_MULTIPLIER,
