@@ -1,10 +1,7 @@
 use crate::error::ContractError;
-use crate::execute::borrow::execute_borrow;
-use crate::execute::end_listing::execute_end_listing;
 use crate::execute::list_nft::execute_list_nft;
-use crate::execute::repay::execute_repay;
+use crate::execute::send_back::execute_send_back;
 use crate::execute::update_config::execute_update_config;
-use crate::execute::withdraw_nft::execute_withdraw_nft;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::config::query_config;
 use crate::state::CONFIG;
@@ -13,7 +10,6 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw_utils::one_coin;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -39,37 +35,8 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig { owner } => execute_update_config(deps, env, info, owner),
-        ExecuteMsg::ListNft {
-            sender,
-            source_chain,
-            class_id,
-            token_id,
-        } => execute_list_nft(deps, env, info),
-        ExecuteMsg::Borrow {
-            sender,
-            source_chain,
-            class_id,
-            token_id,
-            amount,
-        } => execute_borrow(deps, env, info),
-        ExecuteMsg::Repay {
-            source_chain,
-            class_id,
-            token_id,
-            amount,
-        } => execute_repay(deps, env, info),
-        ExecuteMsg::EndListing {
-            sender,
-            source_chain,
-            class_id,
-            token_id,
-        } => execute_end_listing(deps, env, info),
-        ExecuteMsg::WithdrawNft {
-            sender,
-            source_chain,
-            class_id,
-            token_id,
-        } => execute_withdraw_nft(deps, env, info),
+        ExecuteMsg::ListNft(msg) => execute_list_nft(deps, env, info, msg),
+        ExecuteMsg::SendBackNft(msg) => execute_send_back(deps, env, info, msg),
     }
 }
 

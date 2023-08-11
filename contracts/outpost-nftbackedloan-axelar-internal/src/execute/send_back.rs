@@ -1,13 +1,13 @@
 use crate::error::ContractError;
-use crate::msgs::ListNftMsg;
+use crate::msgs::SendBackMsg;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 #[cfg(not(feature = "library"))]
-pub fn execute_list_nft(
+pub fn execute_send_back(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: ListNftMsg,
+    msg: SendBackMsg,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
 
