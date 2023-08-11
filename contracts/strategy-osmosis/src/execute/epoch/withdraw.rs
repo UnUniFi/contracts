@@ -51,7 +51,7 @@ pub fn execute_withdraw_phase_epoch(
                         .unbonding_lp_amount
                         .checked_sub(pending_lp_removal_amount)
                         .unwrap_or(Uint128::from(0u128));
-                    next_phase_step = PhaseStep::RequestICQAfterRemoveLiquidity;
+                    next_phase_step = PhaseStep::RequestIcqAfterRemoveLiquidity;
                 } else {
                     next_phase_step = PhaseStep::RemoveLiquidity;
                 }
@@ -59,12 +59,12 @@ pub fn execute_withdraw_phase_epoch(
                 STATE.save(deps.storage, &state)?;
             }
         }
-        PhaseStep::RequestICQAfterRemoveLiquidity => {
+        PhaseStep::RequestIcqAfterRemoveLiquidity => {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = PhaseStep::ResponseICQAfterRemoveLiquidity;
+            next_phase_step = PhaseStep::ResponseIcqAfterRemoveLiquidity;
         }
-        PhaseStep::ResponseICQAfterRemoveLiquidity => {
+        PhaseStep::ResponseIcqAfterRemoveLiquidity => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::SwapTwoTokensToDepositToken;
@@ -82,18 +82,18 @@ pub fn execute_withdraw_phase_epoch(
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    next_phase_step = PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken;
+                    next_phase_step = PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken;
                 } else {
                     next_phase_step = PhaseStep::SwapTwoTokensToDepositToken;
                 }
             }
         }
-        PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken => {
+        PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken => {
             // - initiate and wait or icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken;
+            next_phase_step = PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken;
         }
-        PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken => {
+        PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::IbcTransferToController;
@@ -111,18 +111,18 @@ pub fn execute_withdraw_phase_epoch(
             // handle ICA callback
             if called_from == EpochCallSource::IcaCallback {
                 if success {
-                    next_phase_step = PhaseStep::RequestICQAfterIbcTransferToController;
+                    next_phase_step = PhaseStep::RequestIcqAfterIbcTransferToController;
                 } else {
                     next_phase_step = PhaseStep::IbcTransferToController;
                 }
             }
         }
-        PhaseStep::RequestICQAfterIbcTransferToController => {
+        PhaseStep::RequestIcqAfterIbcTransferToController => {
             // - refresh balance of host chain after ibc transfer callback
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToController;
+            next_phase_step = PhaseStep::ResponseIcqAfterIbcTransferToController;
         }
-        PhaseStep::ResponseICQAfterIbcTransferToController => {
+        PhaseStep::ResponseIcqAfterIbcTransferToController => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::DistributeToUnbondedUsers;

@@ -10,7 +10,7 @@ pub fn sudo_transfer_callback(
     amount: String,
     sender: String,
     receiver: String,
-    memo: String,
+    _memo: String,
     success: bool,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     deps.api
@@ -22,7 +22,6 @@ pub fn sudo_transfer_callback(
         .add_attribute("amount", amount.to_string())
         .add_attribute("sender", sender.to_string())
         .add_attribute("receiver", receiver.to_string())
-        .add_attribute("memo", memo.to_string())
         .add_attribute("success", success.to_string());
     return Ok(res);
 }

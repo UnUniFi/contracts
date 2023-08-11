@@ -31,7 +31,7 @@ fn epoch_deposit_phase_flow() {
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(
         config.phase_step,
-        PhaseStep::RequestICQAfterIbcTransferToHost
+        PhaseStep::RequestIcqAfterIbcTransferToHost
     );
 
     // TODO: CASE: Step is PhaseStep::IbcTransferToHost, but, with pending deposit
@@ -77,10 +77,10 @@ fn epoch_deposit_phase_flow() {
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(
         config.phase_step,
-        PhaseStep::RequestICQAfterIbcTransferToHost
+        PhaseStep::RequestIcqAfterIbcTransferToHost
     );
 
-    // CASE: when the step is PhaseStep::RequestICQAfterIbcTransferToHost
+    // CASE: when the step is PhaseStep::RequestIcqAfterIbcTransferToHost
     // first, register ica_account so that it can be executed properly
     // NOTE: This is totally random address.
     let ica_addr = String::from("osmo1aqvlxpk8dc4m2nkmxkf63a5zez9jkzgm6amkgddhfk0qj9j4rw3q662wuk");
@@ -98,10 +98,10 @@ fn epoch_deposit_phase_flow() {
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(
         config.phase_step,
-        PhaseStep::ResponseICQAfterIbcTransferToHost
+        PhaseStep::ResponseIcqAfterIbcTransferToHost
     );
 
-    // CASE: When the step is PhaseStep::ResponseICQAfterIbcTransferToHost
+    // CASE: When the step is PhaseStep::ResponseIcqAfterIbcTransferToHost
     let epoch_call_source_icq = EpochCallSource::IcqCallback;
     let res = execute_epoch(
         deps.as_mut(),
@@ -213,12 +213,12 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::RequestICQAfterBondLiquidity);
+    assert_eq!(config.phase_step, PhaseStep::RequestIcqAfterBondLiquidity);
 
     // remove free_atom_amount since it's supposed to be in real execution
     remove_free_atom_from_host_account(deps.as_mut());
 
-    // CASE: when the step is PhaseStep::ResponseICQAfterBondLiquidity
+    // CASE: when the step is PhaseStep::ResponseIcqAfterBondLiquidity
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -229,9 +229,9 @@ fn epoch_deposit_phase_flow() {
     assert!(res.is_ok());
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::ResponseICQAfterBondLiquidity);
+    assert_eq!(config.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
 
-    // CASE: When the step is PhaseStep::ResponseICQAfterBondLiquidity
+    // CASE: When the step is PhaseStep::ResponseIcqAfterBondLiquidity
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -241,7 +241,7 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::ResponseICQAfterBondLiquidity);
+    assert_eq!(config.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
 
     // CASE: When the step is PhaseStep::BeginUnbondingForPendingRequestsCallback
     let res = execute_epoch(
@@ -413,7 +413,7 @@ fn epoch_withdraw_phase_flow() {
     );
     assert!(res.is_ok());
 
-    assert_config_phase_step(deps.as_mut(), PhaseStep::RequestICQAfterRemoveLiquidity);
+    assert_config_phase_step(deps.as_mut(), PhaseStep::RequestIcqAfterRemoveLiquidity);
 
     // CASE: when the step is 3
     // first, register ica_account so that it can be executed properly
@@ -423,7 +423,7 @@ fn epoch_withdraw_phase_flow() {
 
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::RequestICQAfterRemoveLiquidity,
+        PhaseStep::RequestIcqAfterRemoveLiquidity,
         Uint128::zero(),
     );
     let res = execute_epoch(
@@ -435,12 +435,12 @@ fn epoch_withdraw_phase_flow() {
     );
     assert!(res.is_ok());
 
-    assert_config_phase_step(deps.as_mut(), PhaseStep::ResponseICQAfterRemoveLiquidity);
+    assert_config_phase_step(deps.as_mut(), PhaseStep::ResponseIcqAfterRemoveLiquidity);
 
-    // CASE: When the step is PhaseStep::ResponseICQAfterRemoveLiquidity
+    // CASE: When the step is PhaseStep::ResponseIcqAfterRemoveLiquidity
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::ResponseICQAfterRemoveLiquidity,
+        PhaseStep::ResponseIcqAfterRemoveLiquidity,
         Uint128::zero(),
     );
     let res = execute_epoch(
@@ -490,7 +490,7 @@ fn epoch_withdraw_phase_flow() {
     assert!(res.is_ok());
     assert_config_phase_step(
         deps.as_mut(),
-        PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken,
+        PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken,
     );
 
     // CASE: When the step is PhaseStep::SwapTwoTokensToDepositTokenCallback
@@ -510,10 +510,10 @@ fn epoch_withdraw_phase_flow() {
     assert!(res.is_ok());
     assert_config_phase_step(deps.as_mut(), PhaseStep::SwapTwoTokensToDepositToken);
 
-    // CASE: When the step is PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken
+    // CASE: When the step is PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken,
+        PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken,
         Uint128::zero(),
     );
     let res = execute_epoch(
@@ -526,13 +526,13 @@ fn epoch_withdraw_phase_flow() {
     assert!(res.is_ok());
     assert_config_phase_step(
         deps.as_mut(),
-        PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken,
+        PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken,
     );
 
-    // CASE: When the step is PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken
+    // CASE: When the step is PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken,
+        PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken,
         Uint128::zero(),
     );
 
@@ -581,7 +581,7 @@ fn epoch_withdraw_phase_flow() {
     assert!(res.is_ok());
     assert_config_phase_step(
         deps.as_mut(),
-        PhaseStep::RequestICQAfterIbcTransferToController,
+        PhaseStep::RequestIcqAfterIbcTransferToController,
     );
 
     // CASE: When the step is PhaseStep::IbcTransferToControllerCallback
@@ -605,7 +605,7 @@ fn epoch_withdraw_phase_flow() {
     // CASE: When the step is 11
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::RequestICQAfterIbcTransferToController,
+        PhaseStep::RequestIcqAfterIbcTransferToController,
         Uint128::zero(),
     );
 
@@ -619,13 +619,13 @@ fn epoch_withdraw_phase_flow() {
     assert!(res.is_ok());
     assert_config_phase_step(
         deps.as_mut(),
-        PhaseStep::ResponseICQAfterIbcTransferToController,
+        PhaseStep::ResponseIcqAfterIbcTransferToController,
     );
 
-    // CASE: When the step is PhaseStep::ResponseICQAfterIbcTransferToController
+    // CASE: When the step is PhaseStep::ResponseIcqAfterIbcTransferToController
     setup_test_case_for_execute_epoch(
         deps.as_mut(),
-        PhaseStep::ResponseICQAfterIbcTransferToController,
+        PhaseStep::ResponseIcqAfterIbcTransferToController,
         Uint128::zero(),
     );
 

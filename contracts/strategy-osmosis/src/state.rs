@@ -12,8 +12,8 @@ pub enum DepositToken {
 impl ToString for DepositToken {
     fn to_string(&self) -> String {
         match self {
-            DepositToken::Base => String::from("Base"),
-            DepositToken::Quote => String::from("Quote"),
+            DepositToken::Base => String::from("base"),
+            DepositToken::Quote => String::from("quote"),
         }
     }
 }

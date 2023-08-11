@@ -50,7 +50,7 @@ pub fn execute_deposit_phase_epoch(
             let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
             let to_transfer_to_host = ica_amounts.to_transfer_to_host;
             if to_transfer_to_host.is_zero() {
-                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
+                next_phase_step = PhaseStep::RequestIcqAfterIbcTransferToHost;
             } else {
                 rsp = execute_ibc_transfer_to_host(deps.storage, env);
                 next_phase_step = PhaseStep::IbcTransferToHostCallback;
@@ -62,15 +62,15 @@ pub fn execute_deposit_phase_epoch(
                 let mut state = STATE.load(deps.storage)?;
                 state.controller_pending_transfer_amount = Uint128::from(0u128);
                 STATE.save(deps.storage, &state)?;
-                next_phase_step = PhaseStep::RequestICQAfterIbcTransferToHost;
+                next_phase_step = PhaseStep::RequestIcqAfterIbcTransferToHost;
             }
         }
-        PhaseStep::RequestICQAfterIbcTransferToHost => {
+        PhaseStep::RequestIcqAfterIbcTransferToHost => {
             // - icq balance of ica account when `Deposit` phase
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = PhaseStep::ResponseICQAfterIbcTransferToHost;
+            next_phase_step = PhaseStep::ResponseIcqAfterIbcTransferToHost;
         }
-        PhaseStep::ResponseICQAfterIbcTransferToHost => {
+        PhaseStep::ResponseIcqAfterIbcTransferToHost => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::AddLiquidity;
@@ -82,7 +82,7 @@ pub fn execute_deposit_phase_epoch(
             }
             // - add osmo and atom as liquidity in a single ica tx
             if state.free_base_amount.is_zero() && state.free_quote_amount.is_zero() {
-                next_phase_step = PhaseStep::BondLiquidity;
+                next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
             } else {
                 rsp = execute_ica_join_swap_extern_amount_in(deps.storage, env);
                 next_phase_step = PhaseStep::AddLiquidityCallback;
@@ -121,7 +121,7 @@ pub fn execute_deposit_phase_epoch(
             // - add liquidity ica tx
             let share_out_amount = state.pending_bond_lp_amount;
             if share_out_amount.is_zero() {
-                next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
+                next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
             } else {
                 rsp = execute_ica_bond_liquidity(deps.storage, env);
                 next_phase_step = PhaseStep::BondLiquidityCallback;
@@ -147,19 +147,19 @@ pub fn execute_deposit_phase_epoch(
                     }
                     state.bonded_lp_amount += pending_bond_lp_amount;
                     state.pending_bond_lp_amount = Uint128::from(0u128);
-                    next_phase_step = PhaseStep::RequestICQAfterBondLiquidity;
+                    next_phase_step = PhaseStep::RequestIcqAfterBondLiquidity;
                 } else {
                     next_phase_step = PhaseStep::BondLiquidity;
                 }
                 STATE.save(deps.storage, &state)?;
             }
         }
-        PhaseStep::RequestICQAfterBondLiquidity => {
+        PhaseStep::RequestIcqAfterBondLiquidity => {
             // - initiate and wait for icq to update latest balances
             rsp = submit_icq_for_host(deps.storage, env);
-            next_phase_step = PhaseStep::ResponseICQAfterBondLiquidity;
+            next_phase_step = PhaseStep::ResponseIcqAfterBondLiquidity;
         }
-        PhaseStep::ResponseICQAfterBondLiquidity => {
+        PhaseStep::ResponseIcqAfterBondLiquidity => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::BeginUnbondingForPendingRequests;
@@ -222,8 +222,10 @@ pub fn execute_deposit_phase_epoch(
             let matured_unbondings = calc_matured_unbondings(deps.storage, env)?;
             if !state.free_lp_amount.is_zero() && matured_unbondings > Uint128::from(0u128) {
                 next_phase = Phase::Withdraw;
+                next_phase_step = PhaseStep::RemoveLiquidity;
+            } else {
+                next_phase_step = PhaseStep::IbcTransferToHost;
             }
-            next_phase_step = PhaseStep::RemoveLiquidity;
         }
     }
 
