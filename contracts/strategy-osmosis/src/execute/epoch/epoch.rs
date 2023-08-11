@@ -1,7 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::query_balance;
 use crate::msgs::Phase;
-use crate::state::{EpochCallSource, CONFIG, STAKE_RATE_MULTIPLIER, STATE};
+use crate::state::{
+    EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
+};
 use cosmwasm_std::{DepsMut, Env, Response};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
@@ -32,7 +34,8 @@ pub fn execute_epoch(
             state.redemption_rate = STAKE_RATE_MULTIPLIER;
         } else {
             // active tvl is not unbonding tvl that is allocated to shares
-            let mut active_tvl = state.bonded_lp_amount * state.lp_redemption_rate;
+            let mut active_tvl =
+                state.bonded_lp_amount * state.lp_redemption_rate / HOST_LP_RATE_MULTIPLIER;
             active_tvl += state.controller_stacked_amount_to_deposit
                 + state.controller_pending_transfer_amount;
             if config.phase == Phase::Deposit {
