@@ -46,6 +46,7 @@ pub fn sudo_kv_query_result(
         config.lp_denom.to_string(),
     )?;
 
+    let mut resp = Response::new().add_attribute("action", "sudo_kv_query_result");
     if query_prefix == BANK_STORE_KEY {
         if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
@@ -56,10 +57,13 @@ pub fn sudo_kv_query_result(
         }
         if query_key == base_balance_key {
             state.free_base_amount = amount;
+            resp = resp.add_attribute("free_base_amount", state.free_base_amount);
         } else if query_key == quote_balance_key {
             state.free_quote_amount = amount;
+            resp = resp.add_attribute("free_quote_amount", state.free_quote_amount);
         } else if query_key == lp_balance_key {
             state.free_lp_amount = amount;
+            resp = resp.add_attribute("free_lp_amount", state.free_lp_amount);
         }
     } else {
         // GAMM_STORE_KEY
@@ -78,8 +82,11 @@ pub fn sudo_kv_query_result(
         if let Some(total_shares) = pool.total_shares {
             total_share = Uint128::from_str(total_shares.amount.as_str())?;
         }
-        state.lp_redemption_rate =
-            base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+        if !total_share.is_zero() {
+            state.lp_redemption_rate =
+                base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+            resp = resp.add_attribute("lp_redemption_rate", state.lp_redemption_rate);
+        }
     }
 
     state.pending_icq -= 1;
@@ -87,7 +94,8 @@ pub fn sudo_kv_query_result(
 
     if state.pending_icq == 0 {
         execute_epoch(deps, env, EpochCallSource::IcqCallback, true, None)?;
+        resp = resp.add_attribute("execute_epoch", "icq_callback");
     }
 
-    Ok(Response::default())
+    Ok(resp)
 }

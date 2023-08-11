@@ -53,7 +53,7 @@ pub fn execute_ica_bond_liquidity(
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "".to_string(),
+        msg: "failure in conversion from proto to any: MsgLockTokens".to_string(),
     }))
 }
 
@@ -86,6 +86,6 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "".to_string(),
+        msg: "failure in conversion from proto to any: MsgBeginUnlocking".to_string(),
     }))
 }

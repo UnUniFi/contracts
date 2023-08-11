@@ -9,6 +9,15 @@ pub enum DepositToken {
     Quote,
 }
 
+impl ToString for DepositToken {
+    fn to_string(&self) -> String {
+        match self {
+            DepositToken::Base => String::from("Base"),
+            DepositToken::Quote => String::from("Quote"),
+        }
+    }
+}
+
 #[cw_serde]
 pub struct Config {
     pub owner: Addr,

@@ -103,6 +103,6 @@ pub fn execute_ica_remove_liquidity(
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "".to_string(),
+        msg: "failure in conversion from proto to any: MsgExitPool".to_string(),
     }))
 }

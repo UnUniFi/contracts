@@ -15,16 +15,16 @@ pub fn execute_stake(
     }
     let mut state = STATE.load(deps.storage)?;
     let amount = coin.amount;
+    let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
+    state.total_shares += share_amount;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let stake_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
-                state.total_shares += stake_amount;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_add(stake_amount)?,
+                    amount: unwrapped.amount.checked_add(share_amount)?,
                 });
             }
             Ok(DepositInfo {
@@ -39,6 +39,7 @@ pub fn execute_stake(
     let rsp = Response::default()
         .add_attribute("action", "stake")
         .add_attribute("sender", sender)
-        .add_attribute("amount", amount);
+        .add_attribute("amount", amount)
+        .add_attribute("share_amount", share_amount);
     Ok(rsp)
 }

@@ -48,13 +48,19 @@ pub fn submit_icq_for_host(
     let config = CONFIG.load(store)?;
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
 
-    let base_balance_key =
-        create_account_denom_balance_key(converted_addr_bytes.clone(), config.base_denom)?;
-    let quote_balance_key =
-        create_account_denom_balance_key(converted_addr_bytes.clone(), config.quote_denom)?;
-    let lp_balance_key =
-        create_account_denom_balance_key(converted_addr_bytes.clone(), config.lp_denom)?;
-    let gamm_pool_key = create_pool_key(config.pool_id)?;
+    let base_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.base_denom.to_string(),
+    )?;
+    let quote_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.quote_denom.to_string(),
+    )?;
+    let lp_balance_key = create_account_denom_balance_key(
+        converted_addr_bytes.clone(),
+        config.lp_denom.to_string(),
+    )?;
+    let gamm_pool_key = create_pool_key(config.pool_id.to_owned())?;
 
     let msgs = vec![
         UnunifiMsg::SubmitICQRequest {
@@ -83,7 +89,13 @@ pub fn submit_icq_for_host(
         },
     ];
 
-    // Note: bonded lp and unbonding lp token balance could be managed without icq on contract side
-    let resp = Response::new().add_messages(msgs);
+    // Note: bonded lp and unbonding lp token balances are managed without icq on contract side
+    let resp = Response::new()
+        .add_messages(msgs)
+        .add_attribute("action", "submit_icq")
+        .add_attribute("base_denom", config.base_denom.to_string())
+        .add_attribute("quote_denom", config.quote_denom.to_string())
+        .add_attribute("lp_denom", config.lp_denom.to_string())
+        .add_attribute("pool_id", config.pool_id.to_string());
     return Ok(resp);
 }

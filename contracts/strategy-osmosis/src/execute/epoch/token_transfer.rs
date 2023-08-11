@@ -35,7 +35,8 @@ pub fn execute_ibc_transfer_to_host(
 
     let res = Response::new()
         .add_message(ibc_msg)
-        .add_attribute("action", "ibc_transfer_to_host");
+        .add_attribute("action", "ibc_transfer_to_host")
+        .add_attribute("amount", to_transfer_to_host.to_string());
     Ok(res)
 }
 
@@ -73,6 +74,6 @@ pub fn execute_ibc_transfer_to_controller(
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "".to_string(),
+        msg: "failure in conversion from proto to any: MsgTransfer".to_string(),
     }))
 }

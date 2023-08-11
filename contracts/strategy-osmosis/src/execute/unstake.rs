@@ -14,7 +14,7 @@ pub fn execute_unstake(
     sender: Addr,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut state = STATE.load(deps.storage)?;
-    let unstake_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
+    let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -22,7 +22,7 @@ pub fn execute_unstake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_sub(unstake_amount)?,
+                    amount: unwrapped.amount.checked_sub(share_amount)?,
                 });
             }
             Err(NoDeposit {}.into())
@@ -58,13 +58,15 @@ pub fn execute_unstake(
     }
     state.total_shares = state
         .total_shares
-        .checked_sub(unstake_amount)
+        .checked_sub(share_amount)
         .unwrap_or(Uint128::from(0u128));
 
     STATE.save(deps.storage, &state)?;
 
     let rsp = Response::new()
+        .add_attribute("action", "unstake")
         .add_attribute("sender", sender.to_string())
-        .add_attribute("amount", amount);
+        .add_attribute("amount", amount)
+        .add_attribute("share_amount", share_amount);
     Ok(rsp)
 }

@@ -140,6 +140,15 @@ pub enum Phase {
     Withdraw,
 }
 
+impl ToString for Phase {
+    fn to_string(&self) -> String {
+        match self {
+            Phase::Deposit => String::from("Deposit"),
+            Phase::Withdraw => String::from("Withdraw"),
+        }
+    }
+}
+
 #[cw_serde]
 pub enum PhaseStep {
     // Deposit operations
@@ -171,6 +180,65 @@ pub enum PhaseStep {
     RequestICQAfterIbcTransferToController,
     ResponseICQAfterIbcTransferToController,
     DistributeToUnbondedUsers,
+}
+
+impl ToString for PhaseStep {
+    fn to_string(&self) -> String {
+        match self {
+            PhaseStep::IbcTransferToHost => String::from("IbcTransferToHost"),
+            PhaseStep::IbcTransferToHostCallback => String::from("IbcTransferToHostCallback"),
+            PhaseStep::RequestICQAfterIbcTransferToHost => {
+                String::from("RequestICQAfterIbcTransferToHost")
+            }
+            PhaseStep::ResponseICQAfterIbcTransferToHost => {
+                String::from("ResponseICQAfterIbcTransferToHost")
+            }
+            PhaseStep::AddLiquidity => String::from("AddLiquidity"),
+            PhaseStep::AddLiquidityCallback => String::from("AddLiquidityCallback"),
+            PhaseStep::BondLiquidity => String::from("BondLiquidity"),
+            PhaseStep::BondLiquidityCallback => String::from("BondLiquidityCallback"),
+            PhaseStep::RequestICQAfterBondLiquidity => String::from("RequestICQAfterBondLiquidity"),
+            PhaseStep::ResponseICQAfterBondLiquidity => {
+                String::from("ResponseICQAfterBondLiquidity")
+            }
+            PhaseStep::BeginUnbondingForPendingRequests => {
+                String::from("BeginUnbondingForPendingRequests")
+            }
+            PhaseStep::BeginUnbondingForPendingRequestsCallback => {
+                String::from("BeginUnbondingForPendingRequestsCallback")
+            }
+            PhaseStep::CheckMaturedUnbondings => String::from("CheckMaturedUnbondings"),
+            PhaseStep::RemoveLiquidity => String::from("RemoveLiquidity"),
+            PhaseStep::RemoveLiquidityCallback => String::from("RemoveLiquidityCallback"),
+            PhaseStep::RequestICQAfterRemoveLiquidity => {
+                String::from("RequestICQAfterRemoveLiquidity")
+            }
+            PhaseStep::ResponseICQAfterRemoveLiquidity => {
+                String::from("ResponseICQAfterRemoveLiquidity")
+            }
+            PhaseStep::SwapTwoTokensToDepositToken => String::from("SwapTwoTokensToDepositToken"),
+            PhaseStep::SwapTwoTokensToDepositTokenCallback => {
+                String::from("SwapTwoTokensToDepositTokenCallback")
+            }
+            PhaseStep::RequestICQAfterSwapTwoTokensToDepositToken => {
+                String::from("RequestICQAfterSwapTwoTokensToDepositToken")
+            }
+            PhaseStep::ResponseICQAfterSwapTwoTokensToDepositToken => {
+                String::from("ResponseICQAfterSwapTwoTokensToDepositToken")
+            }
+            PhaseStep::IbcTransferToController => String::from("IbcTransferToController"),
+            PhaseStep::IbcTransferToControllerCallback => {
+                String::from("IbcTransferToControllerCallback")
+            }
+            PhaseStep::RequestICQAfterIbcTransferToController => {
+                String::from("RequestICQAfterIbcTransferToController")
+            }
+            PhaseStep::ResponseICQAfterIbcTransferToController => {
+                String::from("ResponseICQAfterIbcTransferToController")
+            }
+            PhaseStep::DistributeToUnbondedUsers => String::from("DistributeToUnbondedUsers"),
+        }
+    }
 }
 
 #[cw_serde]

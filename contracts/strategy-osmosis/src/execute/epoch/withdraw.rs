@@ -148,7 +148,8 @@ pub fn execute_withdraw_phase_epoch(
             }
             if !total_marked_lp_amount.is_zero() {
                 let mut state = STATE.load(deps.storage)?;
-                let mut resp: Response<UnunifiMsg> = Response::new();
+                let mut resp: Response<UnunifiMsg> =
+                    Response::new().add_attribute("action", "unbondings_distribution");
                 for unbonding in unbondings {
                     if unbonding.marked {
                         let returning_amount =

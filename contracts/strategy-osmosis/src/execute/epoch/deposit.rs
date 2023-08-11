@@ -3,7 +3,7 @@ use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
-use cosmwasm_std::{coin, DepsMut, Env, IbcTimeout, Response, StdResult, Storage, Uint128};
+use cosmwasm_std::{DepsMut, Env, Response, StdResult, Storage, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinSwapExternAmountInResponse;
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
@@ -14,6 +14,7 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 use super::helpers::determine_ica_amounts;
 use super::liquidity::execute_ica_join_swap_extern_amount_in;
 use super::lockup::{execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity};
+use super::token_transfer::execute_ibc_transfer_to_host;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
     let config = CONFIG.load(store)?;
@@ -25,35 +26,6 @@ pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint1
         }
     }
     Ok(total_matured_unbondings)
-}
-
-pub fn execute_ibc_transfer_to_host(
-    store: &mut dyn Storage,
-    env: Env,
-) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(store)?;
-    let mut state = STATE.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
-    let to_transfer_to_host = ica_amounts.to_transfer_to_host;
-    if to_transfer_to_host.is_zero() {
-        return Ok(Response::new());
-    }
-    let timeout = env.block.time.plus_seconds(config.transfer_timeout);
-    let ibc_msg = UnunifiMsg::IbcTransfer {
-        channel_id: config.controller_transfer_channel_id,
-        to_address: config.ica_account,
-        amount: coin(to_transfer_to_host.u128(), config.controller_deposit_denom),
-        timeout: IbcTimeout::from(timeout),
-    };
-
-    state.controller_stacked_amount_to_deposit = Uint128::from(0u128);
-    state.controller_pending_transfer_amount += to_transfer_to_host;
-    STATE.save(store, &state)?;
-
-    let res = Response::new()
-        .add_message(ibc_msg)
-        .add_attribute("action", "ibc_transfer_to_host");
-    Ok(res)
 }
 
 pub fn execute_deposit_phase_epoch(
@@ -74,8 +46,7 @@ pub fn execute_deposit_phase_epoch(
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
-            // - ibc transfer to host for newly incoming atoms
-            // - ibc transfer to host for stacked atoms during withdraw phases
+            // - ibc transfer to host for newly staked tokens
             let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
             let to_transfer_to_host = ica_amounts.to_transfer_to_host;
             if to_transfer_to_host.is_zero() {

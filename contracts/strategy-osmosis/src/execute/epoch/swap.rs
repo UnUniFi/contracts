@@ -51,6 +51,6 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
     }
     Err(ContractError::Std(StdError::SerializeErr {
         source_type: "proto_any_conversion".to_string(),
-        msg: "".to_string(),
+        msg: "failure in conversion from proto to any: MsgSwapExactAmountIn".to_string(),
     }))
 }
