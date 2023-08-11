@@ -65,6 +65,8 @@ pub fn ibc_packet_receive(
     deps.api
         .debug(format!("WASMDEBUG: ibc_packet_receive: {:?}", msg).as_str());
 
+    // TODO: Send locked NFT back to the designated address
+
     Ok(IbcReceiveResponse::new())
 }
 
@@ -87,7 +89,9 @@ pub fn ibc_packet_ack(
     let ack: IcaPacketAcknowledgement = from_binary(&msg.acknowledgement.data)
         .unwrap_or_else(|_| IcaPacketAcknowledgement::Error(msg.acknowledgement.data.to_base64()));
     match ack {
-        IcaPacketAcknowledgement::Error(_) => {}
+        IcaPacketAcknowledgement::Error(_) => {
+            // TODO: Send NFT back to sender
+        }
         IcaPacketAcknowledgement::Result(r) => {}
     }
     Ok(IbcBasicResponse::new())

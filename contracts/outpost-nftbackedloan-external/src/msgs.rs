@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Decimal;
+use std::time::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {}

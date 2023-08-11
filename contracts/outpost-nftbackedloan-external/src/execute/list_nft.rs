@@ -22,5 +22,7 @@ pub fn execute_list_nft(
         funds: vec![],
     }));
 
+    // TODO: send IBC packet to the internal contract
+
     Ok(response)
 }
