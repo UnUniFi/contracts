@@ -1,9 +1,9 @@
+use crate::state::DepositToken;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
 use cosmwasm_std::{Coin, Decimal, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub unbond_period: u64,
     pub transfer_timeout: u64,
@@ -17,8 +17,7 @@ pub struct InstantiateMsg {
     pub controller_transfer_channel_id: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     UpdateConfig(UpdateConfigMsg),
     Stake(StakeMsg),
@@ -26,14 +25,14 @@ pub enum ExecuteMsg {
     ExecuteEpoch(ExecuteEpochMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
+    pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
     pub pool_id: Option<u64>,
     pub ica_channel_id: Option<String>,
     pub lp_denom: Option<String>,
-    pub lp_redemption_rate: Option<Uint128>,
     pub phase: Option<Phase>,
     pub phase_step: Option<PhaseStep>,
     pub transfer_timeout: Option<u64>,
@@ -45,58 +44,58 @@ pub struct UpdateConfigMsg {
     pub chain_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcqBalanceCallbackMsg {
     pub coins: Vec<Coin>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IbcTransferCallbackMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct StakeMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct UnstakeMsg {
     pub amount: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteEpochMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IbcTransferToHostMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IbcTransferToControllerMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaAddAndBondLiquidityMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaRemoveLiquidityMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaSwapRewardsToTwoTokensMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaSwapTwoTokensToDepositTokenMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaSwapBalanceToTwoTokensMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaBondLpTokensMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct IcaBeginUnbondLpTokensMsg {
     pub unbonding_lp_amount: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum QueryMsg {
     Config {},
+    State {},
     Bonded {
         addr: String,
     },
@@ -113,7 +112,7 @@ pub enum QueryMsg {
     Unbondings {},
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct FeeInfo {
     pub deposit_fee_rate: Decimal,
     pub withdraw_fee_rate: Decimal,
@@ -121,39 +120,48 @@ pub struct FeeInfo {
 }
 
 /// We currently take no arguments for migrations
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ListChannelsResponse {
     pub channels: Vec<ChannelInfo>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ChannelResponse {
     /// Information on the channel's connection
     pub info: ChannelInfo,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum Phase {
     Deposit,
     Withdraw,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+impl ToString for Phase {
+    fn to_string(&self) -> String {
+        match self {
+            Phase::Deposit => String::from("deposit"),
+            Phase::Withdraw => String::from("withdraw"),
+        }
+    }
+}
+
+#[cw_serde]
 pub enum PhaseStep {
     // Deposit operations
     IbcTransferToHost,
     IbcTransferToHostCallback,
-    RequestICQAfterIbcTransferToHost,
-    ResponseICQAfterIbcTransferToHost,
+    RequestIcqAfterIbcTransferToHost,
+    ResponseIcqAfterIbcTransferToHost,
     AddLiquidity,
     AddLiquidityCallback,
     BondLiquidity,
     BondLiquidityCallback,
-    RequestICQAfterBondLiquidity,
-    ResponseICQAfterBondLiquidity,
+    RequestIcqAfterBondLiquidity,
+    ResponseIcqAfterBondLiquidity,
     BeginUnbondingForPendingRequests,
     BeginUnbondingForPendingRequestsCallback,
     CheckMaturedUnbondings,
@@ -161,20 +169,83 @@ pub enum PhaseStep {
     // Withdraw operations
     RemoveLiquidity,
     RemoveLiquidityCallback,
-    RequestICQAfterRemoveLiquidity,
-    ResponseICQAfterRemoveLiquidity,
+    RequestIcqAfterRemoveLiquidity,
+    ResponseIcqAfterRemoveLiquidity,
     SwapTwoTokensToDepositToken,
     SwapTwoTokensToDepositTokenCallback,
-    RequestICQAfterSwapTwoTokensToDepositToken,
-    ResponseICQAfterSwapTwoTokensToDepositToken,
+    RequestIcqAfterSwapTwoTokensToDepositToken,
+    ResponseIcqAfterSwapTwoTokensToDepositToken,
     IbcTransferToController,
     IbcTransferToControllerCallback,
-    RequestICQAfterIbcTransferToController,
-    ResponseICQAfterIbcTransferToController,
+    RequestIcqAfterIbcTransferToController,
+    ResponseIcqAfterIbcTransferToController,
     DistributeToUnbondedUsers,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+impl ToString for PhaseStep {
+    fn to_string(&self) -> String {
+        match self {
+            PhaseStep::IbcTransferToHost => String::from("ibc_transfer_to_host"),
+            PhaseStep::IbcTransferToHostCallback => String::from("ibc_transfer_to_host_callback"),
+            PhaseStep::RequestIcqAfterIbcTransferToHost => {
+                String::from("request_icq_after_ibc_transfer_to_host")
+            }
+            PhaseStep::ResponseIcqAfterIbcTransferToHost => {
+                String::from("response_icq_after_ibc_transfer_to_host")
+            }
+            PhaseStep::AddLiquidity => String::from("add_liquidity"),
+            PhaseStep::AddLiquidityCallback => String::from("add_liquidity_callback"),
+            PhaseStep::BondLiquidity => String::from("bond_liquidity"),
+            PhaseStep::BondLiquidityCallback => String::from("bond_liquidity_callback"),
+            PhaseStep::RequestIcqAfterBondLiquidity => {
+                String::from("request_icq_after_bond_liquidity")
+            }
+            PhaseStep::ResponseIcqAfterBondLiquidity => {
+                String::from("response_icq_after_bond_liquidity")
+            }
+            PhaseStep::BeginUnbondingForPendingRequests => {
+                String::from("begin_unbonding_for_pending_requests")
+            }
+            PhaseStep::BeginUnbondingForPendingRequestsCallback => {
+                String::from("begin_unbonding_for_pending_requests_callback")
+            }
+            PhaseStep::CheckMaturedUnbondings => String::from("check_matured_unbondings"),
+            PhaseStep::RemoveLiquidity => String::from("remove_qiquidity"),
+            PhaseStep::RemoveLiquidityCallback => String::from("remove_liquidity_callback"),
+            PhaseStep::RequestIcqAfterRemoveLiquidity => {
+                String::from("request_icq_after_remove_liquidity")
+            }
+            PhaseStep::ResponseIcqAfterRemoveLiquidity => {
+                String::from("response_icq_after_remove_liquidity")
+            }
+            PhaseStep::SwapTwoTokensToDepositToken => {
+                String::from("swap_two_tokens_to_deposit_token")
+            }
+            PhaseStep::SwapTwoTokensToDepositTokenCallback => {
+                String::from("swap_two_tokens_to_deposit_token_callback")
+            }
+            PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken => {
+                String::from("request_icq_after_swap_two_tokens_to_deposit_token")
+            }
+            PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken => {
+                String::from("response_icq_after_swap_two_tokens_to_deposit_token")
+            }
+            PhaseStep::IbcTransferToController => String::from("ibc_transfer_to_controller"),
+            PhaseStep::IbcTransferToControllerCallback => {
+                String::from("ibc_transfer_to_controller_callback")
+            }
+            PhaseStep::RequestIcqAfterIbcTransferToController => {
+                String::from("request_icq_after_ibc_transfer_to_controller")
+            }
+            PhaseStep::ResponseIcqAfterIbcTransferToController => {
+                String::from("response_icq_after_ibc_transfer_to_controller")
+            }
+            PhaseStep::DistributeToUnbondedUsers => String::from("distribute_to_unbonded_users"),
+        }
+    }
+}
+
+#[cw_serde]
 pub struct ChannelInfo {
     /// id of this channel
     pub id: String,

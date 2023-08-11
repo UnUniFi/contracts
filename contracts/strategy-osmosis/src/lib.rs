@@ -3,7 +3,6 @@ pub mod error;
 pub mod execute;
 pub mod helpers;
 pub mod ibc;
-pub mod ica;
 pub mod icq;
 pub mod msgs;
 pub mod query;

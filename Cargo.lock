@@ -629,7 +629,6 @@ dependencies = [
  "prost",
  "prost-types",
  "proto",
- "serde",
  "ununifi-binding",
 ]
 
@@ -1166,7 +1165,6 @@ dependencies = [
  "proto",
  "protobuf",
  "schemars",
- "serde",
  "strategy",
  "thiserror",
  "ununifi-binding",

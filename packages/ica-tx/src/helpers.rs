@@ -1,14 +1,14 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Env, IbcMsg, IbcTimeout, Response, StdError};
 use prost::Message;
 use prost_types::Any;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
-use serde::{Deserialize, Serialize};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
 /// Maximum length of address
 pub const MAX_ADDR_LEN: usize = 255;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cw_serde]
 pub struct InterchainAccountPacketData {
     pub r#type: i32,
     pub data: Vec<u8>,

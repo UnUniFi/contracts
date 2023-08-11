@@ -3,14 +3,13 @@ use crate::error::{ContractError, Never};
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::msgs::ChannelInfo;
 use crate::state::CHANNEL_INFO;
-use crate::state::{Config, Metadata, CONFIG};
+use crate::state::{Metadata, CONFIG};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
     IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Reply, Response,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> Result<Response, ContractError> {
@@ -52,7 +51,7 @@ pub fn ibc_channel_connect(
         };
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
 
-        let mut config: Config = CONFIG.load(deps.storage)?;
+        let mut config = CONFIG.load(deps.storage)?;
         // save ica_account and channel automatically if it's the first ica_account
         if config.ica_account == "".to_string() {
             config.ica_account = p.address.to_string();
@@ -92,8 +91,7 @@ pub fn ibc_packet_receive(
     Ok(IbcReceiveResponse::new())
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum IcaPacketAcknowledgement {
     Result(Binary),
     Error(String),

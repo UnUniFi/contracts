@@ -43,5 +43,5 @@ fn unstake() {
         unstake_info.sender,
     )
     .unwrap();
-    assert_eq!(10, res.attributes[1].value.parse::<u128>().unwrap());
+    assert_eq!(10, res.attributes[2].value.parse::<u128>().unwrap());
 }

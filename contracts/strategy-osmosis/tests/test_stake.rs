@@ -4,7 +4,7 @@ use helpers::th_query;
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis::execute::stake::execute_stake;
 use strategy_osmosis::msgs::QueryMsg;
-use strategy_osmosis::state::Config;
+use strategy_osmosis::state::State;
 
 use crate::helpers::setup;
 
@@ -38,6 +38,6 @@ fn stake() {
 
     assert_eq!(0, res.messages.len());
 
-    let deposit: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(Uint128::from(10000 as u64), deposit.total_deposit);
+    let state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    assert_eq!(Uint128::from(10000 as u64), state.total_deposit);
 }

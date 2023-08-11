@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::helpers::{decode_and_convert, BANK_STORE_KEY};
 use crate::icq::create_account_denom_balance_key;
-use crate::state::{Config, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER};
+use crate::state::{EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STATE};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::Pool as OsmosisBalancerPool;
 use prost::Message;
@@ -30,21 +30,23 @@ pub fn sudo_kv_query_result(
         .as_str(),
     );
 
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
     let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.base_denom.to_string(),
+        config.base_denom.to_string(),
     )?;
     let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.quote_denom.to_string(),
+        config.quote_denom.to_string(),
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.lp_denom.to_string(),
+        config.lp_denom.to_string(),
     )?;
 
+    let mut resp = Response::new().add_attribute("action", "sudo_kv_query_result");
     if query_prefix == BANK_STORE_KEY {
         if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
@@ -54,11 +56,14 @@ pub fn sudo_kv_query_result(
             amount = Uint128::from_str(balance.amount.as_str())?;
         }
         if query_key == base_balance_key {
-            config.host_config.free_base_amount = amount;
+            state.free_base_amount = amount;
+            resp = resp.add_attribute("free_base_amount", state.free_base_amount);
         } else if query_key == quote_balance_key {
-            config.host_config.free_quote_amount = amount;
+            state.free_quote_amount = amount;
+            resp = resp.add_attribute("free_quote_amount", state.free_quote_amount);
         } else if query_key == lp_balance_key {
-            config.host_config.free_lp_amount = amount;
+            state.free_lp_amount = amount;
+            resp = resp.add_attribute("free_lp_amount", state.free_lp_amount);
         }
     } else {
         // GAMM_STORE_KEY
@@ -68,7 +73,7 @@ pub fn sudo_kv_query_result(
         let mut total_share = Uint128::from(0u128);
         for pool_asset in pool.pool_assets {
             if let Some(token) = pool_asset.token {
-                if token.denom == config.host_config.base_denom.to_string() {
+                if token.denom == config.base_denom.to_string() {
                     base_amount = Uint128::from_str(token.amount.as_str())?;
                     break;
                 }
@@ -77,16 +82,20 @@ pub fn sudo_kv_query_result(
         if let Some(total_shares) = pool.total_shares {
             total_share = Uint128::from_str(total_shares.amount.as_str())?;
         }
-        config.host_config.lp_redemption_rate =
-            base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+        if !total_share.is_zero() {
+            state.lp_redemption_rate =
+                base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+            resp = resp.add_attribute("lp_redemption_rate", state.lp_redemption_rate);
+        }
     }
 
-    config.pending_icq -= 1;
-    CONFIG.save(deps.storage, &config)?;
+    state.pending_icq -= 1;
+    STATE.save(deps.storage, &state)?;
 
-    if config.pending_icq == 0 {
+    if state.pending_icq == 0 {
         execute_epoch(deps, env, EpochCallSource::IcqCallback, true, None)?;
+        resp = resp.add_attribute("execute_epoch", "icq_callback");
     }
 
-    Ok(Response::default())
+    Ok(resp)
 }

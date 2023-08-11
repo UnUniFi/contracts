@@ -15,7 +15,7 @@ fn initialized_state() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(0, config.unbond_period);
-    // assert_eq!("uguu", config.controller_config.deposit_denom);
+    // assert_eq!("uguu", config.controller_deposit_denom);
 }
 
 #[test]
@@ -30,9 +30,9 @@ fn update_config() {
         mock_info(sender, &[]),
         UpdateConfigMsg {
             owner: None,
+            deposit_token: None,
             unbond_period: None,
             lp_denom: None,
-            lp_redemption_rate: None,
             ica_channel_id: None,
             phase: None,
             phase_step: None,
@@ -50,7 +50,7 @@ fn update_config() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
 
-    assert_eq!("uguu", config.controller_config.deposit_denom);
+    assert_eq!("uguu", config.controller_deposit_denom);
 
     let bad_sender = "bad_sender";
     let err = execute_update_config(
@@ -59,9 +59,9 @@ fn update_config() {
         mock_info(bad_sender, &[]),
         UpdateConfigMsg {
             owner: None,
+            deposit_token: None,
             unbond_period: None,
             lp_denom: None,
-            lp_redemption_rate: None,
             ica_channel_id: None,
             phase: None,
             phase_step: None,

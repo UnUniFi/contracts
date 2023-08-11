@@ -3,7 +3,7 @@ use crate::helpers::{
     decode_and_convert, length_prefix, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY,
     POOLS_PREFIX,
 };
-use crate::state::{Config, CONFIG};
+use crate::state::{CONFIG, STATE};
 use cosmwasm_std::{Binary, Env, Response, Storage};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
@@ -41,54 +41,61 @@ pub fn submit_icq_for_host(
     store: &mut dyn Storage,
     _env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = CONFIG.load(store)?;
-    config.pending_icq = 4u64;
-    CONFIG.save(store, &config)?;
+    let mut state = STATE.load(store)?;
+    state.pending_icq = 4u64;
+    STATE.save(store, &state)?;
 
+    let config = CONFIG.load(store)?;
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
 
     let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.base_denom,
+        config.base_denom.to_string(),
     )?;
     let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.quote_denom,
+        config.quote_denom.to_string(),
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.host_config.lp_denom,
+        config.lp_denom.to_string(),
     )?;
-    let gamm_pool_key = create_pool_key(config.host_config.pool_id)?;
+    let gamm_pool_key = create_pool_key(config.pool_id.to_owned())?;
 
     let msgs = vec![
         UnunifiMsg::SubmitICQRequest {
-            chain_id: config.host_config.chain_id.to_string(),
+            chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(base_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: config.host_config.chain_id.to_string(),
+            chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(quote_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: config.host_config.chain_id.to_string(),
+            chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(lp_balance_key),
         },
         UnunifiMsg::SubmitICQRequest {
-            chain_id: config.host_config.chain_id.to_string(),
+            chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: GAMM_STORE_KEY.to_string(),
             query_key: Binary(gamm_pool_key),
         },
     ];
 
-    // Note: bonded lp and unbonding lp token balance could be managed without icq on contract side
-    let resp = Response::new().add_messages(msgs);
+    // Note: bonded lp and unbonding lp token balances are managed without icq on contract side
+    let resp = Response::new()
+        .add_messages(msgs)
+        .add_attribute("action", "submit_icq")
+        .add_attribute("base_denom", config.base_denom.to_string())
+        .add_attribute("quote_denom", config.quote_denom.to_string())
+        .add_attribute("lp_denom", config.lp_denom.to_string())
+        .add_attribute("pool_id", config.pool_id.to_string());
     return Ok(resp);
 }

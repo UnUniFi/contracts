@@ -6,7 +6,7 @@ use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::{from_binary, Deps, DepsMut, OwnedDeps, Response, Uint128};
-use strategy_osmosis::state::{Config, CONFIG};
+use strategy_osmosis::state::{Config, State, CONFIG, STATE};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
@@ -33,7 +33,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
 }
 
 #[allow(dead_code)]
-pub fn th_query<T: serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
+pub fn th_query<T: cosmwasm_schema::serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
     from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }
 
@@ -52,7 +52,7 @@ pub fn register_ica(
 
 #[allow(dead_code)]
 pub fn remove_free_atom_from_host_account(deps: DepsMut) {
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.host_config.free_base_amount = Uint128::zero();
-    _ = CONFIG.save(deps.storage, &config);
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.free_base_amount = Uint128::zero();
+    _ = STATE.save(deps.storage, &state);
 }

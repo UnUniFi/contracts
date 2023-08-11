@@ -19,4 +19,3 @@ proto = { path = "../proto", features = ["cosmwasm"] }
 ununifi-binding = { path = "../ununifi-binding" }
 prost = "0.11"
 prost-types = "0.11"
-serde = { version = "1.0.144", default-features = false, features = ["derive"] }
