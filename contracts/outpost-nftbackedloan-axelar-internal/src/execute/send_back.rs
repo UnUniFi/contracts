@@ -25,13 +25,10 @@ pub fn execute_send_back(
     // TODO: verify the ownership of the NFT of the sender
     // TODO: burn the NFT of the sender
 
-    let origin_class_id = msg.class_id; // TODO
-    let origin_token_id = msg.token_id; // TODO
-
     let message_payload = encode(&vec![
-        Token::String(msg.destination_address.to_string()),
-        Token::String(origin_class_id.to_string()),
-        Token::String(origin_token_id.to_string()),
+        Token::String(msg.destination_address.clone()),
+        Token::String(msg.origin_class_id),
+        Token::Uint(msg.origin_token_id.to_be_bytes().into()), // Is Big Endian?
     ]);
 
     // {info.funds} used to pay gas. Must only contain 1 token type.
@@ -45,6 +42,9 @@ pub fn execute_send_back(
         fee: None,
     };
 
+    // TODO:
+    // Use ununifi-binding transfer and handle the callback properly.
+    // If the transfer fails, the NFT should be minted again for the sender.
     let ibc_message = MsgTransfer {
         source_port: TRANSFER_PORT.to_string(),
         source_channel: msg.channel_to_axelar.to_string(),

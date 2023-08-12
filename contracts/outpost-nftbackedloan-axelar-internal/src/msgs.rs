@@ -1,8 +1,7 @@
-use std::time::Duration;
-
 use crate::types::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Binary, Decimal, Uint128, Uint256};
+use std::time::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -34,8 +33,8 @@ pub struct SendBackMsg {
     pub channel_to_axelar: String,
     pub destination_chain: String,
     pub destination_address: String,
-    pub class_id: String,
-    pub token_id: String,
+    pub origin_class_id: String,
+    pub origin_token_id: Uint256,
 }
 
 #[cw_serde]

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import {AxelarExecutable} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol";
 import {IAxelarGateway} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol";
 import {IAxelarGasService} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol";
@@ -34,8 +35,7 @@ contract NftBackedLoan is AxelarExecutable {
         // Collateralize NFT
         IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
-        bytes memory executeMsgPayload = abi.encode(
-            "list_nft",
+        bytes memory payload = _encodePayloadToCosmWasm(
             nftContract,
             tokenId,
             ununifiAddress,
@@ -43,7 +43,6 @@ contract NftBackedLoan is AxelarExecutable {
             minDepositRateDecimal6,
             minBidPeriodSeconds
         );
-        bytes memory payload = _encodePayloadToCosmWasm(executeMsgPayload);
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
             destinationChain,
@@ -74,12 +73,12 @@ contract NftBackedLoan is AxelarExecutable {
         bytes memory argValues = abi.encode(
             chainName,
             address(this),
-            nftContract.toString(), // TODO
-            tokenId.toString(),
+            Strings.toHexString(nftContract),
+            Strings.toString(tokenId),
             ununifiAddress,
             bidDenom,
-            minDepositRateDecimal6.toString(),
-            minBidPeriodSeconds.toString()
+            Strings.toString(minDepositRateDecimal6),
+            Strings.toString(minBidPeriodSeconds)
         );
 
         string[] memory argumentNameArray = new string[](3);
@@ -127,16 +126,16 @@ contract NftBackedLoan is AxelarExecutable {
         bytes calldata payload_
     ) internal override {
         // TODO: verify sourceChain_ and sourceAddress_
+        // sourceAddress_ must be the outpost internal contract.
         (
             string memory destinationAddress,
             string memory classId,
-            string memory tokenId
-        ) = abi.decode(payload_, (string, string, string));
+            uint256 tokenId
+        ) = abi.decode(payload_, (string, string, uint256));
 
-        address recipient = address(destinationAddress);
-        address nftContract = address(classId);
-        uint256 tokenIdInt = uint256(tokenId);
+        address recipient = address(bytes20(bytes(destinationAddress)));
+        address nftContract = address(bytes20(bytes(classId)));
 
-        _sendBackNft(recipient, nftContract, tokenIdInt);
+        _sendBackNft(recipient, nftContract, tokenId);
     }
 }

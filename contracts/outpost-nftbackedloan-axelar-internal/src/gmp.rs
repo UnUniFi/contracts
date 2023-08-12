@@ -18,6 +18,14 @@ pub struct GmpMessage {
 }
 
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IbcCounterpartyHeight {
+    #[prost(uint64, optional, tag = "1")]
+    revision_number: Option<u64>,
+    #[prost(uint64, optional, tag = "2")]
+    revision_height: Option<u64>,
+}
+
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MsgTransfer {
     #[prost(string, tag = "1")]
     pub source_port: String,
