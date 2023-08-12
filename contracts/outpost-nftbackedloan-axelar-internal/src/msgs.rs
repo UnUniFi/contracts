@@ -19,22 +19,23 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct ListNftMsg {
-    pub sender: String,
     pub source_chain: String,
+    pub source_address: String,
     pub class_id: String,
     pub token_id: String,
     pub ununifi_address: String,
     pub bid_denom: String,
-    pub min_deposit_rate: Decimal,
-    pub min_bid_period: Duration,
+    pub min_deposit_rate_decimal6: Uint128,
+    pub min_bid_period_seconds: Uint128,
 }
 
 #[cw_serde]
 pub struct SendBackMsg {
-    pub origin_chain: String,
+    pub channel_to_axelar: String,
+    pub destination_chain: String,
+    pub destination_address: String,
     pub class_id: String,
     pub token_id: String,
-    pub origin_address: String,
 }
 
 #[cw_serde]

@@ -17,6 +17,9 @@ pub enum ContractError {
     #[error("{0}")]
     Payment(#[from] PaymentError),
 
+    #[error("Proto encode error")]
+    EncodeError(#[from] prost::EncodeError),
+
     #[error("Amount larger than 2**64, not supported by ics20 packets")]
     AmountOverflow {},
 
