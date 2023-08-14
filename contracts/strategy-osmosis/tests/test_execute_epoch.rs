@@ -125,7 +125,10 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::BondLiquidity);
+    assert_eq!(
+        config.phase_step,
+        PhaseStep::BeginUnbondingForPendingRequests
+    );
 
     // CASE: with pending deposit
     // take a step back to PhaseStep::AddLiquidity
@@ -331,7 +334,7 @@ fn epoch_deposit_phase_flow() {
     assert!(res.is_ok());
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(config.phase, Phase::Deposit);
-    assert_eq!(config.phase_step, PhaseStep::RemoveLiquidity);
+    assert_eq!(config.phase_step, PhaseStep::IbcTransferToHost);
 
     // CASE: When the step is PhaseStep::CheckMaturedUnbondings
     // And when  free lp amount is not 0 and matured unbondings are not empty
