@@ -1,6 +1,7 @@
 use crate::types::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Binary, Decimal, Uint128, Uint256};
+use std::time::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -10,40 +11,30 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig {
-        owner: Option<String>,
-    },
-    ListNft {
-        sender: String,
-        source_chain: String,
-        class_id: String,
-        token_id: String,
-    },
-    Borrow {
-        sender: String,
-        source_chain: String,
-        class_id: String,
-        token_id: String,
-        amount: Uint128,
-    },
-    Repay {
-        source_chain: String,
-        class_id: String,
-        token_id: String,
-        amount: Uint128,
-    },
-    EndListing {
-        sender: String,
-        source_chain: String,
-        class_id: String,
-        token_id: String,
-    },
-    WithdrawNft {
-        sender: String,
-        source_chain: String,
-        class_id: String,
-        token_id: String,
-    },
+    UpdateConfig { owner: Option<String> },
+    ListNft(ListNftMsg),
+    SendBackNft(SendBackMsg),
+}
+
+#[cw_serde]
+pub struct ListNftMsg {
+    pub source_chain: String,
+    pub source_address: String,
+    pub class_id: String,
+    pub token_id: String,
+    pub ununifi_address: String,
+    pub bid_denom: String,
+    pub min_deposit_rate_decimal6: Uint128,
+    pub min_bid_period_seconds: Uint128,
+}
+
+#[cw_serde]
+pub struct SendBackMsg {
+    pub channel_to_axelar: String,
+    pub destination_chain: String,
+    pub destination_address: String,
+    pub origin_class_id: String,
+    pub origin_token_id: Uint256,
 }
 
 #[cw_serde]

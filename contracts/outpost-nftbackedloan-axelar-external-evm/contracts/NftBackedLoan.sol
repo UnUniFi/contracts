@@ -2,22 +2,22 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import {AxelarExecutable} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol";
 import {IAxelarGateway} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol";
 import {IAxelarGasService} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol";
 
-contract NftBackedLoan {
-    IERC20 public immutable usdc;
+contract NftBackedLoan is AxelarExecutable {
     IAxelarGasService public immutable gasService;
+    string public chainName; // name of the chain this contract is deployed to
 
     constructor(
-        address usdc_,
         address gateway_,
-        address gasReceiver_
+        address gasReceiver_,
+        string memory chainName_
     ) AxelarExecutable(gateway_) {
-        usdc = IERC20(usdc_);
         gasService = IAxelarGasService(gasReceiver_);
+        chainName = chainName_;
     }
 
     function listNft(
@@ -25,14 +25,24 @@ contract NftBackedLoan {
         string calldata destinationAddress,
         address nftContract,
         uint256 tokenId,
-        uint256 minDeposit
+        string calldata ununifiAddress,
+        string calldata bidDenom,
+        uint128 minDepositRateDecimal6,
+        uint128 minBidPeriodSeconds
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
 
         // Collateralize NFT
         IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
-        bytes memory payload = abi.encode(value_);
+        bytes memory payload = _encodePayloadToCosmWasm(
+            nftContract,
+            tokenId,
+            ununifiAddress,
+            bidDenom,
+            minDepositRateDecimal6,
+            minBidPeriodSeconds
+        );
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
             destinationChain,
@@ -43,111 +53,71 @@ contract NftBackedLoan {
         gateway.callContract(destinationChain, destinationAddress, payload);
     }
 
-    function borrow(
-        string calldata destinationChain,
-        string calldata destinationAddress,
+    function _encodePayloadToCosmWasm(
         address nftContract,
         uint256 tokenId,
-        uint256 amount
-    ) external payable {
-        require(msg.value > 0, "Gas payment is required");
+        string calldata ununifiAddress,
+        string calldata bidDenom,
+        uint128 minDepositRateDecimal6,
+        uint128 minBidPeriodSeconds
+    ) internal view returns (bytes memory) {
+        // Schema
+        //   bytes4  version number (0x00000001)
+        //   bytes   ABI-encoded payload, indicating function name and arguments:
+        //     string                   CosmWasm contract method name
+        //     dynamic array of string  CosmWasm contract argument name array
+        //     dynamic array of string  argument abi type array
+        //     bytes                    abi encoded argument values
 
-        // Just messaging to the gateway that the sender want to borrow USDC
-        // Destination CosmWasm will send back USDC to this contract in _executeWithToken
-
-        bytes memory payload = abi.encode(value_);
-        gasService.payNativeGasForContractCall{value: msg.value}(
+        // contract call arguments for ExecuteMsg::receive_message_evm{ source_chain, source_address, payload }
+        bytes memory argValues = abi.encode(
+            chainName,
             address(this),
-            destinationChain,
-            destinationAddress,
-            payload,
-            msg.sender
+            Strings.toHexString(nftContract),
+            Strings.toString(tokenId),
+            ununifiAddress,
+            bidDenom,
+            Strings.toString(minDepositRateDecimal6),
+            Strings.toString(minBidPeriodSeconds)
         );
-        gateway.callContract(destinationChain, destinationAddress, payload);
+
+        string[] memory argumentNameArray = new string[](3);
+        argumentNameArray[0] = "source_chain";
+        argumentNameArray[1] = "source_address";
+        argumentNameArray[2] = "class_id";
+        argumentNameArray[3] = "token_id";
+        argumentNameArray[4] = "ununifi_address";
+        argumentNameArray[5] = "bid_denom";
+        argumentNameArray[6] = "min_deposit_rate_decimal6";
+        argumentNameArray[7] = "min_bid_period_seconds";
+
+        string[] memory abiTypeArray = new string[](3);
+        abiTypeArray[0] = "string";
+        abiTypeArray[1] = "string";
+        abiTypeArray[2] = "string";
+        abiTypeArray[3] = "string";
+        abiTypeArray[4] = "string";
+        abiTypeArray[5] = "string";
+        abiTypeArray[6] = "string";
+        abiTypeArray[7] = "string";
+
+        bytes memory gmpPayload;
+        gmpPayload = abi.encode(
+            "list_nft",
+            argumentNameArray,
+            abiTypeArray,
+            argValues
+        );
+
+        return abi.encodePacked(bytes4(0x00000001), gmpPayload);
     }
 
-    function repay(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        address nftContract,
-        uint256 tokenId,
-        uint256 amount
-    ) external payable {
-        require(msg.value > 0, "Gas payment is required");
-
-        // Repay USDC to this contract
-        usdc.transferFrom(msg.sender, address(this), amount);
-        // This contract approves the gateway to use USDC
-        usdc.approve(address(gateway), amount);
-
-        bytes memory payload = abi.encode(value_);
-        gasService.payNativeGasForContractCall{value: msg.value}(
-            address(this),
-            destinationChain,
-            destinationAddress,
-            payload,
-            msg.sender
-        );
-        gateway.callContract(destinationChain, destinationAddress, payload);
-    }
-
-    function endListing(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        address nftContract,
-        uint256 tokenId
-    ) external payable {
-        require(msg.value > 0, "Gas payment is required");
-
-        // Just messaging to the gateway that the sender want to end listing
-        // Destination CosmWasm will call back to this contract in _execute
-
-        bytes memory payload = abi.encode(value_);
-        gasService.payNativeGasForContractCall{value: msg.value}(
-            address(this),
-            destinationChain,
-            destinationAddress,
-            payload,
-            msg.sender
-        );
-        gateway.callContract(destinationChain, destinationAddress, payload);
-    }
-
-    function withdrawNft(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        address nftContract,
-        uint256 tokenId
-    ) external payable {
-        require(msg.value > 0, "Gas payment is required");
-
-        // Just messaging to the gateway that the sender want to withdraw NFT
-        // Destination CosmWasm will call back to this contract in _execute
-
-        bytes memory payload = abi.encode(value_);
-        gasService.payNativeGasForContractCall{value: msg.value}(
-            address(this),
-            destinationChain,
-            destinationAddress,
-            payload,
-            msg.sender
-        );
-        gateway.callContract(destinationChain, destinationAddress, payload);
-    }
-
-    function _sendBorrowedAmount(
+    function _sendBackNft(
         address recipient,
-        uint256 amount
-    ) internal virtual {
-        usdc.transfer(recipient, amount);
-    }
-
-    function _withdrawNft(
-        address recipient,
-        address operator,
+        address nftContract,
         uint256 tokenId
     ) internal virtual {
-        IERC721(operator).transferFrom(address(this), recipient, tokenId);
+        IERC721(nftContract).transferFrom(address(this), recipient, tokenId);
     }
 
     function _execute(
@@ -155,31 +125,17 @@ contract NftBackedLoan {
         string calldata sourceAddress_,
         bytes calldata payload_
     ) internal override {
-        (value) = abi.decode(payload_, (string));
-        sourceChain = sourceChain_;
-        sourceAddress = sourceAddress_;
+        // TODO: verify sourceChain_ and sourceAddress_
+        // sourceAddress_ must be the outpost internal contract.
+        (
+            string memory destinationAddress,
+            string memory classId,
+            uint256 tokenId
+        ) = abi.decode(payload_, (string, string, uint256));
 
-        // switch case
-        // case endListing
-        //   call _endListing
-        // case withdrawNft
-        //   call _withdrawNft
-        // default
-        //   error
-    }
+        address recipient = address(bytes20(bytes(destinationAddress)));
+        address nftContract = address(bytes20(bytes(classId)));
 
-    // Tokens are coming from the gateway to this contract
-    function _executeWithToken(
-        string calldata,
-        string calldata,
-        bytes calldata payload,
-        string calldata tokenSymbol,
-        uint256 amount
-    ) internal override {
-        // switch
-        // case sendBorrowedAmount
-        //   call _sendBorrowedAmount
-        // default
-        //   error
+        _sendBackNft(recipient, nftContract, tokenId);
     }
 }
