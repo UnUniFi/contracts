@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::helpers::{decode_and_convert, BANK_STORE_KEY};
 use crate::icq::create_account_denom_balance_key;
-use crate::state::{EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STATE};
+use crate::state::{DepositToken, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STATE};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::Pool as OsmosisBalancerPool;
 use prost::Message;
@@ -69,12 +69,16 @@ pub fn sudo_kv_query_result(
         // GAMM_STORE_KEY
         let any: Any = Any::decode(data.as_slice())?;
         let pool: OsmosisBalancerPool = OsmosisBalancerPool::decode(any.value.as_slice())?;
-        let mut base_amount = Uint128::from(0u128);
+        let mut host_deposit_denom = config.base_denom;
+        if config.deposit_token == DepositToken::Quote {
+            host_deposit_denom = config.quote_denom;
+        }
+        let mut deposit_denom_amount = Uint128::from(0u128);
         let mut total_share = Uint128::from(0u128);
         for pool_asset in pool.pool_assets {
             if let Some(token) = pool_asset.token {
-                if token.denom == config.base_denom.to_string() {
-                    base_amount = Uint128::from_str(token.amount.as_str())?;
+                if token.denom == host_deposit_denom.to_string() {
+                    deposit_denom_amount = Uint128::from_str(token.amount.as_str())?;
                     break;
                 }
             }
@@ -84,7 +88,7 @@ pub fn sudo_kv_query_result(
         }
         if !total_share.is_zero() {
             state.lp_redemption_rate =
-                base_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
+                deposit_denom_amount * Uint128::from(2u128) * HOST_LP_RATE_MULTIPLIER / total_share;
             resp = resp.add_attribute("lp_redemption_rate", state.lp_redemption_rate);
         }
     }
