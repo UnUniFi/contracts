@@ -9,9 +9,9 @@ pub fn determine_ica_amounts(config: Config, state: State) -> IcaAmounts {
             .checked_sub(state.controller_stacked_amount_to_deposit)
             .unwrap_or(Uint128::from(0u128));
 
-        let mut to_swap_amount = state.free_base_amount;
-        if config.deposit_token == DepositToken::Base {
-            to_swap_amount = state.free_quote_amount;
+        let mut to_swap_amount = state.free_quote_amount;
+        if config.deposit_token == DepositToken::Quote {
+            to_swap_amount = state.free_base_amount;
         }
 
         return IcaAmounts {
