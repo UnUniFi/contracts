@@ -18,6 +18,7 @@ pub struct StakeMsg {}
 #[cw_serde]
 pub struct UnstakeMsg {
     pub amount: Uint128,
+    pub recipient: Option<String>,
 }
 
 #[cw_serde]
@@ -49,15 +50,14 @@ pub struct DepositDenomResp {
 #[cw_serde]
 pub struct AmountsResp {
     pub total_deposited: Uint128,
-    pub not_bonded: Uint128,
+    pub bonding: Uint128,
     pub bonded: Uint128,
     pub unbonding: Uint128,
 }
 
 #[cw_serde]
 pub struct FeeResp {
-    pub deposit_fee_rate: Decimal,
-    pub interest_fee_rate: Decimal,
+    pub performance_fee_rate: Decimal,
     pub withdraw_fee_rate: Decimal,
     pub min_withdraw_fee: Option<Uint128>,
     pub max_withdraw_fee: Option<Uint128>,
