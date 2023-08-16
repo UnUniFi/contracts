@@ -50,7 +50,7 @@ pub struct DepositDenomResp {
 #[cw_serde]
 pub struct AmountsResp {
     pub total_deposited: Uint128,
-    pub bonding: Uint128,
+    pub bonding_standby: Uint128,
     pub bonded: Uint128,
     pub unbonding: Uint128,
 }
