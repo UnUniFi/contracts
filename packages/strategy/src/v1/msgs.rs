@@ -9,7 +9,7 @@ use cosmwasm_std::{Decimal, Uint128};
 pub enum ExecuteMsg {
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
-    ExecuteEpoch(ExecuteEpochMsg),
+    Epoch(EpochMsg),
 }
 
 #[cw_serde]
@@ -22,7 +22,7 @@ pub struct UnstakeMsg {
 }
 
 #[cw_serde]
-pub struct ExecuteEpochMsg {}
+pub struct EpochMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
