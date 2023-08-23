@@ -1122,6 +1122,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-astroport"
+version = "1.0.0"
+dependencies = [
+ "bech32",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw20",
+ "ica-tx",
+ "osmosis-std",
+ "prost",
+ "prost-types",
+ "proto",
+ "protobuf",
+ "schemars",
+ "strategy",
+ "thiserror",
+ "ununifi-binding",
+]
+
+[[package]]
 name = "strategy-comdex"
 version = "1.0.0"
 dependencies = [
