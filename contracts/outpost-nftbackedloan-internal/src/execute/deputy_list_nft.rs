@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msgs::DeputyListNftMsg;
-use cosmwasm_std::{to_binary, CosmosMsg};
+use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 #[cfg(not(feature = "library"))]
@@ -9,10 +9,10 @@ pub fn execute_deputy_list_nft(
     env: Env,
     info: MessageInfo,
     msg: DeputyListNftMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<DeputyListNftMsg>, ContractError> {
     let mut response = Response::new();
 
-    let deputy_list_message:DeputyListNftMsg = DeputyListNftMsg{
+    let deputy_list_message = DeputyListNftMsg{
         lister: msg.lister,
         class_id: msg.class_id,
         token_id: msg.token_id,
@@ -21,13 +21,9 @@ pub fn execute_deputy_list_nft(
         min_bid_period: msg.min_bid_period,
     };
 
-    // todo: any
-    // let msg = deputy_list_message.to_any()?;
+    response = response.add_message( CosmosMsg::Custom(deputy_list_message));
 
-    // response = response.add_message(CosmosMsg::Stargate {
-    //     type_url: msg.type_url,
-    //     value: to_binary(&msg.value)?,
-    // });
+    // todo: check the tx result
 
     Ok(response)
 }
