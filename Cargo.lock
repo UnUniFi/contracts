@@ -856,6 +856,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
  "cw-utils",
+ "cw721",
  "thiserror",
 ]
 
