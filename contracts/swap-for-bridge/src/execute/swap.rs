@@ -35,7 +35,10 @@ pub fn execute_swap(
     let non_lp_allocation = fee.checked_sub(lp_allocation)?;
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.to_string(),
+        to_address: match msg.recipient {
+            Some(recipient) => recipient,
+            None => info.sender.to_string(),
+        },
         amount: vec![Coin {
             denom: msg.output_denom,
             amount: fee_subtracted,

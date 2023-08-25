@@ -21,6 +21,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct SwapMsg {
     pub output_denom: String,
+    pub recipient: Option<String>,
 }
 
 #[cw_serde]
