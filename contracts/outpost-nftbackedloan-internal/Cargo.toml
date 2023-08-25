@@ -29,3 +29,5 @@ thiserror = "1.0"
 cw-storage-plus =  "1.1.0"
 cw-utils = "1.0.1"
 cw721 = "*"
+ununifi-binding = { path = "../../packages/ununifi-binding" }
+

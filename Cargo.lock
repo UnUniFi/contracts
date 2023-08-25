@@ -858,6 +858,7 @@ dependencies = [
  "cw-utils",
  "cw721",
  "thiserror",
+ "ununifi-binding",
 ]
 
 [[package]]
