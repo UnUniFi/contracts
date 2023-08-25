@@ -17,6 +17,12 @@ pub enum ContractError {
     #[error("{0}")]
     Overflow(#[from] OverflowError),
 
-    #[error("Only contract admin can do this")]
+    #[error("Only gov authority address can do this")]
     Unauthorized,
+
+    #[error("Not supported denom")]
+    InvalidDenom,
+
+    #[error("Insufficient funds")]
+    InsufficientFunds,
 }

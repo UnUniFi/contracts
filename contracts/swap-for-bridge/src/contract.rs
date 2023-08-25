@@ -14,16 +14,16 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let authority = deps.api.addr_validate(&msg.authority)?;
     let treasury = deps.api.addr_validate(&msg.treasury)?;
 
     let config = Config {
-        denoms_same_origin: msg.denoms_same_origin,
         authority,
         treasury,
+        denoms_same_origin: msg.denoms_same_origin,
         fee: msg.fee,
     };
 

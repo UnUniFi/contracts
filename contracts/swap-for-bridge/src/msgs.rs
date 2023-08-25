@@ -4,9 +4,9 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub denoms_same_origin: Vec<String>,
     pub authority: String,
     pub treasury: String,
+    pub denoms_same_origin: Vec<String>,
     pub fee: FeeConfig,
 }
 
@@ -37,6 +37,7 @@ pub struct WithdrawLiquidityMsg {
 pub struct UpdateConfigMsg {
     pub authority: Option<String>,
     pub treasury: Option<String>,
+    pub denoms_same_origin: Option<Vec<String>>,
     pub fee: Option<FeeConfig>,
 }
 

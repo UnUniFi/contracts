@@ -8,12 +8,11 @@ use cosmwasm_std::Uint128;
 use cosmwasm_std::{BankMsg, CosmosMsg};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw_utils::nonpayable;
-use cw_utils::one_coin;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_withdraw_liquidity(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: WithdrawLiquidityMsg,
 ) -> Result<Response, ContractError> {
@@ -45,8 +44,9 @@ pub fn execute_withdraw_liquidity(
         .may_load(deps.storage, info.sender.clone())?
         .unwrap_or_else(|| Uint128::new(0));
     if owned_share < msg.share_amount {
-        // TODO: error
+        return Err(ContractError::InsufficientFunds);
     }
+
     let new_share = owned_share.checked_sub(msg.share_amount)?;
     SHARES.save(deps.storage, info.sender.clone(), &new_share)?;
 
@@ -70,6 +70,8 @@ pub fn execute_withdraw_liquidity(
             amount: fee,
         }],
     }));
+
+    response = response.add_attribute("action", "withdraw_liquidity");
 
     Ok(response)
 }

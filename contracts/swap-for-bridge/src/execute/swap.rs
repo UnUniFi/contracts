@@ -5,13 +5,13 @@ use cosmwasm_std::BankMsg;
 use cosmwasm_std::Coin;
 use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::Decimal;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw_utils::one_coin;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_swap(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: SwapMsg,
 ) -> Result<Response, ContractError> {
@@ -21,7 +21,7 @@ pub fn execute_swap(
     let coin = one_coin(&info)?;
 
     if !config.denoms_same_origin.contains(&coin.denom) {
-        // TODO: error
+        return Err(ContractError::InvalidDenom);
     }
 
     let fee = Decimal::new(coin.amount)
@@ -52,6 +52,8 @@ pub fn execute_swap(
             amount: non_lp_allocation,
         }],
     }));
+
+    response = response.add_attribute("action", "swap");
 
     Ok(response)
 }

@@ -28,13 +28,16 @@ pub fn execute_update_config(
         config.treasury = deps.api.addr_validate(&treasury)?;
     }
 
+    if let Some(denoms_same_origin) = msg.denoms_same_origin {
+        config.denoms_same_origin = denoms_same_origin;
+    }
+
     if let Some(fee) = msg.fee {
         config.fee = fee;
     }
 
     CONFIG.save(deps.storage, &config)?;
     response = response.add_attribute("action", "update_config");
-    // TODO: add events
 
     Ok(response)
 }
