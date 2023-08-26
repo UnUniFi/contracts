@@ -2,6 +2,7 @@ use crate::error::ContractError;
 use crate::msgs::WithdrawLiquidityMsg;
 use crate::state::CONFIG;
 use crate::state::TOTAL_SHARE;
+use crate::{balance::get_total_amounts, state::SHARES};
 use cosmwasm_std::Coin;
 use cosmwasm_std::Decimal;
 use cosmwasm_std::Uint128;
@@ -12,12 +13,10 @@ use cw_utils::nonpayable;
 #[cfg(not(feature = "library"))]
 pub fn execute_withdraw_liquidity(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: WithdrawLiquidityMsg,
 ) -> Result<Response, ContractError> {
-    use crate::state::SHARES;
-
     let mut response = Response::new();
 
     nonpayable(&info)?;
@@ -25,7 +24,11 @@ pub fn execute_withdraw_liquidity(
     let config = CONFIG.load(deps.storage)?;
 
     let total_share = TOTAL_SHARE.load(deps.storage)?;
-    let total_token_amount = Uint128::new(0);
+    let total_token_amount = get_total_amounts(
+        deps.as_ref(),
+        env.contract.address,
+        config.denoms_same_origin,
+    )?;
 
     // total_share : total_token_amount = share_amount : token_amount
     let token_amount = if total_share.is_zero() {
@@ -50,7 +53,7 @@ pub fn execute_withdraw_liquidity(
     let new_share = owned_share.checked_sub(msg.share_amount)?;
     SHARES.save(deps.storage, info.sender.clone(), &new_share)?;
 
-    let fee = Decimal::new(token_amount)
+    let fee = Decimal::from_atomics(token_amount, 0)?
         .checked_mul(config.fee.commission_rate)?
         .to_uint_floor();
     let fee_subtracted = token_amount.checked_sub(fee)?;

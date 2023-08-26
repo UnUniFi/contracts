@@ -1,20 +1,20 @@
 use crate::error::ContractError;
 use crate::msgs::DepositLiquidityMsg;
 use crate::state::CONFIG;
+use crate::state::SHARES;
 use crate::state::TOTAL_SHARE;
 use cosmwasm_std::Response;
-use cosmwasm_std::Uint128;
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 use cw_utils::one_coin;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_deposit_liquidity(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     _msg: DepositLiquidityMsg,
 ) -> Result<Response, ContractError> {
-    use crate::state::SHARES;
+    use crate::balance::get_total_amounts;
 
     let mut response = Response::new();
     let config = CONFIG.load(deps.storage)?;
@@ -26,7 +26,11 @@ pub fn execute_deposit_liquidity(
     }
 
     let total_share = TOTAL_SHARE.load(deps.storage)?;
-    let total_token_amount = Uint128::new(0);
+    let total_token_amount = get_total_amounts(
+        deps.as_ref(),
+        env.contract.address,
+        config.denoms_same_origin,
+    )?;
 
     // total_share : total_token_amount = share_amount : token_amount
     let share_amount = if total_token_amount.is_zero() {
