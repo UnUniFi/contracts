@@ -1,9 +1,9 @@
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{Decimal, OwnedDeps};
-use swap_for_bridge::contract::instantiate;
-use swap_for_bridge::msgs::InstantiateMsg;
+use cosmwasm_std::{from_binary, Decimal, Deps, OwnedDeps};
+use swap_for_bridge::contract::{instantiate, query};
+use swap_for_bridge::msgs::{InstantiateMsg, QueryMsg};
 use swap_for_bridge::types::FeeConfig;
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
@@ -23,4 +23,9 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     assert_eq!(0, res.messages.len());
 
     deps
+}
+
+#[allow(dead_code)]
+pub fn th_query<T: cosmwasm_schema::serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
+    from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }
