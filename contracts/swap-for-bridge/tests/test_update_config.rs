@@ -14,14 +14,14 @@ fn initialized_state() {
     let deps = setup();
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(0, config.denoms_same_origin.len());
+    assert_eq!(2, config.denoms_same_origin.len());
 }
 
 #[test]
 fn update_config() {
     let mut deps = setup();
 
-    let sender = "anyone";
+    let sender = "authority";
     // Change with other values for further tests
     execute_update_config(
         deps.as_mut(),
@@ -30,7 +30,11 @@ fn update_config() {
         UpdateConfigMsg {
             authority: Some("authority".to_string()),
             treasury: Some("treasury".to_string()),
-            denoms_same_origin: Some(vec!["denom1".to_string(), "denom2".to_string()]),
+            denoms_same_origin: Some(vec![
+                "denom1".to_string(),
+                "denom2".to_string(),
+                "denom3".to_string(),
+            ]),
             fee: None,
         },
     )
@@ -38,7 +42,7 @@ fn update_config() {
 
     let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
 
-    assert_eq!(2, config.denoms_same_origin.len());
+    assert_eq!(3, config.denoms_same_origin.len());
 
     let bad_sender = "bad_sender";
     let err = execute_update_config(
