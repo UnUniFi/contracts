@@ -1,7 +1,7 @@
 [workspace]
 members = ["contracts/*", "packages/*"]
 
-exclude = ["contracts/outpost-nftbackedloan-axelar-external-evm"]
+exclude = ["contracts/outpost-nftbackedloan-axelar-external-evm", "contracts/strategy-evm-axelar-example"]
 
 [profile.release]
 rpath = false
