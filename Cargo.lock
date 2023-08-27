@@ -852,6 +852,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "outpost-yieldaggregator-internal-axelar"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "ethabi",
+ "prost",
+ "prost-types",
+ "proto",
+ "serde-json-wasm",
+ "thiserror",
+ "ununifi-binding",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
