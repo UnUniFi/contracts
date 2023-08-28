@@ -1266,6 +1266,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-microfinance"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "strategy",
+ "thiserror",
+]
+
+[[package]]
 name = "strategy-osmosis"
 version = "1.0.0"
 dependencies = [
