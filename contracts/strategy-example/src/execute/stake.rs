@@ -1,17 +1,17 @@
 use crate::error::ContractError;
-use crate::state::{CONFIG, DEPOSITS};
+use crate::state::{DEPOSITS, PARAMS};
 use crate::types::DepositInfo;
 use cosmwasm_std::{Addr, Coin, DepsMut, Response, StdResult, Uint128};
 
 #[cfg(not(feature = "library"))]
 pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
-    if config.deposit_denom != coin.denom {
+    let mut params = PARAMS.load(deps.storage)?;
+    if params.deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
     }
     let amount = coin.amount;
     let redemption_rate_multiplier = Uint128::from(1000000u128);
-    let redemption_rate = config.redemption_rate;
+    let redemption_rate = params.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -29,8 +29,8 @@ pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response
             })
         },
     )?;
-    config.total_deposit += amount;
-    CONFIG.save(deps.storage, &config)?;
+    params.total_deposit += amount;
+    PARAMS.save(deps.storage, &params)?;
 
     let rsp = Response::default()
         .add_attribute("action", "stake")

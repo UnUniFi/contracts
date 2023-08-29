@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::{CONFIG, DEPOSITS};
+use crate::state::{DEPOSITS, PARAMS};
 use crate::types::DepositInfo;
 use cosmwasm_std::coins;
 use cosmwasm_std::{Addr, BankMsg, CosmosMsg, DepsMut, Response, StdResult, Uint128};
@@ -10,14 +10,14 @@ pub fn execute_unstake(
     amount: Uint128,
     sender: Addr,
 ) -> Result<Response, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
+    let mut params = PARAMS.load(deps.storage)?;
     let redemption_rate_multiplier = Uint128::from(1000000u128);
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
         |deposit: Option<DepositInfo>| -> StdResult<_> {
             if let Some(unwrapped) = deposit {
-                let unstake_amount = amount * redemption_rate_multiplier / config.redemption_rate;
+                let unstake_amount = amount * redemption_rate_multiplier / params.redemption_rate;
                 return Ok(DepositInfo {
                     sender: sender.clone(),
                     amount: unwrapped.amount.checked_sub(unstake_amount)?,
@@ -30,14 +30,14 @@ pub fn execute_unstake(
         },
     )?;
 
-    config.total_deposit = config
+    params.total_deposit = params
         .total_deposit
         .checked_sub(amount)
         .unwrap_or(Uint128::from(0u128));
-    CONFIG.save(deps.storage, &config)?;
+    PARAMS.save(deps.storage, &params)?;
     let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender.to_string(),
-        amount: coins(amount.u128(), &config.deposit_denom),
+        amount: coins(amount.u128(), &params.deposit_denom),
     });
     let rsp = Response::new()
         .add_message(bank_send_msg)
