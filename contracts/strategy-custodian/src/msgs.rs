@@ -1,4 +1,4 @@
-use crate::types::Config;
+use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use strategy::v0::msgs::{BondedResp, FeeResp, UnbondingResp};
@@ -11,14 +11,17 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig {
-        owner: Option<String>,
-        unbond_period: Option<u64>,
-        deposit_denom: Option<String>,
-    },
+    UpdateParams(UpdateParamsMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     AddRewards(AddRewardsMsg),
+}
+
+#[cw_serde]
+pub struct UpdateParamsMsg {
+    pub authority: Option<String>,
+    pub unbond_period: Option<u64>,
+    pub deposit_denom: Option<String>,
 }
 
 #[cw_serde]
@@ -35,7 +38,7 @@ pub struct AddRewardsMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Config)]
+    #[returns(Params)]
     Config {},
     #[returns(BondedResp)]
     Bonded { addr: String },

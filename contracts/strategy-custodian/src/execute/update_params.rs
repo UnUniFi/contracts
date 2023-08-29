@@ -1,39 +1,38 @@
 use crate::error::ContractError;
-use crate::state::CONFIG;
-use crate::types::Config;
+use crate::msgs::UpdateParamsMsg;
+use crate::state::PARAMS;
+use crate::types::Params;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 /// Only owner can execute it.
 #[cfg(not(feature = "library"))]
-pub fn execute_update_config(
+pub fn execute_update_params(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    owner: Option<String>,
-    unbond_period: Option<u64>,
-    deposit_denom: Option<String>,
+    msg: UpdateParamsMsg,
 ) -> Result<Response, ContractError> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let mut config: Params = PARAMS.load(deps.storage)?;
 
     // Permission check
-    if info.sender != config.owner {
+    if info.sender != config.authority {
         return Err(ContractError::Unauthorized {});
     }
 
-    if let Some(owner) = owner {
-        config.owner = deps.api.addr_validate(&owner)?;
+    if let Some(authority) = msg.authority {
+        config.authority = deps.api.addr_validate(&authority)?;
     }
-    if let Some(unbond_period) = unbond_period {
+    if let Some(unbond_period) = msg.unbond_period {
         config.unbond_period = unbond_period;
     }
-    if let Some(deposit_denom) = deposit_denom {
+    if let Some(deposit_denom) = msg.deposit_denom {
         config.deposit_denom = deposit_denom;
     }
 
-    CONFIG.save(deps.storage, &config)?;
+    PARAMS.save(deps.storage, &config)?;
     let resp = Response::new()
-        .add_attribute("action", "update_config")
-        .add_attribute("owner", config.owner.to_string())
+        .add_attribute("action", "update_params")
+        .add_attribute("authority", config.authority.to_string())
         .add_attribute("unbond_period", config.unbond_period.to_string())
         .add_attribute("deposit_denom", config.deposit_denom.to_string());
 
