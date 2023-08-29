@@ -26,8 +26,8 @@ pub enum ContractError {
     #[error("Only contract admin can do this")]
     Unauthorized,
 
-    #[error("No allowed token")]
-    NoAllowedToken {},
+    #[error("Verification not found")]
+    VerificationNotFound {},
 
     #[error("Execute msg unknown")]
     UnknownRequest {},

@@ -1,5 +1,5 @@
 [package]
-name = "strategy-microfinance"
+name = "kyc"
 version = "1.0.0"
 authors = []
 edition = "2018"
@@ -28,4 +28,3 @@ cosmwasm-schema = "1.3.1"
 thiserror = "1.0"
 cw-storage-plus =  "1.1.0"
 cw-utils = "1.0.1"
-strategy = { path = "../../packages/strategy" }

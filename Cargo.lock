@@ -721,6 +721,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kyc"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "thiserror",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1255,18 +1266,6 @@ dependencies = [
 
 [[package]]
 name = "strategy-example"
-version = "1.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "strategy",
- "thiserror",
-]
-
-[[package]]
-name = "strategy-microfinance"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
