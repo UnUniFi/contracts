@@ -3,9 +3,9 @@
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::OwnedDeps;
-use kyc::contract::instantiate;
-use kyc::msgs::InstantiateMsg;
+use cosmwasm_std::{from_binary, Deps, OwnedDeps};
+use kyc::contract::{instantiate, query};
+use kyc::msgs::{InstantiateMsg, QueryMsg};
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
@@ -19,4 +19,9 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     assert_eq!(0, res.messages.len());
 
     deps
+}
+
+#[allow(dead_code)]
+pub fn th_query<T: cosmwasm_schema::serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
+    from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }

@@ -22,7 +22,6 @@ pub struct UpdateParamsMsg {
 
 #[cw_serde]
 pub struct RegisterProviderMsg {
-    pub authority: String,
     pub address: String,
     pub name: String,
     /// identity defines an optional identity signature (ex. UPort or Keybase).
@@ -37,7 +36,6 @@ pub struct RegisterProviderMsg {
 
 #[cw_serde]
 pub struct UpdateProviderMsg {
-    pub sender: String,
     pub id: u64,
     pub address: Option<String>,
     pub name: Option<String>,
@@ -53,14 +51,12 @@ pub struct UpdateProviderMsg {
 
 #[cw_serde]
 pub struct CreateVerificationMsg {
-    pub sender: String,
     pub provider_id: u64,
     pub customer: String,
 }
 
 #[cw_serde]
 pub struct RemoveVerificationMsg {
-    pub sender: String,
     pub provider_id: u64,
     pub customer: String,
 }
