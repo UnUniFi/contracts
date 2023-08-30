@@ -1,19 +1,23 @@
 use crate::error::{ContractError, NoDeposit};
+use crate::msgs::UnstakeMsg;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
     UNBONDINGS,
 };
 
-use cosmwasm_std::{Addr, DepsMut, Response, StdResult, Uint128};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_unstake(
     deps: DepsMut,
-    amount: Uint128,
-    sender: Addr,
-    recipient: Option<String>,
+    _: Env,
+    info: MessageInfo,
+    msg: UnstakeMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    let amount = msg.share_amount;
+    let sender = info.sender;
+    let recipient = msg.recipient;
     let mut state = STATE.load(deps.storage)?;
     let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
     DEPOSITS.update(

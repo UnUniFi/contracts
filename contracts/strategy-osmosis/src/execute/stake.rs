@@ -1,14 +1,18 @@
 use crate::error::ContractError;
+use crate::msgs::StakeMsg;
 use crate::state::{DepositInfo, CONFIG, DEPOSITS, STAKE_RATE_MULTIPLIER, STATE};
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, Response, StdResult};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw_utils::one_coin;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_stake(
     deps: DepsMut,
-    _env: Env,
-    coin: Coin,
-    sender: Addr,
+    _: Env,
+    info: MessageInfo,
+    _: StakeMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
+    let sender = info.sender;
     let config = CONFIG.load(deps.storage)?;
     if config.controller_deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});

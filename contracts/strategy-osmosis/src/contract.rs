@@ -20,9 +20,8 @@ use crate::sudo::transfer_callback::sudo_transfer_callback;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw_utils::one_coin;
 use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
 use ununifi_binding::v1::binding::UnunifiMsg;
@@ -117,13 +116,8 @@ pub fn execute(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
-        ExecuteMsg::Stake(_) => {
-            let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
-            execute_stake(deps, env, coin, info.sender)
-        }
-        ExecuteMsg::Unstake(msg) => {
-            execute_unstake(deps, msg.share_amount, info.sender, msg.recipient)
-        }
+        ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
+        ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
         ExecuteMsg::ExecuteEpoch(_) => {
             execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
         }
