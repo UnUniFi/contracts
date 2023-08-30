@@ -118,9 +118,7 @@ pub fn execute(
         ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
         ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
-        ExecuteMsg::ExecuteEpoch(_) => {
-            execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
-        }
+        ExecuteMsg::Epoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None),
     }
 }
 
