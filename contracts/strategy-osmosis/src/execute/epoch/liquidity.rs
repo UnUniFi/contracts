@@ -6,7 +6,7 @@ use ica_tx::helpers::send_ica_tx;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgExitPool, MsgJoinSwapExternAmountIn};
 use prost_types::Any;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::helpers::determine_ica_amounts;
 

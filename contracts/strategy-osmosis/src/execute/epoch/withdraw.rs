@@ -4,7 +4,7 @@ use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
 use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, Response, Uint128};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::liquidity::execute_ica_remove_liquidity;
 use super::swap::execute_ica_swap_two_tokens_to_deposit_token;

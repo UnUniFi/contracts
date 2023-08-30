@@ -9,7 +9,7 @@ use prost::Message;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use std::str::FromStr;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// sudo_kv_query_result is the contract's callback for KV query results. Note that only the query
 /// id is provided, so you need to read the query result from the state.

@@ -7,7 +7,7 @@ use strategy_osmosis::icq::{
 };
 use strategy_osmosis::msgs::QueryMsg;
 use strategy_osmosis::state::{Config, CONFIG, STATE};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use crate::helpers::th_query;
 mod helpers;
@@ -48,7 +48,7 @@ fn test_submit_icq_for_host() {
 
     let mut i = 0;
     for message in res.as_ref().unwrap().messages.clone() {
-        if let CosmosMsg::Custom(UnunifiMsg::SubmitICQRequest {
+        if let CosmosMsg::Custom(UnunifiMsg::RequestKvIcq {
             chain_id: _,
             connection_id: _,
             query_prefix: _,

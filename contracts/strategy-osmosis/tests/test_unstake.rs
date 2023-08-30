@@ -15,8 +15,13 @@ fn unstake() {
 
     // Error: because of no deposit token
     let info = mock_info(sender, &coins(10000 as u128, "uguu"));
-    let err =
-        execute_unstake(deps.as_mut(), info.funds[0].amount.clone(), info.sender).unwrap_err();
+    let err = execute_unstake(
+        deps.as_mut(),
+        info.funds[0].amount.clone(),
+        info.sender,
+        None,
+    )
+    .unwrap_err();
     assert_eq!(err, ContractError::Std(NoDeposit {}.into()));
 
     // Error: because of insufficient deposit
@@ -32,6 +37,7 @@ fn unstake() {
         deps.as_mut(),
         unstake_info.funds[0].amount.clone(),
         unstake_info.sender,
+        None,
     );
     assert!(result.is_err(), "overflow");
 
@@ -41,7 +47,8 @@ fn unstake() {
         deps.as_mut(),
         unstake_info.funds[0].amount.clone(),
         unstake_info.sender,
+        None,
     )
     .unwrap();
-    assert_eq!(10, res.attributes[2].value.parse::<u128>().unwrap());
+    assert_eq!(10, res.attributes[3].value.parse::<u128>().unwrap());
 }

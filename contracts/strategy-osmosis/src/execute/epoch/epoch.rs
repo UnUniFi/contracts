@@ -5,7 +5,7 @@ use crate::state::{
     EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
 };
 use cosmwasm_std::{DepsMut, Env, Response};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::deposit::execute_deposit_phase_epoch;
 use super::withdraw::execute_withdraw_phase_epoch;

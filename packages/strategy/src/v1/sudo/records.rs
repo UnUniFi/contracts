@@ -2,10 +2,10 @@ use cosmwasm_schema::cw_serde;
 
 #[cw_serde]
 pub struct TransferCallbackData {
-    denom: String,
-    amount: String,
-    sender: String,
-    receiver: String,
-    memo: String,
-    success: bool,
+    pub denom: String,
+    pub amount: String,
+    pub sender: String,
+    pub receiver: String,
+    pub memo: String,
+    pub success: bool,
 }

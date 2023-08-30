@@ -3,7 +3,7 @@ use cosmwasm_std::{to_binary, Env, IbcMsg, IbcTimeout, Response, StdError};
 use prost::Message;
 use prost_types::Any;
 use proto::ibc::applications::interchain_accounts::v1::CosmosTx;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// Maximum length of address
 pub const MAX_ADDR_LEN: usize = 255;

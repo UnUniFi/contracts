@@ -57,7 +57,7 @@ pub struct StakeMsg {}
 
 #[cw_serde]
 pub struct UnstakeMsg {
-    pub amount: Uint128,
+    pub share_amount: Uint128,
     pub recipient: Option<String>,
 }
 

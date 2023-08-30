@@ -5,7 +5,7 @@ use crate::helpers::{
 };
 use crate::state::{CONFIG, STATE};
 use cosmwasm_std::{Binary, Env, Response, Storage};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// Creates balances Cosmos-SDK storage prefix for account with **addr**
 /// https://github.com/cosmos/cosmos-sdk/blob/ad9e5620fb3445c716e9de45cfcdb56e8f1745bf/x/bank/types/key.go#L55
@@ -63,25 +63,25 @@ pub fn submit_icq_for_host(
     let gamm_pool_key = create_pool_key(config.pool_id.to_owned())?;
 
     let msgs = vec![
-        UnunifiMsg::SubmitICQRequest {
+        UnunifiMsg::RequestKvIcq {
             chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(base_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
+        UnunifiMsg::RequestKvIcq {
             chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(quote_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
+        UnunifiMsg::RequestKvIcq {
             chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(lp_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
+        UnunifiMsg::RequestKvIcq {
             chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
             query_prefix: GAMM_STORE_KEY.to_string(),

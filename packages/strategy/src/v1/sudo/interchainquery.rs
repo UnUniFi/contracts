@@ -3,9 +3,9 @@ use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct KvIcqCallbackData {
-    connection_id: String,
-    chain_id: String,
-    query_prefix: String,
-    query_key: Binary,
-    data: Binary,
+    pub connection_id: String,
+    pub chain_id: String,
+    pub query_prefix: String,
+    pub query_key: Binary,
+    pub data: Binary,
 }

@@ -6,7 +6,7 @@ use ica_tx::helpers::send_ica_tx;
 use osmosis_std::shim::Duration;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_ica_bond_liquidity(
     store: &mut dyn Storage,

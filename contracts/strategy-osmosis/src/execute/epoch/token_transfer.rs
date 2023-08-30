@@ -6,7 +6,7 @@ use ica_tx::helpers::send_ica_tx;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use proto::ibc::applications::transfer::v1::MsgTransfer;
 use proto::traits::MessageExt;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::helpers::determine_ica_amounts;
 

@@ -7,7 +7,7 @@ use cosmwasm_std::testing::{
 };
 use cosmwasm_std::{from_binary, Deps, DepsMut, OwnedDeps, Response, Uint128};
 use strategy_osmosis::state::{Config, State, CONFIG, STATE};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();

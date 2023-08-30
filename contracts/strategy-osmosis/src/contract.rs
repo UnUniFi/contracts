@@ -23,9 +23,9 @@ use cosmwasm_std::{
     to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::one_coin;
-use strategy::v0::msgs::SudoMsg;
+use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -84,29 +84,26 @@ pub fn instantiate(
 #[entry_point]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response<UnunifiMsg>, ContractError> {
     match msg {
-        SudoMsg::KVQueryResult {
-            connection_id,
-            chain_id,
-            query_prefix,
-            query_key,
-            data,
-        } => sudo_kv_query_result(
+        SudoMsg::KvIcqCallback(data) => sudo_kv_query_result(
             deps,
             env,
-            connection_id,
-            chain_id,
-            query_prefix,
-            query_key,
-            data,
+            data.connection_id,
+            data.chain_id,
+            data.query_prefix,
+            data.query_key,
+            data.data,
         ),
-        SudoMsg::TransferCallback {
-            denom,
-            amount,
-            sender,
-            receiver,
-            memo,
-            success,
-        } => sudo_transfer_callback(deps, env, denom, amount, sender, receiver, memo, success),
+        SudoMsg::TransferCallback(data) => sudo_transfer_callback(
+            deps,
+            env,
+            data.denom,
+            data.amount,
+            data.sender,
+            data.receiver,
+            data.memo,
+            data.success,
+        ),
+        SudoMsg::IBCLifecycleComplete(_) => Ok(Response::new()),
     }
 }
 
@@ -124,7 +121,9 @@ pub fn execute(
             let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
             execute_stake(deps, env, coin, info.sender)
         }
-        ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender, msg.recipient),
+        ExecuteMsg::Unstake(msg) => {
+            execute_unstake(deps, msg.share_amount, info.sender, msg.recipient)
+        }
         ExecuteMsg::ExecuteEpoch(_) => {
             execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
         }

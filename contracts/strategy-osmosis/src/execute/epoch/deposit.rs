@@ -9,7 +9,7 @@ use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use std::str::FromStr;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::helpers::determine_ica_amounts;
 use super::liquidity::execute_ica_join_swap_extern_amount_in;

@@ -3,7 +3,7 @@ use crate::msgs::{ChannelInfo, UpdateConfigMsg};
 
 use crate::state::{CHANNEL_INFO, CONFIG};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// Only owner can execute it.
 pub fn execute_update_config(
