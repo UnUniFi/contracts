@@ -1,3 +1,2 @@
-pub mod list_nft;
-pub mod send_back;
-pub mod update_config;
+pub mod deposit_to_vault;
+pub mod update_params;
