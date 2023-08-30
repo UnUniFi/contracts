@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use std::time::Duration;
+
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
@@ -7,16 +9,13 @@ use cosmwasm_std::OwnedDeps;
 use strategy_custodian::contract::instantiate;
 use strategy_custodian::msgs::InstantiateMsg;
 
-pub const DEFAULT_TIMEOUT: u64 = 3600; // 1 hour,
-pub const CONTRACT_PORT: &str = "ibc:wasm1234567890abcdef";
-
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
 
     // instantiate an empty contract
     let instantiate_msg = InstantiateMsg {
-        unbond_period: 0u64,
         deposit_denom: "uguu".to_string(),
+        unbonding_period: Duration::from_secs(1000),
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();

@@ -13,7 +13,7 @@ pub fn execute_send_back(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: SendBackMsg,
+    _msg: SendBackMsg,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
     let coin = one_coin(&info)?;
