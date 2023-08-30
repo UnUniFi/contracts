@@ -1,40 +1,59 @@
 use crate::error::ContractError;
-use crate::state::{DEPOSITS, PARAMS};
-use crate::types::DepositInfo;
-use cosmwasm_std::{Addr, Coin, DepsMut, Response, StdResult, Uint128};
+use crate::state::{BONDEDS, PARAMS};
+use crate::types::Bonded;
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw_utils::one_coin;
+use strategy::v0::msgs::StakeMsg;
 
 #[cfg(not(feature = "library"))]
-pub fn execute_stake(deps: DepsMut, coin: Coin, sender: Addr) -> Result<Response, ContractError> {
-    let mut config = PARAMS.load(deps.storage)?;
-    if config.deposit_denom != coin.denom {
+pub fn execute_stake(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    _msg: StakeMsg,
+) -> Result<Response, ContractError> {
+    use crate::state::{TOTAL_DEPOSIT, TOTAL_SHARE};
+
+    let mut response = Response::new();
+    let coin: Coin = one_coin(&info)?;
+
+    let params = PARAMS.load(deps.storage)?;
+    if params.deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
     }
+
     let amount = coin.amount;
-    let redemption_rate_multiplier = Uint128::from(1000000u128);
-    let redemption_rate = config.redemption_rate;
-    DEPOSITS.update(
+    let total_deposit = TOTAL_DEPOSIT.load(deps.storage)?;
+    let total_share = TOTAL_SHARE.load(deps.storage)?;
+    let share = if total_share.is_zero() {
+        amount
+    } else {
+        amount
+            .checked_mul(total_share)?
+            .checked_div(total_deposit)
+            .unwrap()
+    };
+
+    BONDEDS.update(
         deps.storage,
-        sender.to_string(),
-        |deposit: Option<DepositInfo>| -> StdResult<_> {
-            if let Some(unwrapped) = deposit {
-                let stake_amount = amount * redemption_rate_multiplier / redemption_rate;
-                return Ok(DepositInfo {
-                    sender: sender.clone(),
-                    amount: unwrapped.amount.checked_add(stake_amount)?,
-                });
-            }
-            Ok(DepositInfo {
-                sender: sender.clone(),
-                amount: amount,
+        info.sender.clone(),
+        |deposit: Option<Bonded>| -> StdResult<_> {
+            Ok(Bonded {
+                address: info.sender.clone(),
+                share: match deposit {
+                    Some(deposit) => deposit.share.checked_add(share)?,
+                    None => share,
+                },
             })
         },
     )?;
-    config.total_deposit += amount;
-    PARAMS.save(deps.storage, &config)?;
 
-    let rsp = Response::default()
+    TOTAL_DEPOSIT.save(deps.storage, &(total_deposit.checked_add(amount)?))?;
+    TOTAL_SHARE.save(deps.storage, &(total_share.checked_add(share)?))?;
+
+    response = response
         .add_attribute("action", "stake")
-        .add_attribute("sender", sender)
+        .add_attribute("sender", info.sender)
         .add_attribute("amount", amount);
-    Ok(rsp)
+    Ok(response)
 }

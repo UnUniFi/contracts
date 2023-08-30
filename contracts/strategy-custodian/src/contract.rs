@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use crate::execute::add_rewards::execute_add_rewards;
+use crate::execute::report_profit::execute_report_profit;
+use crate::execute::send_back::execute_send_back;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_params::execute_update_params;
@@ -8,13 +9,12 @@ use crate::query::bonded::query_bonded;
 use crate::query::fee::query_fee;
 use crate::query::params::query_params;
 use crate::query::unbonding::query_unbonding;
-use crate::state::PARAMS;
+use crate::state::{PARAMS, TOTAL_DEPOSIT, TOTAL_SHARE, TOTAL_UNBONDING};
 use crate::types::Params;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw_utils::one_coin;
 
 //Initialize the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -24,15 +24,14 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let redemption_rate_multiplier = Uint128::from(1000000u128);
     let config = Params {
         authority: info.sender,
-        unbond_period: msg.unbond_period,
         deposit_denom: msg.deposit_denom,
-        redemption_rate: redemption_rate_multiplier,
-        total_deposit: Uint128::from(0u128),
     };
     PARAMS.save(deps.storage, &config)?;
+    TOTAL_DEPOSIT.save(deps.storage, &Uint128::new(0))?;
+    TOTAL_SHARE.save(deps.storage, &Uint128::new(0))?;
+    TOTAL_UNBONDING.save(deps.storage, &Uint128::new(0))?;
 
     Ok(Response::new())
 }
@@ -47,15 +46,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
-        ExecuteMsg::Stake(_) => {
-            let coin: Coin = one_coin(&info)?;
-            execute_stake(deps, coin, info.sender)
-        }
-        ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
-        ExecuteMsg::AddRewards(_) => {
-            let coin = one_coin(&info)?;
-            execute_add_rewards(deps, coin)
-        }
+        ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
+        ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
+        ExecuteMsg::SendBack(msg) => execute_send_back(deps, env, info, msg),
+        ExecuteMsg::ReportProfit(msg) => execute_report_profit(deps, env, info, msg),
     }
 }
 

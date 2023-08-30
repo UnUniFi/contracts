@@ -4,14 +4,17 @@ use cosmwasm_std::{Addr, Uint128};
 #[cw_serde]
 pub struct Params {
     pub authority: Addr,
-    pub unbond_period: u64,
     pub deposit_denom: String,
-    pub redemption_rate: Uint128,
-    pub total_deposit: Uint128,
 }
 
 #[cw_serde]
-pub struct DepositInfo {
-    pub sender: Addr,
-    pub amount: Uint128,
+pub struct Bonded {
+    pub address: Addr,
+    pub share: Uint128,
+}
+
+#[cw_serde]
+pub struct Unbonding {
+    pub address: Addr,
+    pub share: Uint128,
 }

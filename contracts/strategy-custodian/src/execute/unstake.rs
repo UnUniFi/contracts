@@ -1,48 +1,65 @@
 use crate::error::ContractError;
-use crate::state::{DEPOSITS, PARAMS};
-use crate::types::DepositInfo;
-use cosmwasm_std::coins;
-use cosmwasm_std::{Addr, BankMsg, CosmosMsg, DepsMut, Response, StdResult, Uint128};
+use crate::state::BONDEDS;
+use crate::state::TOTAL_SHARE;
+use crate::state::TOTAL_UNBONDING;
+use crate::state::UNBONDINGS;
+use crate::types::Bonded;
+use crate::types::Unbonding;
+use cosmwasm_std::{DepsMut, Response, StdResult, Uint128};
+use cosmwasm_std::{Env, MessageInfo};
+use strategy::v0::msgs::UnstakeMsg;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_unstake(
     deps: DepsMut,
-    amount: Uint128,
-    sender: Addr,
+    _env: Env,
+    info: MessageInfo,
+    msg: UnstakeMsg,
 ) -> Result<Response, ContractError> {
-    let mut config = PARAMS.load(deps.storage)?;
-    let redemption_rate_multiplier = Uint128::from(1000000u128);
-    DEPOSITS.update(
+    let mut response = Response::new();
+
+    let share = msg.amount;
+    let total_share = TOTAL_SHARE.load(deps.storage)?;
+
+    if share > total_share {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    BONDEDS.update(
         deps.storage,
-        sender.to_string(),
-        |deposit: Option<DepositInfo>| -> StdResult<_> {
-            if let Some(unwrapped) = deposit {
-                let unstake_amount = amount * redemption_rate_multiplier / config.redemption_rate;
-                return Ok(DepositInfo {
-                    sender: sender.clone(),
-                    amount: unwrapped.amount.checked_sub(unstake_amount)?,
-                });
-            }
-            Ok(DepositInfo {
-                sender: sender.clone(),
-                amount: amount,
+        info.sender.clone(),
+        |deposit: Option<Bonded>| -> StdResult<_> {
+            Ok(Bonded {
+                address: info.sender.clone(),
+                share: match deposit {
+                    Some(deposit) => deposit.share.checked_sub(share)?,
+                    None => Uint128::zero(),
+                },
             })
         },
     )?;
 
-    config.total_deposit = config
-        .total_deposit
-        .checked_sub(amount)
-        .unwrap_or(Uint128::from(0u128));
-    PARAMS.save(deps.storage, &config)?;
-    let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: sender.to_string(),
-        amount: coins(amount.u128(), &config.deposit_denom),
-    });
-    let rsp = Response::new()
-        .add_message(bank_send_msg)
+    UNBONDINGS.update(
+        deps.storage,
+        info.sender.clone(),
+        |unstake_request: Option<Unbonding>| -> StdResult<_> {
+            Ok(Unbonding {
+                address: info.sender.clone(),
+                share: match unstake_request {
+                    Some(unstake_request) => unstake_request.share.checked_add(share)?,
+                    None => share,
+                },
+            })
+        },
+    )?;
+    TOTAL_UNBONDING.update(deps.storage, |total_unbonding: Uint128| -> StdResult<_> {
+        Ok(total_unbonding.checked_add(share)?)
+    })?;
+
+    response = response
         .add_attribute("action", "unstake")
-        .add_attribute("sender", sender)
-        .add_attribute("amount", amount);
-    Ok(rsp)
+        .add_attribute("sender", info.sender)
+        .add_attribute("amount", msg.amount);
+
+    Ok(response)
 }

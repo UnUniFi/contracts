@@ -4,6 +4,6 @@ use cosmwasm_std::{Deps, StdResult};
 
 #[cfg(not(feature = "library"))]
 pub fn query_params(deps: Deps) -> StdResult<Params> {
-    let config: Params = PARAMS.load(deps.storage)?;
-    Ok(config)
+    let params: Params = PARAMS.load(deps.storage)?;
+    Ok(params)
 }
