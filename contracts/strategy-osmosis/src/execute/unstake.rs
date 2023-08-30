@@ -12,6 +12,7 @@ pub fn execute_unstake(
     deps: DepsMut,
     amount: Uint128,
     sender: Addr,
+    recipient: Option<String>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
@@ -34,9 +35,14 @@ pub fn execute_unstake(
         return Err(ContractError::UnbondingItemLimitReached {});
     }
 
+    let mut recipient_addr = sender.to_owned();
+    if let Some(recipient_str) = recipient {
+        recipient_addr = deps.api.addr_validate(recipient_str.as_str())?;
+    }
+
     let unbonding = &Unbonding {
         id: state.last_unbonding_id + 1,
-        sender: sender.to_owned(),
+        sender: recipient_addr.to_owned(),
         amount: amount * HOST_LP_RATE_MULTIPLIER / state.lp_redemption_rate,
         pending_start: false,
         start_time: 0u64,
@@ -66,6 +72,7 @@ pub fn execute_unstake(
     let rsp = Response::new()
         .add_attribute("action", "unstake")
         .add_attribute("sender", sender.to_string())
+        .add_attribute("recipient", recipient_addr.to_string())
         .add_attribute("amount", amount)
         .add_attribute("share_amount", share_amount);
     Ok(rsp)

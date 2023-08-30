@@ -24,6 +24,7 @@ use cosmwasm_std::{
 };
 use cw_utils::one_coin;
 use strategy::v0::msgs::SudoMsg;
+use strategy::v1::msgs::VersionResp;
 use ununifi_binding::v0::binding::UnunifiMsg;
 
 //Initialize the contract.
@@ -123,7 +124,7 @@ pub fn execute(
             let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
             execute_stake(deps, env, coin, info.sender)
         }
-        ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender),
+        ExecuteMsg::Unstake(msg) => execute_unstake(deps, msg.amount, info.sender, msg.recipient),
         ExecuteMsg::ExecuteEpoch(_) => {
             execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None)
         }
@@ -133,6 +134,7 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Version {} => to_binary(&query_version(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
@@ -144,6 +146,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?)
         }
     }
+}
+
+pub fn query_version(_: Deps) -> StdResult<VersionResp> {
+    Ok(VersionResp { version: 1u8 })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

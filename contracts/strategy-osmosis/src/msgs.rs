@@ -58,6 +58,7 @@ pub struct StakeMsg {}
 #[cw_serde]
 pub struct UnstakeMsg {
     pub amount: Uint128,
+    pub recipient: Option<String>,
 }
 
 #[cw_serde]
@@ -94,6 +95,7 @@ pub struct IcaBeginUnbondLpTokensMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
+    Version {},
     Config {},
     State {},
     Bonded {
