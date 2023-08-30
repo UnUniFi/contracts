@@ -1,13 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Addr;
 
 #[cw_serde]
-pub struct Config {
-    pub owner: Addr,
-}
-
-#[cw_serde]
-pub struct DepositInfo {
-    pub sender: Addr,
-    pub amount: Uint128,
+pub struct Params {
+    pub authority: Addr,
 }

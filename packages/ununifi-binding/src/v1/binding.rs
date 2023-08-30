@@ -17,6 +17,12 @@ pub enum UnunifiMsg {
         query_prefix: String,
         query_key: Binary,
     },
+    #[serde(rename = "deputy_deposit_to_vault")]
+    DeputyDepositToVault {
+        depositor: String,
+        vault_id: u64,
+        amount: Coin,
+    },
 }
 
 impl From<UnunifiMsg> for CosmosMsg<UnunifiMsg> {

@@ -10,13 +10,11 @@ import {IAxelarGasService} from "@axelar-network/axelar-gmp-sdk-solidity/contrac
 
 contract YieldAggregatorOutpost is AxelarExecutable {
     IAxelarGasService public immutable gasService;
-    IERC20 public usdc;
     string public chainName; // name of the chain this contract is deployed to
 
     constructor(
         address gateway_,
         address gasReceiver_,
-        address usdc_,
         string memory chainName_
     ) AxelarExecutable(gateway_) {
         gasService = IAxelarGasService(gasReceiver_);
@@ -26,13 +24,17 @@ contract YieldAggregatorOutpost is AxelarExecutable {
     function depositToVault(
         string calldata destinationChain,
         string calldata destinationAddress,
+        string calldata depositor,
+        uint64 vaultId,
+        address erc20,
         uint256 amount
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
 
-        usdc.transferFrom(msg.sender, address(this), amount);
+        IERC20 tokenContract = IERC20(erc20);
+        tokenContract.transferFrom(msg.sender, address(this), amount);
 
-        bytes memory payload = _encodePayloadToCosmWasm();
+        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultId);
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
             destinationChain,
@@ -43,7 +45,10 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         gateway.callContract(destinationChain, destinationAddress, payload);
     }
 
-    function _encodePayloadToCosmWasm() internal view returns (bytes memory) {
+    function _encodePayloadToCosmWasm(
+        string calldata depositor,
+        uint64 vaultId
+    ) internal view returns (bytes memory) {
         // Schema
         //   bytes4  version number (0x00000001)
         //   bytes   ABI-encoded payload, indicating function name and arguments:
@@ -53,14 +58,15 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         //     bytes                    abi encoded argument values
 
         // contract call arguments for ExecuteMsg::receive_message_evm{ source_chain, source_address, payload }
-        bytes memory argValues = abi.encode(chainName, address(this));
+        bytes memory argValues = abi.encode(depositor, vaultId);
 
-        string[] memory argumentNameArray = new string[](3);
-        argumentNameArray[0] = "source_chain";
-        argumentNameArray[1] = "source_address";
+        string[] memory argumentNameArray = new string[](2);
+        argumentNameArray[0] = "depositor";
+        argumentNameArray[1] = "vault_id";
 
-        string[] memory abiTypeArray = new string[](3);
+        string[] memory abiTypeArray = new string[](2);
         abiTypeArray[0] = "string";
+        abiTypeArray[1] = "uint64";
 
         bytes memory gmpPayload;
         gmpPayload = abi.encode(
@@ -73,12 +79,18 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         return abi.encodePacked(bytes4(0x00000001), gmpPayload);
     }
 
-    function _execute(
-        string calldata sourceChain_,
-        string calldata sourceAddress_,
-        bytes calldata payload_
+    function _executeWithToken(
+        string calldata,
+        string calldata,
+        bytes calldata payload,
+        string calldata tokenSymbol,
+        uint256 amount
     ) internal override {
         // TODO: verify sourceChain_ and sourceAddress_
         // sourceAddress_ must be the outpost internal contract.
+        address recipient = abi.decode(payload, (address));
+        address tokenAddress = gateway.tokenAddresses(tokenSymbol);
+
+        IERC20(tokenAddress).transfer(recipient, amount);
     }
 }
