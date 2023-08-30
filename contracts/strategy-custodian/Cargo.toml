@@ -1,5 +1,5 @@
 [package]
-name = "strategy-example"
+name = "strategy-custodian"
 version = "1.0.0"
 authors = []
 edition = "2018"

@@ -1265,7 +1265,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "strategy-example"
+name = "strategy-custodian"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
