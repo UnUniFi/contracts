@@ -29,7 +29,7 @@ fn update_config() {
         mock_env(),
         mock_info(sender, &[]),
         UpdateConfigMsg {
-            owner: None,
+            authority: None,
             deposit_token: None,
             unbond_period: None,
             lp_denom: None,
@@ -58,7 +58,7 @@ fn update_config() {
         mock_env(),
         mock_info(bad_sender, &[]),
         UpdateConfigMsg {
-            owner: None,
+            authority: None,
             deposit_token: None,
             unbond_period: None,
             lp_denom: None,

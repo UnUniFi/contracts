@@ -18,7 +18,7 @@ use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 fn determine_ica_amounts_for_deposit() {
     // Phase is Deposit
     let config = Config {
-        owner: Addr::unchecked("owner"),
+        authority: Addr::unchecked("authority"),
         unbond_period: 0,
         phase: Phase::Deposit,
         phase_step: PhaseStep::IbcTransferToHost,
@@ -79,7 +79,7 @@ fn determine_ica_amounts_for_withdraw() {
         base_denom: "stake".to_string(),
         controller_transfer_channel_id: "channel-1".to_string(),
         controller_deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
-        owner: Addr::unchecked("owner"),
+        authority: Addr::unchecked("authority"),
         deposit_token: DepositToken::Base,
         unbond_period: 0,
         transfer_timeout: 300,

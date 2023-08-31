@@ -37,7 +37,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let config = Config {
-        owner: info.sender,
+        authority: info.sender,
         unbond_period: msg.unbond_period,
         phase: Phase::Deposit,
         phase_step: PhaseStep::IbcTransferToHost,

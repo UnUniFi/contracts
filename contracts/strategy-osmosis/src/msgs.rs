@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct UpdateConfigMsg {
-    pub owner: Option<String>,
+    pub authority: Option<String>,
     pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
     pub pool_id: Option<u64>,

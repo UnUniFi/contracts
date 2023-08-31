@@ -20,7 +20,7 @@ impl ToString for DepositToken {
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Addr,
+    pub authority: Addr,
     pub unbond_period: u64,
     pub phase: Phase,
     pub phase_step: PhaseStep, // counted from 1 for each phase

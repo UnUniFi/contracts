@@ -5,7 +5,7 @@ use crate::state::{CHANNEL_INFO, CONFIG};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
-/// Only owner can execute it.
+/// Only authority can execute it.
 pub fn execute_update_config(
     deps: DepsMut,
     _env: Env,
@@ -15,14 +15,14 @@ pub fn execute_update_config(
     let mut config = CONFIG.load(deps.storage)?;
 
     // Permission check
-    if info.sender != config.owner {
+    if info.sender != config.authority {
         return Err(ContractError::Unauthorized {});
     }
 
     let mut resp = Response::new().add_attribute("action", "update_config");
-    if let Some(owner) = msg.owner {
-        config.owner = deps.api.addr_validate(&owner)?;
-        resp = resp.add_attribute("owner", owner.to_string());
+    if let Some(authority) = msg.authority {
+        config.authority = deps.api.addr_validate(&authority)?;
+        resp = resp.add_attribute("authority", authority.to_string());
     }
     if let Some(deposit_token) = msg.deposit_token {
         config.deposit_token = deposit_token.to_owned();

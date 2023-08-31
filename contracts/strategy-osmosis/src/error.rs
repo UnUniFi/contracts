@@ -29,7 +29,7 @@ pub enum ContractError {
     #[error("Insufficient funds to redeem voucher on channel")]
     InsufficientFunds {},
 
-    #[error("Only contract admin can do this")]
+    #[error("Only contract authority can do this")]
     Unauthorized,
 
     #[error("No allowed token")]
