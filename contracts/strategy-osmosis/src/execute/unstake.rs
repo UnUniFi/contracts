@@ -1,12 +1,11 @@
 use crate::error::{ContractError, NoDeposit};
-use crate::msgs::UnstakeMsg;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
     UNBONDINGS,
 };
-
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use strategy::v1::msgs::UnstakeMsg;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_unstake(

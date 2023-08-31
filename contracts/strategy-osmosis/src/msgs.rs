@@ -2,6 +2,7 @@ use crate::state::DepositToken;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
 use cosmwasm_std::{Coin, Decimal, Uint128};
+use strategy::v1::msgs::{EpochMsg, StakeMsg, UnstakeMsg};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -51,18 +52,6 @@ pub struct IcqBalanceCallbackMsg {
 
 #[cw_serde]
 pub struct IbcTransferCallbackMsg {}
-
-#[cw_serde]
-pub struct StakeMsg {}
-
-#[cw_serde]
-pub struct UnstakeMsg {
-    pub share_amount: Uint128,
-    pub recipient: Option<String>,
-}
-
-#[cw_serde]
-pub struct EpochMsg {}
 
 #[cw_serde]
 pub struct IbcTransferToHostMsg {}
