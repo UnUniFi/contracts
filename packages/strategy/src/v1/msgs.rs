@@ -35,6 +35,8 @@ pub enum QueryMsg {
     Amounts { addr: String },
     #[returns(FeeResp)]
     Fee {},
+    #[returns(KycResp)]
+    Kyc {},
 }
 
 #[cw_serde]
@@ -61,6 +63,12 @@ pub struct FeeResp {
     pub withdraw_fee_rate: Decimal,
     pub min_withdraw_fee: Option<Uint128>,
     pub max_withdraw_fee: Option<Uint128>,
+}
+
+#[cw_serde]
+pub struct KycResp {
+    pub kyc_required: bool,
+    pub trusted_provider_ids: Vec<u64>,
 }
 
 #[cw_serde]
