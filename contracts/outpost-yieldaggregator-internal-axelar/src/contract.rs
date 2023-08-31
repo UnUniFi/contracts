@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::execute::deposit_to_vault::execute_deposit_to_vault;
 use crate::execute::update_params::execute_update_params;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::query::config::query_params;
+use crate::query::params::query_params;
 use crate::state::PARAMS;
 use crate::types::Params;
 use cosmwasm_std::entry_point;

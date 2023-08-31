@@ -25,7 +25,7 @@ pub fn execute_update_params(
 
     PARAMS.save(deps.storage, &params)?;
     response = response
-        .add_attribute("action", "update_config")
+        .add_attribute("action", "update_params")
         .add_attribute("authority", params.authority.to_string());
 
     Ok(response)
