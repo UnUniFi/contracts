@@ -1,8 +1,8 @@
 use crate::error::ContractError;
-use crate::msgs::StakeMsg;
 use crate::state::{DepositInfo, CONFIG, DEPOSITS, STAKE_RATE_MULTIPLIER, STATE};
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::one_coin;
+use strategy::v1::msgs::StakeMsg;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_stake(

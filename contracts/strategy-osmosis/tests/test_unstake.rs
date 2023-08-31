@@ -1,9 +1,9 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, Uint128};
+use strategy::v1::msgs::{StakeMsg, UnstakeMsg};
 use strategy_osmosis::error::{ContractError, NoDeposit};
 use strategy_osmosis::execute::stake::execute_stake;
 use strategy_osmosis::execute::unstake::execute_unstake;
-use strategy_osmosis::msgs::{StakeMsg, UnstakeMsg};
 
 use crate::helpers::setup;
 

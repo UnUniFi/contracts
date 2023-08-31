@@ -1,9 +1,10 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, Uint128};
 use helpers::th_query;
+use strategy::v1::msgs::StakeMsg;
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis::execute::stake::execute_stake;
-use strategy_osmosis::msgs::{QueryMsg, StakeMsg};
+use strategy_osmosis::msgs::QueryMsg;
 use strategy_osmosis::state::State;
 
 use crate::helpers::setup;
