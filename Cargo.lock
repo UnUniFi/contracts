@@ -1250,21 +1250,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "strategy-comdex"
-version = "1.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "cw20",
- "prost",
- "proto",
- "strategy",
- "thiserror",
-]
-
-[[package]]
 name = "strategy-custodian"
 version = "1.0.0"
 dependencies = [
