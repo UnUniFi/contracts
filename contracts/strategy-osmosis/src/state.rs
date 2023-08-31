@@ -19,8 +19,8 @@ impl ToString for DepositToken {
 }
 
 #[cw_serde]
-pub struct Config {
-    pub owner: Addr,
+pub struct Params {
+    pub authority: Addr,
     pub unbond_period: u64,
     pub phase: Phase,
     pub phase_step: PhaseStep, // counted from 1 for each phase
@@ -40,7 +40,7 @@ pub struct Config {
     pub ica_connection_id: String,
     pub ica_account: String,
 }
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const PARAMS: Item<Params> = Item::new("params");
 
 #[cw_serde]
 pub struct State {

@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::helpers::query_balance;
 use crate::msgs::Phase;
 use crate::state::{
-    EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
+    EpochCallSource, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
 };
 use cosmwasm_std::{DepsMut, Env, Response};
 use ununifi_binding::v1::binding::UnunifiMsg;
@@ -17,12 +17,12 @@ pub fn execute_epoch(
     success: bool,
     ret: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let params = PARAMS.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
     if let Ok(balance) = query_balance(
         &deps.querier,
         env.contract.address.to_owned(),
-        config.controller_deposit_denom.to_string(),
+        params.controller_deposit_denom.to_string(),
     ) {
         state.controller_free_amount = balance;
         STATE.save(deps.storage, &state)?;
@@ -38,7 +38,7 @@ pub fn execute_epoch(
                 state.bonded_lp_amount * state.lp_redemption_rate / HOST_LP_RATE_MULTIPLIER;
             active_tvl += state.controller_stacked_amount_to_deposit
                 + state.controller_pending_transfer_amount;
-            if config.phase == Phase::Deposit {
+            if params.phase == Phase::Deposit {
                 active_tvl += state.free_base_amount;
             }
             state.redemption_rate = active_tvl * STAKE_RATE_MULTIPLIER / state.total_shares;
@@ -46,7 +46,7 @@ pub fn execute_epoch(
         STATE.save(deps.storage, &state)?;
     }
 
-    if config.phase == Phase::Withdraw {
+    if params.phase == Phase::Withdraw {
         return execute_withdraw_phase_epoch(deps, env, called_from, success, ret);
     }
     return execute_deposit_phase_epoch(deps, env, called_from, success, ret);

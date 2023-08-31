@@ -1,16 +1,16 @@
 use crate::msgs::Phase;
-use crate::state::{Config, DepositToken, IcaAmounts, State};
+use crate::state::{DepositToken, IcaAmounts, Params, State};
 use cosmwasm_std::Uint128;
 
-pub fn determine_ica_amounts(config: Config, state: State) -> IcaAmounts {
-    if config.phase == Phase::Withdraw {
+pub fn determine_ica_amounts(params: Params, state: State) -> IcaAmounts {
+    if params.phase == Phase::Withdraw {
         let amount_to_return = state
             .controller_free_amount
             .checked_sub(state.controller_stacked_amount_to_deposit)
             .unwrap_or(Uint128::from(0u128));
 
         let mut to_swap_amount = state.free_quote_amount;
-        if config.deposit_token == DepositToken::Quote {
+        if params.deposit_token == DepositToken::Quote {
             to_swap_amount = state.free_base_amount;
         }
 

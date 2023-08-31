@@ -1,7 +1,7 @@
 use crate::state::DepositToken;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{Coin, Uint128};
 use strategy::v1::msgs::{EpochMsg, StakeMsg, UnstakeMsg};
 
 #[cw_serde]
@@ -20,15 +20,15 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig(UpdateConfigMsg),
+    UpdateParams(UpdateParamsMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     Epoch(EpochMsg),
 }
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
-    pub owner: Option<String>,
+pub struct UpdateParamsMsg {
+    pub authority: Option<String>,
     pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
     pub pool_id: Option<u64>,
@@ -85,7 +85,13 @@ pub struct IcaBeginUnbondLpTokensMsg {
 #[cw_serde]
 pub enum QueryMsg {
     Version {},
-    Config {},
+    DepositDenom {},
+    Fee {},
+    Amounts {
+        addr: String,
+    },
+    Kyc {},
+    Params {},
     State {},
     Bonded {
         addr: String,
@@ -93,7 +99,6 @@ pub enum QueryMsg {
     Unbonding {
         addr: String,
     },
-    Fee {},
     /// Show all channels connected to.
     ListChannels {},
     /// Returns the details of the name channel, error if not created.
@@ -101,13 +106,6 @@ pub enum QueryMsg {
         id: String,
     },
     Unbondings {},
-}
-
-#[cw_serde]
-pub struct FeeInfo {
-    pub deposit_fee_rate: Decimal,
-    pub withdraw_fee_rate: Decimal,
-    pub interest_fee_rate: Decimal,
 }
 
 /// We currently take no arguments for migrations

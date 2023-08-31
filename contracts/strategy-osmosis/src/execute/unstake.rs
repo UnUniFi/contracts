@@ -55,7 +55,7 @@ pub fn execute_unstake(
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
 
     // increase last unbonding id
-    // NOTE: eventually, we should remove these params from config because it's simply double counting
+    // NOTE: eventually, we should remove these params from params because it's simply double counting
     state.last_unbonding_id += 1;
     state.unbonding_lp_amount += unbonding.amount;
     if state.bonded_lp_amount < unbonding.amount {

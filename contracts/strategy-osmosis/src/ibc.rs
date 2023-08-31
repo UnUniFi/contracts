@@ -3,7 +3,7 @@ use crate::error::{ContractError, Never};
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::msgs::ChannelInfo;
 use crate::state::CHANNEL_INFO;
-use crate::state::{Metadata, CONFIG};
+use crate::state::{Metadata, PARAMS};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     entry_point, from_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannel,
@@ -51,13 +51,13 @@ pub fn ibc_channel_connect(
         };
         CHANNEL_INFO.save(deps.storage, &info.id, &info)?;
 
-        let mut config = CONFIG.load(deps.storage)?;
+        let mut params = PARAMS.load(deps.storage)?;
         // save ica_account and channel automatically if it's the first ica_account
-        if config.ica_account == "".to_string() {
-            config.ica_account = p.address.to_string();
-            config.ica_channel_id = info.id;
-            config.ica_connection_id = channel.connection_id.to_string();
-            CONFIG.save(deps.storage, &config)?;
+        if params.ica_account == "".to_string() {
+            params.ica_account = p.address.to_string();
+            params.ica_channel_id = info.id;
+            params.ica_connection_id = channel.connection_id.to_string();
+            PARAMS.save(deps.storage, &params)?;
         }
         return Ok(IbcBasicResponse::default());
     }
