@@ -1,7 +1,7 @@
 use crate::state::DepositToken;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{Coin, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -96,6 +96,12 @@ pub struct IcaBeginUnbondLpTokensMsg {
 #[cw_serde]
 pub enum QueryMsg {
     Version {},
+    DepositDenom {},
+    Fee {},
+    Amounts {
+        addr: String,
+    },
+    Kyc {},
     Config {},
     State {},
     Bonded {
@@ -104,7 +110,6 @@ pub enum QueryMsg {
     Unbonding {
         addr: String,
     },
-    Fee {},
     /// Show all channels connected to.
     ListChannels {},
     /// Returns the details of the name channel, error if not created.
@@ -112,13 +117,6 @@ pub enum QueryMsg {
         id: String,
     },
     Unbondings {},
-}
-
-#[cw_serde]
-pub struct FeeInfo {
-    pub deposit_fee_rate: Decimal,
-    pub withdraw_fee_rate: Decimal,
-    pub interest_fee_rate: Decimal,
 }
 
 /// We currently take no arguments for migrations

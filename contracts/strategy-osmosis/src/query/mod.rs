@@ -1,7 +1,9 @@
+pub mod amounts;
 pub mod bonded;
 pub mod channel;
 pub mod config;
 pub mod fee_info;
+pub mod kyc;
 pub mod list_channels;
 pub mod state;
 pub mod unbonding;

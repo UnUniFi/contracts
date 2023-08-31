@@ -4,10 +4,12 @@ use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_config::execute_update_config;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, PhaseStep, QueryMsg};
+use crate::query::amounts::query_amounts;
 use crate::query::bonded::query_bonded;
 use crate::query::channel::query_channel;
-use crate::query::config::query_config;
+use crate::query::config::{query_config, query_deposit_denom};
 use crate::query::fee_info::query_fee_info;
+use crate::query::kyc::query_kyc_info;
 use crate::query::list_channels::query_list_channels;
 use crate::query::state::query_state;
 use crate::query::unbonding::query_unbonding;
@@ -126,11 +128,14 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => to_binary(&query_version(deps)?),
+        QueryMsg::DepositDenom {} => to_binary(&query_deposit_denom(deps)?),
+        QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
+        QueryMsg::Amounts { addr } => to_binary(&query_amounts(deps, addr)?),
+        QueryMsg::Kyc {} => to_binary(&query_kyc_info(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
         QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
-        QueryMsg::Fee {} => to_binary(&query_fee_info(deps)?),
         QueryMsg::ListChannels {} => to_binary(&query_list_channels(deps)?),
         QueryMsg::Channel { id } => to_binary(&query_channel(deps, id)?),
         QueryMsg::Unbondings {} => {
