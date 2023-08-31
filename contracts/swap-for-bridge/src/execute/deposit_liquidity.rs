@@ -3,7 +3,7 @@ use crate::msgs::DepositLiquidityMsg;
 use crate::state::CONFIG;
 use crate::state::TOTAL_SHARE;
 use cosmwasm_std::Response;
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::Uint128;
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 use cw_utils::one_coin;
 

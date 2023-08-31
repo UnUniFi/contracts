@@ -50,7 +50,7 @@ pub fn execute_withdraw_liquidity(
     let new_share = owned_share.checked_sub(msg.share_amount)?;
     SHARES.save(deps.storage, info.sender.clone(), &new_share)?;
 
-    let fee = Decimal::new(token_amount)
+    let fee = Decimal::from_atomics(token_amount, 0)
         .checked_mul(config.fee.commission_rate)?
         .to_uint_floor();
     let fee_subtracted = token_amount.checked_sub(fee)?;
