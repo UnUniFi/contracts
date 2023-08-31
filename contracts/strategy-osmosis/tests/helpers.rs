@@ -6,7 +6,7 @@ use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::{from_binary, Deps, DepsMut, OwnedDeps, Response, Uint128};
-use strategy_osmosis::state::{Config, State, CONFIG, STATE};
+use strategy_osmosis::state::{Params, State, PARAMS, STATE};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
@@ -42,11 +42,11 @@ pub fn register_ica(
     deps: DepsMut,
     ica_addr: String,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.ica_account = ica_addr;
-    // save config directly
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.ica_account = ica_addr;
+    // save params directly
 
-    CONFIG.save(deps.storage, &config)?;
+    PARAMS.save(deps.storage, &params)?;
     Ok(Response::default())
 }
 

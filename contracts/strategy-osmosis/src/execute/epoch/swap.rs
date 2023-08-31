@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::swap_msg_to_any;
-use crate::state::{DepositToken, CONFIG, STATE};
+use crate::state::{DepositToken, PARAMS, STATE};
 use cosmwasm_std::{Env, Response, StdError, Storage};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -14,37 +14,37 @@ pub fn execute_ica_swap_two_tokens_to_deposit_token(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(store)?;
+    let params = PARAMS.load(store)?;
     let state = STATE.load(store)?;
     let ica_amounts: crate::state::IcaAmounts =
-        determine_ica_amounts(config.to_owned(), state.to_owned());
-    let mut in_denom = config.quote_denom.to_string();
-    let mut out_denom = config.base_denom.to_string();
-    if config.deposit_token == DepositToken::Quote {
-        in_denom = config.base_denom.to_string();
-        out_denom = config.quote_denom.to_string();
+        determine_ica_amounts(params.to_owned(), state.to_owned());
+    let mut in_denom = params.quote_denom.to_string();
+    let mut out_denom = params.base_denom.to_string();
+    if params.deposit_token == DepositToken::Quote {
+        in_denom = params.base_denom.to_string();
+        out_denom = params.quote_denom.to_string();
     }
     let to_swap_amount = ica_amounts.to_swap_amount;
     if to_swap_amount.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgSwapExactAmountIn {
-        sender: config.ica_account.to_string(),
+        sender: params.ica_account.to_string(),
         token_in: Some(OsmosisCoin {
             denom: in_denom,
             amount: to_swap_amount.to_string(),
         }),
         token_out_min_amount: "1".to_string(),
         routes: vec![SwapAmountInRoute {
-            pool_id: config.pool_id,
+            pool_id: params.pool_id,
             token_out_denom: out_denom,
         }],
     };
     if let Ok(msg_any) = swap_msg_to_any(msg) {
         return Ok(send_ica_tx(
             env,
-            config.ica_channel_id,
-            config.transfer_timeout,
+            params.ica_channel_id,
+            params.transfer_timeout,
             "swap_to_deposit_token".to_string(),
             vec![msg_any],
         )?);

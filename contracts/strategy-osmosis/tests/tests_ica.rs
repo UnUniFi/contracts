@@ -10,14 +10,14 @@ use strategy_osmosis::execute::epoch::liquidity::execute_ica_join_swap_extern_am
 use strategy_osmosis::execute::epoch::token_transfer::execute_ibc_transfer_to_controller;
 use strategy_osmosis::helpers::join_pool_to_any;
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
-use strategy_osmosis::state::{Config, DepositToken, State, CONFIG, STAKE_RATE_MULTIPLIER, STATE};
+use strategy_osmosis::state::{DepositToken, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE};
 mod helpers;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
 #[test]
 fn determine_ica_amounts_for_deposit() {
     // Phase is Deposit
-    let config = Config {
+    let params = Params {
         authority: Addr::unchecked("authority"),
         unbond_period: 0,
         phase: Phase::Deposit,
@@ -58,7 +58,7 @@ fn determine_ica_amounts_for_deposit() {
         controller_stacked_amount_to_deposit: Uint128::from(0u128),
     };
 
-    let ica_amounts = determine_ica_amounts(config, state);
+    let ica_amounts = determine_ica_amounts(params, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -68,7 +68,7 @@ fn determine_ica_amounts_for_deposit() {
 
 #[test]
 fn determine_ica_amounts_for_withdraw() {
-    let config = Config {
+    let params = Params {
         phase: Phase::Withdraw,
         // unused fields
         chain_id: "test-1".to_string(),
@@ -109,7 +109,7 @@ fn determine_ica_amounts_for_withdraw() {
         total_withdrawn: Uint128::from(0u128),
         pending_icq: 0u64,
     };
-    let ica_amounts = determine_ica_amounts(config, state);
+    let ica_amounts = determine_ica_amounts(params, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -132,9 +132,9 @@ fn test_execute_transfer_to_controller() {
     assert_eq!(res.as_ref().unwrap().messages.len(), 0);
 
     // When is to_transfer_to_controller is not zero.
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase = Phase::Withdraw;
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase = Phase::Withdraw;
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     state.free_base_amount = Uint128::from(10000u128);

@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::{CONFIG, STATE};
+use crate::state::{PARAMS, STATE};
 use cosmwasm_std::StdError;
 use cosmwasm_std::{coin, Env, IbcTimeout, Response, Storage, Uint128};
 use ica_tx::helpers::send_ica_tx;
@@ -14,18 +14,18 @@ pub fn execute_ibc_transfer_to_host(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(store)?;
+    let params = PARAMS.load(store)?;
     let mut state = STATE.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
+    let ica_amounts = determine_ica_amounts(params.to_owned(), state.to_owned());
     let to_transfer_to_host = ica_amounts.to_transfer_to_host;
     if to_transfer_to_host.is_zero() {
         return Ok(Response::new());
     }
-    let timeout = env.block.time.plus_seconds(config.transfer_timeout);
+    let timeout = env.block.time.plus_seconds(params.transfer_timeout);
     let ibc_msg = UnunifiMsg::IbcTransfer {
-        channel_id: config.controller_transfer_channel_id,
-        to_address: config.ica_account,
-        amount: coin(to_transfer_to_host.u128(), config.controller_deposit_denom),
+        channel_id: params.controller_transfer_channel_id,
+        to_address: params.ica_account,
+        amount: coin(to_transfer_to_host.u128(), params.controller_deposit_denom),
         timeout: IbcTimeout::from(timeout),
     };
 
@@ -44,30 +44,30 @@ pub fn execute_ibc_transfer_to_controller(
     store: &mut dyn Storage,
     env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(store)?;
+    let params = PARAMS.load(store)?;
     let state = STATE.load(store)?;
-    let ica_amounts = determine_ica_amounts(config.to_owned(), state.to_owned());
+    let ica_amounts = determine_ica_amounts(params.to_owned(), state.to_owned());
     let to_transfer_to_controller = ica_amounts.to_transfer_to_controller;
     if to_transfer_to_controller.is_zero() {
         return Ok(Response::new());
     }
     let msg = MsgTransfer {
         source_port: "transfer".to_string(),
-        source_channel: config.transfer_channel_id,
+        source_channel: params.transfer_channel_id,
         token: Some(ProtoCoin {
-            denom: config.base_denom,
+            denom: params.base_denom,
             amount: to_transfer_to_controller.to_string(),
         }),
-        sender: config.ica_account,
+        sender: params.ica_account,
         receiver: env.contract.address.to_string(),
         timeout_height: None,
-        timeout_timestamp: env.block.time.nanos() + config.transfer_timeout * 1000_000_000,
+        timeout_timestamp: env.block.time.nanos() + params.transfer_timeout * 1000_000_000,
     };
     if let Ok(msg_any) = msg.to_any() {
         return Ok(send_ica_tx(
             env,
-            config.ica_channel_id,
-            config.transfer_timeout,
+            params.ica_channel_id,
+            params.transfer_timeout,
             "transfer_to_controller".to_string(),
             vec![msg_any],
         )?);

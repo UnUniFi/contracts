@@ -1,9 +1,9 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use strategy_osmosis::error::ContractError;
-use strategy_osmosis::execute::update_config::execute_update_config;
-use strategy_osmosis::msgs::{QueryMsg, UpdateConfigMsg};
-use strategy_osmosis::state::Config;
+use strategy_osmosis::execute::update_params::execute_update_params;
+use strategy_osmosis::msgs::{QueryMsg, UpdateParamsMsg};
+use strategy_osmosis::state::Params;
 
 use crate::helpers::setup;
 
@@ -13,22 +13,22 @@ mod helpers;
 fn initialized_state() {
     let deps = setup();
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(0, config.unbond_period);
-    // assert_eq!("uguu", config.controller_deposit_denom);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(0, params.unbond_period);
+    // assert_eq!("uguu", params.controller_deposit_denom);
 }
 
 #[test]
-fn update_config() {
+fn update_params() {
     let mut deps = setup();
 
     let sender = "anyone";
     // Change with other values for further tests
-    execute_update_config(
+    execute_update_params(
         deps.as_mut(),
         mock_env(),
         mock_info(sender, &[]),
-        UpdateConfigMsg {
+        UpdateParamsMsg {
             authority: None,
             deposit_token: None,
             unbond_period: None,
@@ -48,16 +48,16 @@ fn update_config() {
     )
     .unwrap();
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
 
-    assert_eq!("uguu", config.controller_deposit_denom);
+    assert_eq!("uguu", params.controller_deposit_denom);
 
     let bad_sender = "bad_sender";
-    let err = execute_update_config(
+    let err = execute_update_params(
         deps.as_mut(),
         mock_env(),
         mock_info(bad_sender, &[]),
-        UpdateConfigMsg {
+        UpdateParamsMsg {
             authority: None,
             deposit_token: None,
             unbond_period: None,

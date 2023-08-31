@@ -19,14 +19,14 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig(UpdateConfigMsg),
+    UpdateParams(UpdateParamsMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     Epoch(EpochMsg),
 }
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
+pub struct UpdateParamsMsg {
     pub authority: Option<String>,
     pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
@@ -102,7 +102,7 @@ pub enum QueryMsg {
         addr: String,
     },
     Kyc {},
-    Config {},
+    Params {},
     State {},
     Bonded {
         addr: String,

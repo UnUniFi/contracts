@@ -3,9 +3,9 @@ use cosmwasm_std::{coins, IbcEndpoint, Uint128};
 use helpers::setup;
 use strategy_osmosis::helpers::query_balance;
 use strategy_osmosis::msgs::{ChannelInfo, Phase, QueryMsg};
-use strategy_osmosis::query::config::query_config;
 use strategy_osmosis::query::list_channels::query_list_channels;
-use strategy_osmosis::state::{Config, CHANNEL_INFO, CONFIG};
+use strategy_osmosis::query::params::query_params;
+use strategy_osmosis::state::{Params, CHANNEL_INFO, PARAMS};
 
 use crate::helpers::th_query;
 mod helpers;
@@ -34,20 +34,20 @@ fn test_query_balance() {
     assert_eq!(balance, Uint128::from(1000u128));
 }
 
-// test of query_config
+// test of query_params
 #[test]
-fn test_query_config() {
+fn test_query_params() {
     let mut deps = setup();
 
-    let config = query_config(deps.as_ref()).unwrap();
-    assert_eq!(config.phase, Phase::Deposit);
+    let params = query_params(deps.as_ref()).unwrap();
+    assert_eq!(params.phase, Phase::Deposit);
 
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase = Phase::Withdraw;
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase = Phase::Withdraw;
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
-    let config = query_config(deps.as_ref()).unwrap();
-    assert_eq!(config.phase, Phase::Withdraw);
+    let params = query_params(deps.as_ref()).unwrap();
+    assert_eq!(params.phase, Phase::Withdraw);
 }
 
 // test of query_list_channels
