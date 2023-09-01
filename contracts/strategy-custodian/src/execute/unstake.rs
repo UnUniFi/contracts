@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::state::BONDEDS;
 use crate::state::TOTAL_SHARE;
-use crate::state::TOTAL_UNBONDING;
+use crate::state::TOTAL_UNBONDING_SHARE;
 use crate::state::UNBONDINGS;
 use crate::types::Bonded;
 use crate::types::Unbonding;
@@ -57,7 +57,7 @@ pub fn execute_unstake(
             })
         },
     )?;
-    TOTAL_UNBONDING.update(deps.storage, |total_unbonding: Uint128| -> StdResult<_> {
+    TOTAL_UNBONDING_SHARE.update(deps.storage, |total_unbonding: Uint128| -> StdResult<_> {
         Ok(total_unbonding.checked_add(share)?)
     })?;
 

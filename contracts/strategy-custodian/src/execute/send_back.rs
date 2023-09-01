@@ -39,11 +39,13 @@ pub fn execute_send_back(
             .checked_div(total_share)
             .unwrap();
 
-        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
-            to_address: addr.to_string(),
-            amount: coins(amount.u128(), &params.deposit_denom),
-        });
-        response = response.add_message(bank_send_msg);
+        if !amount.is_zero() {
+            let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: addr.to_string(),
+                amount: coins(amount.u128(), &params.deposit_denom),
+            });
+            response = response.add_message(bank_send_msg);
+        }
 
         UNBONDINGS.remove(deps.storage, addr);
 
@@ -59,6 +61,15 @@ pub fn execute_send_back(
         deps.storage,
         &(total_share.checked_sub(total_unstaked_share)?),
     )?;
+
+    let remaining_amount = coin.amount.checked_sub(total_unstaked_deposit)?;
+    if !remaining_amount.is_zero() {
+        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(remaining_amount.u128(), &params.deposit_denom),
+        });
+        response = response.add_message(bank_send_msg);
+    }
 
     response = response
         .add_attribute("action", "send_back")

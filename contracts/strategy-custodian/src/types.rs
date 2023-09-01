@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 
 #[cw_serde]
 pub struct Params {
-    pub authority: Addr,
+    pub admin: Addr,
     pub deposit_denom: String,
     pub performance_fee_rate: Decimal,
     pub withdraw_fee_rate: Decimal,
