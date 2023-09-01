@@ -1,13 +1,18 @@
 use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
-use std::time::Duration;
-use strategy::v0::msgs::{BondedResp, FeeResp, StakeMsg, UnbondingResp, UnstakeMsg};
+use cosmwasm_std::{Decimal, Uint128};
+use strategy::v1::msgs::{
+    AmountsResp, DepositDenomResp, FeeResp, KycResp, StakeMsg, UnstakeMsg, VersionResp,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub deposit_denom: String,
-    pub unbonding_period: Duration,
+    pub performance_fee_rate: Decimal,
+    pub withdraw_fee_rate: Decimal,
+    pub min_withdraw_fee: Option<Uint128>,
+    pub max_withdraw_fee: Option<Uint128>,
+    pub trusted_kyc_provider_ids: Vec<u64>,
 }
 
 #[cw_serde]
@@ -23,7 +28,6 @@ pub enum ExecuteMsg {
 pub struct UpdateParamsMsg {
     pub authority: Option<String>,
     pub deposit_denom: Option<String>,
-    pub unbonding_period: Option<Duration>,
 }
 
 #[cw_serde]
@@ -39,13 +43,17 @@ pub struct ReportProfitMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Params)]
-    Config {},
-    #[returns(BondedResp)]
-    Bonded { addr: String },
-    #[returns(UnbondingResp)]
-    Unbonding { addr: String },
+    Params {},
+    #[returns(VersionResp)]
+    Version {},
+    #[returns(DepositDenomResp)]
+    DepositDenom {},
+    #[returns(AmountsResp)]
+    Amounts { addr: String },
     #[returns(FeeResp)]
     Fee {},
+    #[returns(KycResp)]
+    Kyc {},
 }
 
 /// We currently take no arguments for migrations
