@@ -47,7 +47,7 @@ pub struct SendBackMsg {}
 #[cw_serde]
 pub struct ReportProfitMsg {
     pub profit: Uint128,
-    pub sign: bool,
+    pub is_positive: bool,
 }
 
 #[cw_serde]

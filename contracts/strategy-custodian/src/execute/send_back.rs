@@ -19,6 +19,10 @@ pub fn execute_send_back(
     let coin = one_coin(&info)?;
 
     let params = PARAMS.load(deps.storage)?;
+    // Permission check
+    if info.sender != params.admin {
+        return Err(ContractError::Unauthorized {});
+    }
     if params.deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
     }
