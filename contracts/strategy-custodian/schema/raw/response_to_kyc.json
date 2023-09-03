@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KycResp",
+  "type": "object",
+  "required": [
+    "kyc_required",
+    "trusted_provider_ids"
+  ],
+  "properties": {
+    "kyc_required": {
+      "type": "boolean"
+    },
+    "trusted_provider_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      }
+    }
+  },
+  "additionalProperties": false
+}
