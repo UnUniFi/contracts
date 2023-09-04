@@ -27,7 +27,7 @@ pub fn execute_unstake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_sub(share_amount)?,
+                    share_amount: unwrapped.share_amount.checked_sub(share_amount)?,
                 });
             }
             Err(NoDeposit {}.into())

@@ -69,7 +69,7 @@ pub const STATE: Item<State> = Item::new("state");
 #[cw_serde]
 pub struct DepositInfo {
     pub sender: Addr,
-    pub amount: Uint128, // contract deposit ratio
+    pub share_amount: Uint128, // contract deposit ratio
 }
 
 // Unbonding record is removed when bank send is finalized

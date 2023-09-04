@@ -28,12 +28,12 @@ pub fn execute_stake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_add(share_amount)?,
+                    share_amount: unwrapped.share_amount.checked_add(share_amount)?,
                 });
             }
             Ok(DepositInfo {
                 sender: sender.clone(),
-                amount: share_amount,
+                share_amount: share_amount,
             })
         },
     )?;
