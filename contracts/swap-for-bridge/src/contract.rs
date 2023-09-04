@@ -6,7 +6,7 @@ use crate::execute::withdraw_liquidity::execute_withdraw_liquidity;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::params::query_params;
 use crate::query::share::query_share;
-use crate::state::PARAMS;
+use crate::state::{PARAMS, TOTAL_SHARE};
 use crate::types::Params;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -30,6 +30,7 @@ pub fn instantiate(
     };
 
     PARAMS.save(deps.storage, &config)?;
+    TOTAL_SHARE.save(deps.storage, &0u128.into())?;
 
     Ok(Response::new())
 }
