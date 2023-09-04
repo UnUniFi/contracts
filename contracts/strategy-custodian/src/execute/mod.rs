@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod report_profit;
 pub mod send_back;
 pub mod stake;

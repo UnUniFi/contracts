@@ -1,15 +1,19 @@
 use crate::error::ContractError;
+use crate::execute::admin::execute_admin;
 use crate::execute::report_profit::execute_report_profit;
 use crate::execute::send_back::execute_send_back;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_params::execute_update_params;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::query::bonded::query_bonded;
+use crate::query::amounts::query_amounts;
+use crate::query::deposit_denom::query_deposit_denom;
 use crate::query::fee::query_fee;
+use crate::query::kyc::query_kyc;
 use crate::query::params::query_params;
-use crate::query::unbonding::query_unbonding;
-use crate::state::{PARAMS, TOTAL_DEPOSIT, TOTAL_SHARE, TOTAL_UNBONDING};
+use crate::query::send_back_amount::query_send_back_amount;
+use crate::query::version::query_version;
+use crate::state::{PARAMS, TOTAL_DEPOSIT, TOTAL_SHARE, TOTAL_UNBONDING_SHARE};
 use crate::types::Params;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -25,13 +29,18 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Params {
-        authority: info.sender,
+        admin: info.sender,
         deposit_denom: msg.deposit_denom,
+        performance_fee_rate: msg.performance_fee_rate,
+        withdraw_fee_rate: msg.withdraw_fee_rate,
+        min_withdraw_fee: msg.min_withdraw_fee,
+        max_withdraw_fee: msg.max_withdraw_fee,
+        trusted_kyc_provider_ids: msg.trusted_kyc_provider_ids,
     };
     PARAMS.save(deps.storage, &config)?;
     TOTAL_DEPOSIT.save(deps.storage, &Uint128::new(0))?;
     TOTAL_SHARE.save(deps.storage, &Uint128::new(0))?;
-    TOTAL_UNBONDING.save(deps.storage, &Uint128::new(0))?;
+    TOTAL_UNBONDING_SHARE.save(deps.storage, &Uint128::new(0))?;
 
     Ok(Response::new())
 }
@@ -48,6 +57,7 @@ pub fn execute(
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
         ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
+        ExecuteMsg::Admin(msg) => execute_admin(deps, env, info, msg),
         ExecuteMsg::SendBack(msg) => execute_send_back(deps, env, info, msg),
         ExecuteMsg::ReportProfit(msg) => execute_report_profit(deps, env, info, msg),
     }
@@ -56,10 +66,13 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_params(deps)?),
-        QueryMsg::Unbonding { addr } => to_binary(&query_unbonding(deps, addr)?),
-        QueryMsg::Bonded { addr } => to_binary(&query_bonded(deps, addr)?),
+        QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::Version {} => to_binary(&query_version(deps)?),
+        QueryMsg::DepositDenom {} => to_binary(&query_deposit_denom(deps)?),
+        QueryMsg::Amounts { addr } => to_binary(&query_amounts(deps, addr)?),
         QueryMsg::Fee {} => to_binary(&query_fee(deps)?),
+        QueryMsg::Kyc {} => to_binary(&query_kyc(deps)?),
+        QueryMsg::SendBackAmount {} => to_binary(&query_send_back_amount(deps)?),
     }
 }
 

@@ -33,7 +33,7 @@ pub fn execute_stake(
             }
             Ok(DepositInfo {
                 sender: sender.clone(),
-                amount: amount,
+                amount: share_amount,
             })
         },
     )?;

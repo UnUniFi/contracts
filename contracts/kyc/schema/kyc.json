@@ -1,0 +1,390 @@
+{
+  "contract_name": "kyc",
+  "contract_version": "1.0.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "authority"
+    ],
+    "properties": {
+      "authority": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "update_params"
+        ],
+        "properties": {
+          "update_params": {
+            "$ref": "#/definitions/UpdateParamsMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "register_provider"
+        ],
+        "properties": {
+          "register_provider": {
+            "$ref": "#/definitions/RegisterProviderMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_provider"
+        ],
+        "properties": {
+          "update_provider": {
+            "$ref": "#/definitions/UpdateProviderMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "create_verification"
+        ],
+        "properties": {
+          "create_verification": {
+            "$ref": "#/definitions/CreateVerificationMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "remove_verification"
+        ],
+        "properties": {
+          "remove_verification": {
+            "$ref": "#/definitions/RemoveVerificationMsg"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "CreateVerificationMsg": {
+        "type": "object",
+        "required": [
+          "customer",
+          "provider_id"
+        ],
+        "properties": {
+          "customer": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterProviderMsg": {
+        "type": "object",
+        "required": [
+          "address",
+          "details",
+          "identity",
+          "name",
+          "security_contact",
+          "website"
+        ],
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "details": {
+            "description": "details define other optional details.",
+            "type": "string"
+          },
+          "identity": {
+            "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "security_contact": {
+            "description": "security_contact defines an optional email for security contact.",
+            "type": "string"
+          },
+          "website": {
+            "description": "website defines an optional website link.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemoveVerificationMsg": {
+        "type": "object",
+        "required": [
+          "customer",
+          "provider_id"
+        ],
+        "properties": {
+          "customer": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateParamsMsg": {
+        "type": "object",
+        "properties": {
+          "authority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProviderMsg": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "details": {
+            "description": "details define other optional details.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "identity": {
+            "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "security_contact": {
+            "description": "security_contact defines an optional email for security contact.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "website": {
+            "description": "website defines an optional website link.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "providers": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "verifications"
+        ],
+        "properties": {
+          "verifications": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "params": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Params",
+      "type": "object",
+      "required": [
+        "authority"
+      ],
+      "properties": {
+        "authority": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "providers": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Provider",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Provider"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Provider": {
+          "type": "object",
+          "required": [
+            "address",
+            "details",
+            "id",
+            "identity",
+            "name",
+            "security_contact",
+            "website"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/Addr"
+            },
+            "details": {
+              "description": "details define other optional details.",
+              "type": "string"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "identity": {
+              "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "security_contact": {
+              "description": "security_contact defines an optional email for security contact.",
+              "type": "string"
+            },
+            "website": {
+              "description": "website defines an optional website link.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "verifications": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Verification",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Verification"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Verification": {
+          "type": "object",
+          "required": [
+            "address",
+            "provider_id"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/Addr"
+            },
+            "provider_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

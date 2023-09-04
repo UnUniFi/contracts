@@ -753,6 +753,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nfloan"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "thiserror",
+]
+
+[[package]]
 name = "num-derive"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -860,23 +871,6 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "thiserror",
-]
-
-[[package]]
-name = "outpost-yieldaggregator-internal-axelar"
-version = "1.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "ethabi",
- "prost",
- "prost-types",
- "proto",
- "serde-json-wasm",
- "thiserror",
- "ununifi-binding",
 ]
 
 [[package]]
@@ -1525,6 +1519,24 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "yieldaggregator-adapter"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "ethabi",
+ "prost",
+ "prost-types",
+ "proto",
+ "serde-json-wasm",
+ "swap-for-bridge",
+ "thiserror",
+ "ununifi-binding",
+]
 
 [[package]]
 name = "zeroize"

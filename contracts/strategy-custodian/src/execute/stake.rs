@@ -1,9 +1,10 @@
 use crate::error::ContractError;
 use crate::state::{BONDEDS, PARAMS};
+use crate::state::{TOTAL_DEPOSIT, TOTAL_SHARE};
 use crate::types::Bonded;
 use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::one_coin;
-use strategy::v0::msgs::StakeMsg;
+use strategy::v1::msgs::StakeMsg;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_stake(
@@ -12,8 +13,6 @@ pub fn execute_stake(
     info: MessageInfo,
     _msg: StakeMsg,
 ) -> Result<Response, ContractError> {
-    use crate::state::{TOTAL_DEPOSIT, TOTAL_SHARE};
-
     let mut response = Response::new();
     let coin: Coin = one_coin(&info)?;
 

@@ -1,21 +1,31 @@
-use crate::types::{Config, FeeConfig};
+use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub denoms_same_origin: Vec<String>,
     pub authority: String,
-    pub treasury: String,
-    pub fee: FeeConfig,
+    pub denoms_same_origin: Vec<String>,
+    pub fee_collector: String,
+    pub fee_rate: Decimal,
+    pub lp_fee_rate: Decimal,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    UpdateParams(UpdateParamsMsg),
     Swap(SwapMsg),
     DepositLiquidity(DepositLiquidityMsg),
     WithdrawLiquidity(WithdrawLiquidityMsg),
-    UpdateConfig(UpdateConfigMsg),
+}
+
+#[cw_serde]
+pub struct UpdateParamsMsg {
+    pub authority: Option<String>,
+    pub denoms_same_origin: Option<Vec<String>>,
+    pub fee_collector: Option<String>,
+    pub fee_rate: Option<Decimal>,
+    pub lp_fee_rate: Option<Decimal>,
 }
 
 #[cw_serde]
@@ -34,17 +44,17 @@ pub struct WithdrawLiquidityMsg {
 }
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
-    pub authority: Option<String>,
-    pub treasury: Option<String>,
-    pub fee: Option<FeeConfig>,
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(Params)]
+    Params {},
+    #[returns(ShareResp)]
+    Share { address: String },
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    #[returns(Config)]
-    Config {},
+pub struct ShareResp {
+    pub share: Uint128,
 }
 
 #[cw_serde]
