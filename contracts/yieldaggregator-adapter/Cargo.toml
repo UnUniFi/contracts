@@ -1,5 +1,5 @@
 [package]
-name = "outpost-yieldaggregator-internal-axelar"
+name = "yieldaggregator-adapter"
 version = "1.0.0"
 authors = []
 edition = "2018"
