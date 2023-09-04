@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msgs::WithdrawLiquidityMsg;
-use crate::state::CONFIG;
+use crate::state::PARAMS;
 use crate::state::TOTAL_SHARE;
 use crate::{balance::get_total_amounts, state::SHARES};
 use cosmwasm_std::Coin;
@@ -21,7 +21,7 @@ pub fn execute_withdraw_liquidity(
 
     nonpayable(&info)?;
 
-    let config = CONFIG.load(deps.storage)?;
+    let config = PARAMS.load(deps.storage)?;
 
     let total_share = TOTAL_SHARE.load(deps.storage)?;
     let total_token_amount = get_total_amounts(
@@ -53,8 +53,8 @@ pub fn execute_withdraw_liquidity(
     let new_share = owned_share.checked_sub(msg.share_amount)?;
     SHARES.save(deps.storage, info.sender.clone(), &new_share)?;
 
-    let fee = Decimal::from_atomics(token_amount, 0)
-        .checked_mul(config.fee.commission_rate)?
+    let fee = Decimal::from_atomics(token_amount, 0)?
+        .checked_mul(config.fee_rate)?
         .to_uint_floor();
     let fee_subtracted = token_amount.checked_sub(fee)?;
 
@@ -67,7 +67,7 @@ pub fn execute_withdraw_liquidity(
     }));
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: config.treasury.to_string(),
+        to_address: config.fee_collector.to_string(),
         amount: vec![Coin {
             denom: msg.output_denom,
             amount: fee,

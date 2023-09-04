@@ -3,9 +3,9 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use swap_for_bridge::{
     error::ContractError,
-    execute::update_config::execute_update_config,
+    execute::update_params::execute_update_params,
     msgs::{QueryMsg, UpdateConfigMsg},
-    types::Config,
+    types::Params,
 };
 mod helpers;
 
@@ -13,7 +13,7 @@ mod helpers;
 fn initialized_state() {
     let deps = setup();
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let config: Params = th_query(deps.as_ref(), QueryMsg::Config {});
     assert_eq!(2, config.denoms_same_origin.len());
 }
 
@@ -23,7 +23,7 @@ fn update_config() {
 
     let sender = "authority";
     // Change with other values for further tests
-    execute_update_config(
+    execute_update_params(
         deps.as_mut(),
         mock_env(),
         mock_info(sender, &[]),
@@ -40,12 +40,12 @@ fn update_config() {
     )
     .unwrap();
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let config: Params = th_query(deps.as_ref(), QueryMsg::Config {});
 
     assert_eq!(3, config.denoms_same_origin.len());
 
     let bad_sender = "bad_sender";
-    let err = execute_update_config(
+    let err = execute_update_params(
         deps.as_mut(),
         mock_env(),
         mock_info(bad_sender, &[]),

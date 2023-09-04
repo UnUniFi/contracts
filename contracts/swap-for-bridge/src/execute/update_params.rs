@@ -1,19 +1,19 @@
 use crate::error::ContractError;
-use crate::msgs::UpdateConfigMsg;
-use crate::state::CONFIG;
-use crate::types::Config;
+use crate::msgs::UpdateParamsMsg;
+use crate::state::PARAMS;
+use crate::types::Params;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 #[cfg(not(feature = "library"))]
-pub fn execute_update_config(
+pub fn execute_update_params(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: UpdateConfigMsg,
+    msg: UpdateParamsMsg,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
 
-    let mut config: Config = CONFIG.load(deps.storage)?;
+    let mut config: Params = PARAMS.load(deps.storage)?;
 
     // Permission check
     if info.sender != config.authority {
@@ -24,20 +24,24 @@ pub fn execute_update_config(
         config.authority = deps.api.addr_validate(&authority)?;
     }
 
-    if let Some(treasury) = msg.treasury {
-        config.treasury = deps.api.addr_validate(&treasury)?;
-    }
-
     if let Some(denoms_same_origin) = msg.denoms_same_origin {
         config.denoms_same_origin = denoms_same_origin;
     }
 
-    if let Some(fee) = msg.fee {
-        config.fee = fee;
+    if let Some(fee_collector) = msg.fee_collector {
+        config.fee_collector = deps.api.addr_validate(&fee_collector)?;
     }
 
-    CONFIG.save(deps.storage, &config)?;
-    response = response.add_attribute("action", "update_config");
+    if let Some(fee_rate) = msg.fee_rate {
+        config.fee_rate = fee_rate;
+    }
+
+    if let Some(lp_fee_rate) = msg.lp_fee_rate {
+        config.lp_fee_rate = lp_fee_rate;
+    }
+
+    PARAMS.save(deps.storage, &config)?;
+    response = response.add_attribute("action", "update_params");
 
     Ok(response)
 }

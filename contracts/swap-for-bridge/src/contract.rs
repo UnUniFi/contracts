@@ -1,12 +1,13 @@
 use crate::error::ContractError;
 use crate::execute::deposit_liquidity::execute_deposit_liquidity;
 use crate::execute::swap::execute_swap;
-use crate::execute::update_config::execute_update_config;
+use crate::execute::update_params::execute_update_params;
 use crate::execute::withdraw_liquidity::execute_withdraw_liquidity;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::query::config::query_config;
-use crate::state::CONFIG;
-use crate::types::Config;
+use crate::query::params::query_params;
+use crate::query::share::query_share;
+use crate::state::PARAMS;
+use crate::types::Params;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
@@ -18,16 +19,17 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let authority = deps.api.addr_validate(&msg.authority)?;
-    let treasury = deps.api.addr_validate(&msg.treasury)?;
+    let fee_collector = deps.api.addr_validate(&msg.fee_collector)?;
 
-    let config = Config {
+    let config = Params {
         authority,
-        treasury,
         denoms_same_origin: msg.denoms_same_origin,
-        fee: msg.fee,
+        fee_collector,
+        fee_rate: msg.fee_rate,
+        lp_fee_rate: msg.lp_fee_rate,
     };
 
-    CONFIG.save(deps.storage, &config)?;
+    PARAMS.save(deps.storage, &config)?;
 
     Ok(Response::new())
 }
@@ -40,16 +42,17 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
         ExecuteMsg::Swap(msg) => execute_swap(deps, env, info, msg),
         ExecuteMsg::DepositLiquidity(msg) => execute_deposit_liquidity(deps, env, info, msg),
         ExecuteMsg::WithdrawLiquidity(msg) => execute_withdraw_liquidity(deps, env, info, msg),
-        ExecuteMsg::UpdateConfig(msg) => execute_update_config(deps, env, info, msg),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::Share { address } => to_binary(&query_share(deps, address)?),
     }
 }

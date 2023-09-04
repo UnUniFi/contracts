@@ -1,10 +1,9 @@
 use crate::error::ContractError;
 use crate::msgs::DepositLiquidityMsg;
-use crate::state::CONFIG;
+use crate::state::PARAMS;
 use crate::state::SHARES;
 use crate::state::TOTAL_SHARE;
 use cosmwasm_std::Response;
-use cosmwasm_std::Uint128;
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 use cw_utils::one_coin;
 
@@ -18,7 +17,7 @@ pub fn execute_deposit_liquidity(
     use crate::balance::get_total_amounts;
 
     let mut response = Response::new();
-    let config = CONFIG.load(deps.storage)?;
+    let config = PARAMS.load(deps.storage)?;
 
     let coin = one_coin(&info)?;
 

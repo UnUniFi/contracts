@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msgs::SwapMsg;
-use crate::state::CONFIG;
+use crate::state::PARAMS;
 use cosmwasm_std::BankMsg;
 use cosmwasm_std::Coin;
 use cosmwasm_std::CosmosMsg;
@@ -16,7 +16,7 @@ pub fn execute_swap(
     msg: SwapMsg,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
-    let config = CONFIG.load(deps.storage)?;
+    let config = PARAMS.load(deps.storage)?;
 
     let coin = one_coin(&info)?;
 
@@ -24,15 +24,13 @@ pub fn execute_swap(
         return Err(ContractError::InvalidDenom);
     }
 
-    let fee = Decimal::from_atomics(coin.amount, 0)
-        .checked_mul(config.fee.commission_rate)?
+    let fee = Decimal::from_atomics(coin.amount, 0)?
+        .checked_mul(config.fee_rate)?
         .to_uint_floor();
-    let fee_subtracted = coin.amount.checked_sub(fee)?;
-
-    let lp_allocation = Decimal::from_atomics(fee, 0)
-        .checked_mul(config.fee.lp_fee_weight)?
+    let lp_fee = Decimal::from_atomics(coin.amount, 0)?
+        .checked_mul(config.lp_fee_rate)?
         .to_uint_floor();
-    let non_lp_allocation = fee.checked_sub(lp_allocation)?;
+    let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
         to_address: match msg.recipient {
@@ -46,10 +44,10 @@ pub fn execute_swap(
     }));
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: config.treasury.to_string(),
+        to_address: config.fee_collector.to_string(),
         amount: vec![Coin {
             denom: coin.denom,
-            amount: non_lp_allocation,
+            amount: fee,
         }],
     }));
 
