@@ -2,7 +2,7 @@ use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{DecimalRangeExceeded, OverflowError, StdError};
 use cw_utils::PaymentError;
 
 /// Never is a placeholder to ensure we don't return any errors
@@ -19,6 +19,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Overflow(#[from] OverflowError),
+
+    #[error("{0}")]
+    DecimalRangeExceeded(#[from] DecimalRangeExceeded),
 
     #[error("Proto encode error")]
     EncodeError(#[from] prost::EncodeError),

@@ -1,7 +1,6 @@
 use crate::error::ContractError;
 use crate::msgs::DepositToVaultMsg;
-use cosmwasm_std::CosmosMsg;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, QueryRequest, Response};
 use cw_utils::one_coin;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
@@ -12,8 +11,11 @@ pub fn execute_deposit_to_vault(
     info: MessageInfo,
     msg: DepositToVaultMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    use cosmwasm_std::{to_binary, Coin, WasmMsg};
-    use swap_for_bridge::msgs::SwapMsg;
+    use cosmwasm_std::{to_binary, Coin, Decimal, Empty, WasmMsg, WasmQuery};
+    use swap_for_bridge::{
+        msgs::{QueryMsg, SwapMsg},
+        types::Params,
+    };
 
     use crate::state::PARAMS;
 
@@ -34,7 +36,19 @@ pub fn execute_deposit_to_vault(
             .get(&swap_output_denom)
             .ok_or(ContractError::Unauthorized {})?;
 
-        let fee_subtracted_amount = coin.amount.checked_sub(0u128.into())?;
+        let request = QueryRequest::<Empty>::Wasm(WasmQuery::Smart {
+            contract_addr: contract.to_string(),
+            msg: to_binary(&QueryMsg::Params {})?,
+        });
+        let params = deps.querier.query::<Params>(&request)?;
+
+        let fee = Decimal::from_atomics(coin.amount, 0)?
+            .checked_mul(params.fee_rate)?
+            .to_uint_floor();
+        let lp_fee = Decimal::from_atomics(coin.amount, 0)?
+            .checked_mul(params.lp_fee_rate)?
+            .to_uint_floor();
+        let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
 
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract.to_string(),
@@ -47,7 +61,7 @@ pub fn execute_deposit_to_vault(
 
         coin = Coin {
             denom: swap_output_denom,
-            amount: fee_subtracted_amount,
+            amount: fee_subtracted,
         };
     }
 
