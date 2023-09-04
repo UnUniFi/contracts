@@ -50,11 +50,18 @@ pub enum QueryMsg {
     Params {},
     #[returns(ShareResp)]
     Share { address: String },
+    #[returns(TotalShareResp)]
+    TotalShare {},
 }
 
 #[cw_serde]
 pub struct ShareResp {
     pub share: Uint128,
+}
+
+#[cw_serde]
+pub struct TotalShareResp {
+    pub total_share: Uint128,
 }
 
 #[cw_serde]
