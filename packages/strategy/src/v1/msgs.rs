@@ -9,7 +9,7 @@ use cosmwasm_std::{Decimal, Uint128};
 pub enum ExecuteMsg {
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
-    ExecuteEpoch(ExecuteEpochMsg),
+    Epoch(EpochMsg),
 }
 
 #[cw_serde]
@@ -17,11 +17,12 @@ pub struct StakeMsg {}
 
 #[cw_serde]
 pub struct UnstakeMsg {
-    pub amount: Uint128,
+    pub share_amount: Uint128,
+    pub recipient: Option<String>,
 }
 
 #[cw_serde]
-pub struct ExecuteEpochMsg {}
+pub struct EpochMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -34,6 +35,8 @@ pub enum QueryMsg {
     Amounts { addr: String },
     #[returns(FeeResp)]
     Fee {},
+    #[returns(KycResp)]
+    Kyc {},
 }
 
 #[cw_serde]
@@ -49,18 +52,23 @@ pub struct DepositDenomResp {
 #[cw_serde]
 pub struct AmountsResp {
     pub total_deposited: Uint128,
-    pub not_bonded: Uint128,
+    pub bonding_standby: Uint128,
     pub bonded: Uint128,
     pub unbonding: Uint128,
 }
 
 #[cw_serde]
 pub struct FeeResp {
-    pub deposit_fee_rate: Decimal,
-    pub interest_fee_rate: Decimal,
+    pub performance_fee_rate: Decimal,
     pub withdraw_fee_rate: Decimal,
     pub min_withdraw_fee: Option<Uint128>,
     pub max_withdraw_fee: Option<Uint128>,
+}
+
+#[cw_serde]
+pub struct KycResp {
+    pub kyc_required: bool,
+    pub trusted_provider_ids: Vec<u64>,
 }
 
 #[cw_serde]

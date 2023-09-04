@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_params"
+      ],
+      "properties": {
+        "update_params": {
+          "$ref": "#/definitions/UpdateParamsMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "register_provider"
+      ],
+      "properties": {
+        "register_provider": {
+          "$ref": "#/definitions/RegisterProviderMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_provider"
+      ],
+      "properties": {
+        "update_provider": {
+          "$ref": "#/definitions/UpdateProviderMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "create_verification"
+      ],
+      "properties": {
+        "create_verification": {
+          "$ref": "#/definitions/CreateVerificationMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_verification"
+      ],
+      "properties": {
+        "remove_verification": {
+          "$ref": "#/definitions/RemoveVerificationMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "CreateVerificationMsg": {
+      "type": "object",
+      "required": [
+        "customer",
+        "provider_id"
+      ],
+      "properties": {
+        "customer": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RegisterProviderMsg": {
+      "type": "object",
+      "required": [
+        "address",
+        "details",
+        "identity",
+        "name",
+        "security_contact",
+        "website"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "details": {
+          "description": "details define other optional details.",
+          "type": "string"
+        },
+        "identity": {
+          "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "security_contact": {
+          "description": "security_contact defines an optional email for security contact.",
+          "type": "string"
+        },
+        "website": {
+          "description": "website defines an optional website link.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RemoveVerificationMsg": {
+      "type": "object",
+      "required": [
+        "customer",
+        "provider_id"
+      ],
+      "properties": {
+        "customer": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateParamsMsg": {
+      "type": "object",
+      "properties": {
+        "authority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateProviderMsg": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "details": {
+          "description": "details define other optional details.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "identity": {
+          "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "security_contact": {
+          "description": "security_contact defines an optional email for security contact.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "website": {
+          "description": "website defines an optional website link.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

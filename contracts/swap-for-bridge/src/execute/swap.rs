@@ -24,12 +24,12 @@ pub fn execute_swap(
         return Err(ContractError::InvalidDenom);
     }
 
-    let fee = Decimal::from_atomics(coin.amount, 0)?
+    let fee = Decimal::from_atomics(coin.amount, 0)
         .checked_mul(config.fee.commission_rate)?
         .to_uint_floor();
     let fee_subtracted = coin.amount.checked_sub(fee)?;
 
-    let lp_allocation = Decimal::from_atomics(fee, 0)?
+    let lp_allocation = Decimal::from_atomics(fee, 0)
         .checked_mul(config.fee.lp_fee_weight)?
         .to_uint_floor();
     let non_lp_allocation = fee.checked_sub(lp_allocation)?;

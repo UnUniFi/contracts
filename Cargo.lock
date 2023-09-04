@@ -721,6 +721,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kyc"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "thiserror",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -849,6 +860,23 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "thiserror",
+]
+
+[[package]]
+name = "outpost-yieldaggregator-internal-axelar"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "ethabi",
+ "prost",
+ "prost-types",
+ "proto",
+ "serde-json-wasm",
+ "thiserror",
+ "ununifi-binding",
 ]
 
 [[package]]
@@ -1222,22 +1250,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "strategy-comdex"
-version = "1.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
- "cw20",
- "prost",
- "proto",
- "strategy",
- "thiserror",
-]
-
-[[package]]
-name = "strategy-example"
+name = "strategy-custodian"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
