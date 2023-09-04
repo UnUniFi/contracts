@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {AxelarExecutable} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol";
 import {IAxelarGateway} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol";
 import {IAxelarGasService} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol";
-import {IStrategy} from "../../../packages/strategy-evm/contracts/istrategy.sol";
+import {IStrategy} from "../../../../packages/strategy-evm/contracts/istrategy.sol";
 
 contract StrategyEvmAxelarExample is IStrategy, AxelarExecutable {
     IAxelarGasService public immutable gasService;

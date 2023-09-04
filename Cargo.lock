@@ -1256,6 +1256,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-evm-axelar"
+version = "1.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "prost",
+ "prost-types",
+ "proto",
+ "thiserror",
+]
+
+[[package]]
 name = "strategy-osmosis"
 version = "1.0.0"
 dependencies = [
