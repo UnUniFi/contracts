@@ -1,9 +1,8 @@
+use cosmwasm_std::{DecimalRangeExceeded, OverflowError, StdError};
+use cw_utils::PaymentError;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 use thiserror::Error;
-
-use cosmwasm_std::{OverflowError, StdError};
-use cw_utils::PaymentError;
 
 /// Never is a placeholder to ensure we don't return any errors
 #[derive(Error, Debug)]
@@ -20,8 +19,8 @@ pub enum ContractError {
     #[error("{0}")]
     Overflow(#[from] OverflowError),
 
-    #[error("Proto encode error")]
-    EncodeError(#[from] prost::EncodeError),
+    #[error("{0}")]
+    DecimalRangeExceeded(#[from] DecimalRangeExceeded),
 
     #[error("Amount larger than 2**64, not supported by ics20 packets")]
     AmountOverflow {},
@@ -32,8 +31,11 @@ pub enum ContractError {
     #[error("Only contract admin can do this")]
     Unauthorized,
 
-    #[error("No allowed token")]
-    NoAllowedToken {},
+    #[error("Mismatching bid denom")]
+    BidDenomMismatch {},
+
+    #[error("Bid already exists")]
+    BidAlreadyExists {},
 
     #[error("Execute msg unknown")]
     UnknownRequest {},

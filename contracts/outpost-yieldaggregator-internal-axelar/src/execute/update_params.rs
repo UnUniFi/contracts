@@ -23,6 +23,17 @@ pub fn execute_update_params(
         params.authority = deps.api.addr_validate(&authority)?;
     }
 
+    if let Some(symbol_swap_contract_map) = msg.denom_swap_contract_map {
+        let symbol_swap_contract_map = symbol_swap_contract_map
+            .iter()
+            .map(|(k, v)| -> Result<_, ContractError> {
+                Ok((k.clone(), deps.api.addr_validate(v)?))
+            })
+            .collect::<Result<_, ContractError>>()?;
+
+        params.symbol_swap_contract_map = symbol_swap_contract_map;
+    }
+
     PARAMS.save(deps.storage, &params)?;
     response = response
         .add_attribute("action", "update_params")
