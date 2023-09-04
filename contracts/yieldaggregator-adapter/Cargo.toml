@@ -29,9 +29,5 @@ thiserror = "1.0"
 cw-storage-plus =  "1.1.0"
 cw-utils = "1.0.1"
 serde-json-wasm = "0.5.1"
-prost = "0.11"
-prost-types = "0.11"
 ununifi-binding = { path = "../../packages/ununifi-binding" }
-proto = { path = "../../packages/proto", features = ["cosmwasm"] }
-ethabi = { version = "18.0.0", default-features = false, features = [] }
 swap-for-bridge = { path = "../swap-for-bridge" }
