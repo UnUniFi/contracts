@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::msgs::DepositLiquidityMsg;
-use crate::state::CONFIG;
+use crate::state::PARAMS;
+use crate::state::SHARES;
 use crate::state::TOTAL_SHARE;
 use cosmwasm_std::Response;
-use cosmwasm_std::Uint128;
 use cosmwasm_std::{DepsMut, Env, MessageInfo};
 use cw_utils::one_coin;
 
@@ -12,21 +12,25 @@ pub fn execute_deposit_liquidity(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: DepositLiquidityMsg,
+    _msg: DepositLiquidityMsg,
 ) -> Result<Response, ContractError> {
-    use crate::state::SHARES;
+    use crate::balance::get_total_amounts;
 
     let mut response = Response::new();
-    let config = CONFIG.load(deps.storage)?;
+    let config = PARAMS.load(deps.storage)?;
 
     let coin = one_coin(&info)?;
 
     if !config.denoms_same_origin.contains(&coin.denom) {
-        // TODO: error
+        return Err(ContractError::InvalidDenom);
     }
 
     let total_share = TOTAL_SHARE.load(deps.storage)?;
-    let total_token_amount = Uint128::new(0);
+    let total_token_amount = get_total_amounts(
+        deps.as_ref(),
+        env.contract.address,
+        config.denoms_same_origin,
+    )?;
 
     // total_share : total_token_amount = share_amount : token_amount
     let share_amount = if total_token_amount.is_zero() {
@@ -46,6 +50,8 @@ pub fn execute_deposit_liquidity(
         None => share_amount,
     };
     SHARES.save(deps.storage, info.sender, &new_share)?;
+
+    response = response.add_attribute("action", "deposit_liquidity");
 
     Ok(response)
 }
