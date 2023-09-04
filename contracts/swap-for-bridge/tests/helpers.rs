@@ -1,19 +1,29 @@
+use cosmwasm_schema::serde;
+
+use swap_for_bridge::msgs::{InstantiateMsg, QueryMsg};
+use swap_for_bridge::contract::instantiate;
+use swap_for_bridge::contract::query;
+
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{from_binary, Decimal, Deps, OwnedDeps};
-use swap_for_bridge::contract::{instantiate, query};
-use swap_for_bridge::msgs::{InstantiateMsg, QueryMsg};
+use cosmwasm_std::{
+    from_binary, Decimal, Deps, OwnedDeps,
+};
+
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
 
+    // instantiate an empty contract
+    let info = mock_info(&String::from("anyone"), &[]);
+
     let instantiate_msg = InstantiateMsg {
-        authority: "authority".to_string(),
-        denoms_same_origin: vec!["denom1".to_string(), "denom2".to_string()],
-        fee_collector: "fee_collector".to_string(),
-        fee_rate: Decimal::percent(1),
-        lp_fee_rate: Decimal::percent(1),
+        denoms_same_origin: vec!["uatom".to_string(), "ibc/uatom".to_string()],
+        authority: info.sender.into(),
+        fee_collector: String::from("ununifi1f5vsnrwe7h9dhhyxkwr4yah5u0cke69h03latc"), // totally random. DONT use on mainnet
+        fee_rate: Decimal::percent(0),
+        lp_fee_rate: Decimal::percent(0),
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
@@ -22,7 +32,6 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     deps
 }
 
-#[allow(dead_code)]
-pub fn th_query<T: cosmwasm_schema::serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
+pub fn th_query<T: serde::de::DeserializeOwned>(deps: Deps, msg: QueryMsg) -> T {
     from_binary(&query(deps, mock_env(), msg).unwrap()).unwrap()
 }

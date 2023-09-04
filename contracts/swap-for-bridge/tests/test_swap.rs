@@ -1,25 +1,53 @@
+use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::testing::{mock_env, mock_info};
+use swap_for_bridge::error::ContractError;
+use swap_for_bridge::execute::deposit_liquidity::execute_deposit_liquidity;
+use swap_for_bridge::execute::swap::execute_swap;
+use swap_for_bridge::msgs::{DepositLiquidityMsg, SwapMsg};
+use swap_for_bridge::query::share::query_share;
+
 use crate::helpers::setup;
-use cosmwasm_std::{
-    testing::{mock_env, mock_info},
-    Coin,
-};
-use swap_for_bridge::{execute::swap::execute_swap, msgs::SwapMsg};
+
 mod helpers;
 
 #[test]
-fn swap() {
+fn test_swap() {
     let mut deps = setup();
-
     let sender = "anyone";
-    // Change with other values for further tests
-    execute_swap(
-        deps.as_mut(),
-        mock_env(),
-        mock_info(sender, &[Coin::new(100, "denom1")]),
-        SwapMsg {
-            output_denom: "denom2".to_string(),
+
+    // Failure due to wrong sending token
+    {
+        let swap_msg = SwapMsg {
+            output_denom: String::from("uatom"),
             recipient: None,
-        },
-    )
-    .unwrap();
+        };
+        let info = mock_info(sender, &[Coin{denom: String::from("uguu"), amount: Uint128::one()}]);
+        let res = execute_swap(deps.as_mut(), mock_env(), info, swap_msg);
+        assert!(res.is_err());
+        assert_eq!(ContractError::InvalidDenom, res.unwrap_err());
+    }
+
+    // Failure due to wrong output denom
+   {
+        let swap_msg = SwapMsg {
+            output_denom: String::from("uguu"),
+            recipient: None,
+        };
+        let info = mock_info(sender, &[Coin{denom: String::from("uatom"), amount: Uint128::one()}]);
+        let res = execute_swap(deps.as_mut(), mock_env(), info, swap_msg);
+        assert!(res.is_err());
+        assert_eq!(ContractError::InvalidDenom, res.unwrap_err());
+    }
+
+    // Success
+    {
+        let swap_msg = SwapMsg {
+            output_denom: String::from("uatom"),
+            recipient: None,
+        };
+        let info = mock_info(sender, &[Coin{denom: String::from("uatom"), amount: Uint128::new(100)}]);
+        let res = execute_swap(deps.as_mut(), mock_env(), info.clone(), swap_msg);
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().messages.len(), 2);
+    }
 }
