@@ -2,6 +2,7 @@ use crate::error::ContractError;
 use crate::msgs::DeputyListNftMsg;
 use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 #[cfg(not(feature = "library"))]
 pub fn execute_deputy_list_nft(
@@ -9,10 +10,13 @@ pub fn execute_deputy_list_nft(
     env: Env,
     info: MessageInfo,
     msg: DeputyListNftMsg,
-) -> Result<Response<DeputyListNftMsg>, ContractError> {
+) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut response = Response::new();
+    // class_id = chain + contract_addr
+    // token_id = original_token_id
 
-    let deputy_list_message = DeputyListNftMsg{
+    // mint nft (by contract) & send nft (contract to lister) + list nft (by lister)
+    let deputy_list_message = UnunifiMsg::DeputyListNft{
         lister: msg.lister,
         class_id: msg.class_id,
         token_id: msg.token_id,
@@ -22,8 +26,6 @@ pub fn execute_deputy_list_nft(
     };
 
     response = response.add_message( CosmosMsg::Custom(deputy_list_message));
-
-    // todo: check the tx result
 
     Ok(response)
 }
