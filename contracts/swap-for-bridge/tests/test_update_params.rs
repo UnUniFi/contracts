@@ -4,7 +4,7 @@ use helpers::th_query;
 use swap_for_bridge::{
     error::ContractError,
     execute::update_params::execute_update_params,
-    msgs::{QueryMsg, UpdateConfigMsg},
+    msgs::{QueryMsg, UpdateParamsMsg},
     types::Params,
 };
 mod helpers;
@@ -13,7 +13,7 @@ mod helpers;
 fn initialized_state() {
     let deps = setup();
 
-    let config: Params = th_query(deps.as_ref(), QueryMsg::Config {});
+    let config: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(2, config.denoms_same_origin.len());
 }
 
@@ -27,20 +27,21 @@ fn update_config() {
         deps.as_mut(),
         mock_env(),
         mock_info(sender, &[]),
-        UpdateConfigMsg {
+        UpdateParamsMsg {
             authority: Some("authority".to_string()),
-            treasury: Some("treasury".to_string()),
             denoms_same_origin: Some(vec![
                 "denom1".to_string(),
                 "denom2".to_string(),
                 "denom3".to_string(),
             ]),
-            fee: None,
+            fee_collector: Some("fee_collector".to_string()),
+            fee_rate: None,
+            lp_fee_rate: None,
         },
     )
     .unwrap();
 
-    let config: Params = th_query(deps.as_ref(), QueryMsg::Config {});
+    let config: Params = th_query(deps.as_ref(), QueryMsg::Params {});
 
     assert_eq!(3, config.denoms_same_origin.len());
 
@@ -49,11 +50,16 @@ fn update_config() {
         deps.as_mut(),
         mock_env(),
         mock_info(bad_sender, &[]),
-        UpdateConfigMsg {
+        UpdateParamsMsg {
             authority: Some("authority".to_string()),
-            treasury: Some("treasury".to_string()),
-            denoms_same_origin: Some(vec!["denom1".to_string(), "denom2".to_string()]),
-            fee: None,
+            denoms_same_origin: Some(vec![
+                "denom1".to_string(),
+                "denom2".to_string(),
+                "denom3".to_string(),
+            ]),
+            fee_collector: Some("fee_collector".to_string()),
+            fee_rate: None,
+            lp_fee_rate: None,
         },
     )
     .unwrap_err();

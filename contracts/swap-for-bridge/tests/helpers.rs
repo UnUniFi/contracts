@@ -4,19 +4,16 @@ use cosmwasm_std::testing::{
 use cosmwasm_std::{from_binary, Decimal, Deps, OwnedDeps};
 use swap_for_bridge::contract::{instantiate, query};
 use swap_for_bridge::msgs::{InstantiateMsg, QueryMsg};
-use swap_for_bridge::types::FeeConfig;
 
 pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
 
     let instantiate_msg = InstantiateMsg {
         authority: "authority".to_string(),
-        treasury: "treasury".to_string(),
         denoms_same_origin: vec!["denom1".to_string(), "denom2".to_string()],
-        fee: FeeConfig {
-            commission_rate: Decimal::from_atomics(1u128, 3).unwrap(),
-            lp_fee_weight: Decimal::from_atomics(5u128, 1).unwrap(),
-        },
+        fee_collector: "fee_collector".to_string(),
+        fee_rate: Decimal::percent(1),
+        lp_fee_rate: Decimal::percent(1),
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
