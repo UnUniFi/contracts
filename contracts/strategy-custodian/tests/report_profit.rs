@@ -3,7 +3,6 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Uint128,
 };
-use helpers::th_query;
 use strategy_custodian::{
     error::ContractError, execute::report_profit::execute_report_profit, msgs::ReportProfitMsg,
 };
