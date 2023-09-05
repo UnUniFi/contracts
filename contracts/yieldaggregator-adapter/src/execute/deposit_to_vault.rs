@@ -1,7 +1,13 @@
 use crate::error::ContractError;
 use crate::msgs::DepositToVaultMsg;
+use crate::state::PARAMS;
+use cosmwasm_std::{to_binary, Coin, Decimal, Empty, WasmMsg, WasmQuery};
 use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, QueryRequest, Response};
 use cw_utils::one_coin;
+use swap_for_bridge::{
+    msgs::{QueryMsg, SwapMsg},
+    types::Params,
+};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 #[cfg(not(feature = "library"))]
@@ -11,14 +17,6 @@ pub fn execute_deposit_to_vault(
     info: MessageInfo,
     msg: DepositToVaultMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    use cosmwasm_std::{to_binary, Coin, Decimal, Empty, WasmMsg, WasmQuery};
-    use swap_for_bridge::{
-        msgs::{QueryMsg, SwapMsg},
-        types::Params,
-    };
-
-    use crate::state::PARAMS;
-
     let mut response = Response::new();
     let mut coin = one_coin(&info)?;
 
