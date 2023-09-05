@@ -20,7 +20,8 @@ pub fn execute_swap(
 
     let coin = one_coin(&info)?;
 
-    if !config.denoms_same_origin.contains(&coin.denom) {
+    if !config.denoms_same_origin.contains(&coin.denom) || 
+        !config.denoms_same_origin.contains(&msg.output_denom)  {
         return Err(ContractError::InvalidDenom);
     }
 

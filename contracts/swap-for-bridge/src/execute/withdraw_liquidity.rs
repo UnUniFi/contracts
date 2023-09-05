@@ -23,6 +23,17 @@ pub fn execute_withdraw_liquidity(
 
     let config = PARAMS.load(deps.storage)?;
 
+    if !config.denoms_same_origin.contains(&msg.output_denom) {
+        return Err(ContractError::InvalidDenom);
+    }
+
+    let owned_share = SHARES
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap_or_else(|| Uint128::new(0));
+    if owned_share < msg.share_amount {
+        return Err(ContractError::InsufficientFunds);
+    }
+
     let total_share = TOTAL_SHARE.load(deps.storage)?;
     let total_token_amount = get_total_amounts(
         deps.as_ref(),
@@ -42,13 +53,6 @@ pub fn execute_withdraw_liquidity(
 
     let new_total_share = total_share.checked_sub(msg.share_amount)?;
     TOTAL_SHARE.save(deps.storage, &new_total_share)?;
-
-    let owned_share = SHARES
-        .may_load(deps.storage, info.sender.clone())?
-        .unwrap_or_else(|| Uint128::new(0));
-    if owned_share < msg.share_amount {
-        return Err(ContractError::InsufficientFunds);
-    }
 
     let new_share = owned_share.checked_sub(msg.share_amount)?;
     SHARES.save(deps.storage, info.sender.clone(), &new_share)?;
