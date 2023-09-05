@@ -10,7 +10,7 @@ use strategy_custodian::{
 mod helpers;
 
 #[test]
-fn test_stake() {
+fn test_report_profit() {
     let mut deps = setup();
 
     // Error: because of the permission

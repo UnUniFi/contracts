@@ -3,7 +3,6 @@ use crate::state::BONDEDS;
 use crate::state::TOTAL_SHARE;
 use crate::state::TOTAL_UNBONDING_SHARE;
 use crate::state::UNBONDINGS;
-use crate::types::Bonded;
 use crate::types::Unbonding;
 use cosmwasm_std::{DepsMut, Response, StdResult, Uint128};
 use cosmwasm_std::{Env, MessageInfo};
@@ -25,19 +24,13 @@ pub fn execute_unstake(
         return Err(ContractError::InsufficientFunds {});
     }
 
-    BONDEDS.update(
-        deps.storage,
-        info.sender.clone(),
-        |deposit: Option<Bonded>| -> StdResult<_> {
-            Ok(Bonded {
-                address: info.sender.clone(),
-                share: match deposit {
-                    Some(deposit) => deposit.share.checked_sub(share)?,
-                    None => Uint128::zero(),
-                },
-            })
-        },
-    )?;
+    let mut bonded = BONDEDS.load(deps.storage, info.sender.clone())?;
+    if bonded.share < share {
+        return Err(ContractError::InsufficientFunds {});
+    }
+    bonded.share = bonded.share.checked_sub(share)?;
+
+    BONDEDS.save(deps.storage, info.sender.clone(), &bonded)?;
 
     let recipient = match msg.recipient {
         Some(recipient) => deps.api.addr_validate(&recipient)?,
@@ -57,6 +50,7 @@ pub fn execute_unstake(
             })
         },
     )?;
+    // TOTAL_SHARE includes TOTAL_UNBONDING_SHARE, so no need to subtract it.
     TOTAL_UNBONDING_SHARE.update(deps.storage, |total_unbonding: Uint128| -> StdResult<_> {
         Ok(total_unbonding.checked_add(share)?)
     })?;

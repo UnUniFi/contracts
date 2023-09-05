@@ -15,6 +15,8 @@ pub fn execute_send_back(
     info: MessageInfo,
     _msg: SendBackMsg,
 ) -> Result<Response, ContractError> {
+    use crate::state::TOTAL_UNBONDING_SHARE;
+
     let mut response = Response::new();
     let coin = one_coin(&info)?;
 
@@ -28,6 +30,7 @@ pub fn execute_send_back(
     }
     let total_deposit = TOTAL_DEPOSIT.load(deps.storage)?;
     let total_share = TOTAL_SHARE.load(deps.storage)?;
+    let total_unbonding_share = TOTAL_UNBONDING_SHARE.load(deps.storage)?;
 
     let unstake_requests = UNBONDINGS
         .range(deps.storage, None, None, Order::Ascending)
@@ -64,6 +67,10 @@ pub fn execute_send_back(
     TOTAL_SHARE.save(
         deps.storage,
         &(total_share.checked_sub(total_unstaked_share)?),
+    )?;
+    TOTAL_UNBONDING_SHARE.save(
+        deps.storage,
+        &(total_unbonding_share.checked_sub(total_unstaked_share)?),
     )?;
 
     let remaining_amount = coin.amount.checked_sub(total_unstaked_deposit)?;

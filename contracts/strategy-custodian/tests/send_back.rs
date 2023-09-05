@@ -13,7 +13,7 @@ use strategy_custodian::{
 mod helpers;
 
 #[test]
-fn test_stake() {
+fn test_send_back() {
     let mut deps = setup();
 
     let info = mock_info("staker", &coins(100, "denom"));

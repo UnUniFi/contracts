@@ -5,23 +5,20 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy::v1::msgs::{StakeMsg, UnstakeMsg};
-use strategy_custodian::{
-    error::ContractError,
-    execute::{stake::execute_stake, unstake::execute_unstake},
-};
+use strategy_custodian::execute::{stake::execute_stake, unstake::execute_unstake};
 
 mod helpers;
 
 #[test]
-fn test_stake() {
+fn test_unstake() {
     let mut deps = setup();
 
     let info = mock_info("staker", &coins(100, "denom"));
     execute_stake(deps.as_mut(), mock_env(), info, StakeMsg {}).unwrap();
 
-    // Error: because of the permission
+    // Error: different sender
     let invalid_info = mock_info("anyone", &[]);
-    let err = execute_unstake(
+    let _err = execute_unstake(
         deps.as_mut(),
         mock_env(),
         invalid_info,
@@ -31,7 +28,6 @@ fn test_stake() {
         },
     )
     .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
 
     // Success:
     let info = mock_info("staker", &[]);

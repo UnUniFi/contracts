@@ -12,13 +12,17 @@ mod helpers;
 fn test_stake() {
     let mut deps = setup();
 
+    // Error: one_coin
+    let info = mock_info("anyone", &[]);
+    let _ = execute_stake(deps.as_mut(), mock_env(), info, StakeMsg {}).unwrap_err();
+
     // Error: invalid denom
     let invalid_info = mock_info("anyone", &coins(100, "dummy"));
     let err = execute_stake(deps.as_mut(), mock_env(), invalid_info, StakeMsg {}).unwrap_err();
     assert_eq!(err, ContractError::NoAllowedToken {});
 
     // Success:
-    let info = mock_info("any", &[]);
+    let info = mock_info("anyone", &coins(100, "denom"));
     let res = execute_stake(deps.as_mut(), mock_env(), info, StakeMsg {}).unwrap();
 
     assert_eq!(0, res.messages.len());
