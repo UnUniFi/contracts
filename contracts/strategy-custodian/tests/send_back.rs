@@ -19,15 +19,22 @@ fn test_send_back() {
     let info = mock_info("staker", &coins(100, "denom"));
     execute_stake(deps.as_mut(), mock_env(), info, StakeMsg {}).unwrap();
 
-    // Error: because of the permission
+    // Error: fund
     let invalid_info = mock_info("anyone", &[]);
+    let _err =
+        execute_send_back(deps.as_mut(), mock_env(), invalid_info, SendBackMsg {}).unwrap_err();
+
+    // Error: because of the permission
+    let invalid_info = mock_info("anyone", &coins(100, "denom"));
     let err =
         execute_send_back(deps.as_mut(), mock_env(), invalid_info, SendBackMsg {}).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Success:
-    let info = mock_info("admin", &[]);
+    let info = mock_info("admin", &coins(100, "denom"));
     let res = execute_send_back(deps.as_mut(), mock_env(), info, SendBackMsg {}).unwrap();
 
-    assert_eq!(0, res.messages.len());
+    println!("{:#?}", res.messages);
+
+    assert_eq!(1, res.messages.len());
 }
