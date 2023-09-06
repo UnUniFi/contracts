@@ -75,6 +75,7 @@ pub struct EstimateFeeResp {
     pub fee: Uint128,
     pub lp_fee: Uint128,
     pub total_fee: Uint128,
+    pub output_amount: Uint128,
 }
 
 #[cw_serde]

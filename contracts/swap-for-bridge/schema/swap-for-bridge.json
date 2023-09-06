@@ -338,6 +338,7 @@
       "required": [
         "fee",
         "lp_fee",
+        "output_amount",
         "total_fee"
       ],
       "properties": {
@@ -345,6 +346,9 @@
           "$ref": "#/definitions/Uint128"
         },
         "lp_fee": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "output_amount": {
           "$ref": "#/definitions/Uint128"
         },
         "total_fee": {

@@ -22,15 +22,21 @@ pub fn query_estimate_fee(deps: Deps, amount: Uint128) -> Result<EstimateFeeResp
             total_fee = min_fee;
         }
     }
+    if total_fee > amount {
+        return Err(ContractError::InsufficientFundsForMinFee);
+    }
 
     let lp_fee = Decimal::from_atomics(total_fee, 0)?
         .checked_mul(params.lp_fee_weight)?
         .to_uint_floor();
     let fee = total_fee.checked_sub(lp_fee)?;
 
+    let output_amount = amount.checked_sub(total_fee)?;
+
     Ok(EstimateFeeResp {
         fee,
         lp_fee,
         total_fee,
+        output_amount,
     })
 }

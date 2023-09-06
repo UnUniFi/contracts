@@ -29,10 +29,6 @@ pub fn execute_swap(
 
     let fee = query_estimate_fee(deps.as_ref(), coin.amount.clone())?;
 
-    if fee.total_fee > coin.amount {
-        return Err(ContractError::InsufficientFundsForMinFee);
-    }
-
     let non_lp_fee = fee.fee;
     let fee_subtracted = coin.amount.checked_sub(fee.total_fee)?;
 
