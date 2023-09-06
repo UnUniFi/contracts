@@ -30,7 +30,7 @@ pub fn execute_swap(
     let fee = query_estimate_fee(deps.as_ref(), coin.amount.clone())?;
 
     let non_lp_fee = fee.fee;
-    let fee_subtracted = coin.amount.checked_sub(fee.total_fee)?;
+    let fee_subtracted = fee.output_amount;
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
         to_address: match msg.recipient {
