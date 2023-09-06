@@ -11,6 +11,8 @@ pub fn execute_update_params(
     info: MessageInfo,
     msg: UpdateParamsMsg,
 ) -> Result<Response, ContractError> {
+    use cosmwasm_std::Decimal;
+
     let mut response = Response::new();
 
     let mut config: Params = PARAMS.load(deps.storage)?;
@@ -36,8 +38,11 @@ pub fn execute_update_params(
         config.fee_rate = fee_rate;
     }
 
-    if let Some(lp_fee_rate) = msg.lp_fee_rate {
-        config.lp_fee_rate = lp_fee_rate;
+    if let Some(lp_fee_weight) = msg.lp_fee_weight {
+        if Decimal::percent(100) < lp_fee_weight {
+            return Err(ContractError::InvalidLpFeeWeight);
+        }
+        config.lp_fee_weight = lp_fee_weight;
     }
 
     PARAMS.save(deps.storage, &config)?;

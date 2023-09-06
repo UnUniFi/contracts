@@ -28,4 +28,10 @@ pub enum ContractError {
 
     #[error("Insufficient funds")]
     InsufficientFunds,
+
+    #[error("Invalid LP fee weight")]
+    InvalidLpFeeWeight,
+
+    #[error("Insufficient funds for minimum fee")]
+    InsufficientFundsForMinFee,
 }

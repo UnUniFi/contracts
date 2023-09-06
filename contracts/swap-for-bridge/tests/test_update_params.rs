@@ -36,7 +36,9 @@ fn update_config() {
             ]),
             fee_collector: Some("fee_collector".to_string()),
             fee_rate: None,
-            lp_fee_rate: None,
+            min_fee: None,
+            max_fee: None,
+            lp_fee_weight: None,
         },
     )
     .unwrap();
@@ -59,7 +61,9 @@ fn update_config() {
             ]),
             fee_collector: Some("fee_collector".to_string()),
             fee_rate: None,
-            lp_fee_rate: None,
+            min_fee: None,
+            max_fee: None,
+            lp_fee_weight: None,
         },
     )
     .unwrap_err();

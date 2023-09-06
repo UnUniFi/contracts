@@ -8,7 +8,9 @@ pub struct InstantiateMsg {
     pub denoms_same_origin: Vec<String>,
     pub fee_collector: String,
     pub fee_rate: Decimal,
-    pub lp_fee_rate: Decimal,
+    pub min_fee: Option<Uint128>,
+    pub max_fee: Option<Uint128>,
+    pub lp_fee_weight: Decimal,
 }
 
 #[cw_serde]
@@ -25,7 +27,9 @@ pub struct UpdateParamsMsg {
     pub denoms_same_origin: Option<Vec<String>>,
     pub fee_collector: Option<String>,
     pub fee_rate: Option<Decimal>,
-    pub lp_fee_rate: Option<Decimal>,
+    pub min_fee: Option<Option<Uint128>>,
+    pub max_fee: Option<Option<Uint128>>,
+    pub lp_fee_weight: Option<Decimal>,
 }
 
 #[cw_serde]
@@ -52,6 +56,8 @@ pub enum QueryMsg {
     Share { address: String },
     #[returns(TotalShareResp)]
     TotalShare {},
+    #[returns(EstimateFeeResp)]
+    EstimateFee { amount: Uint128 },
 }
 
 #[cw_serde]
@@ -62,6 +68,13 @@ pub struct ShareResp {
 #[cw_serde]
 pub struct TotalShareResp {
     pub total_share: Uint128,
+}
+
+#[cw_serde]
+pub struct EstimateFeeResp {
+    pub fee: Uint128,
+    pub lp_fee: Uint128,
+    pub total_fee: Uint128,
 }
 
 #[cw_serde]
