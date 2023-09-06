@@ -116,10 +116,44 @@
             }
           ]
         },
-        "lp_fee_rate": {
+        "lp_fee_weight": {
           "anyOf": [
             {
               "$ref": "#/definitions/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_fee": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_fee": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             {
               "type": "null"
