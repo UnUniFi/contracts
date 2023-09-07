@@ -18,5 +18,10 @@ pub fn execute_distribute_bonus(
         return Err(ContractError::Unauthorized {});
     }
 
+    // iterate VotedVaults
+    // for each VotedVault, calculate bonus amount
+    // send bonus amount to the vault
+    // delete VotedVault
+
     Ok(response)
 }
