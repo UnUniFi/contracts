@@ -216,9 +216,13 @@
     "RemoveInformationRequestMsg": {
       "type": "object",
       "required": [
+        "customer",
         "request_id"
       ],
       "properties": {
+        "customer": {
+          "type": "string"
+        },
         "request_id": {
           "type": "integer",
           "format": "uint64",
