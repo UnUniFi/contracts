@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateParams(UpdateParamsMsg),
     RegisterBonusWindow(RegisterBonusWindowMsg),
-    DistributeBonus(DistributeBonusMsg),
+    DeleteBonusWindow(DeleteBonusWindowMsg),
     Vote(VoteMsg),
     StakeVaultShare(StakeVaultShareMsg),
 }
@@ -32,9 +32,8 @@ pub struct RegisterBonusWindowMsg {
 }
 
 #[cw_serde]
-pub struct DistributeBonusMsg {
+pub struct DeleteBonusWindowMsg {
     pub bonus_window_id: u64,
-    pub amount_for_winners: Vec<AmountForWinner>,
 }
 
 #[cw_serde]

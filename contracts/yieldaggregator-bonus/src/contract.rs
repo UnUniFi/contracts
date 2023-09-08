@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::execute::distribute_bonus::execute_distribute_bonus;
+use crate::execute::delete_bonus_window::execute_delete_bonus_window;
 use crate::execute::register_bonus_window::execute_register_bonus_window;
 use crate::execute::stake_vault_share::execute_stake_vault_share;
 use crate::execute::update_params::execute_update_params;
@@ -37,7 +37,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
         ExecuteMsg::RegisterBonusWindow(msg) => execute_register_bonus_window(deps, env, info, msg),
-        ExecuteMsg::DistributeBonus(msg) => execute_distribute_bonus(deps, env, info, msg),
+        ExecuteMsg::DeleteBonusWindow(msg) => execute_delete_bonus_window(deps, env, info, msg),
         ExecuteMsg::StakeVaultShare(msg) => execute_stake_vault_share(deps, env, info, msg),
         ExecuteMsg::Vote(msg) => execute_vote(deps, env, info, msg),
     }

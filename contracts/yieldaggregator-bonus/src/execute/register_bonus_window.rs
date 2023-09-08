@@ -32,5 +32,7 @@ pub fn execute_register_bonus_window(
     };
     BONUS_WINDOWS.save(deps.storage, id, &bonus_window)?;
 
+    response = response.add_attribute("action", "register_bonus_window");
+
     Ok(response)
 }

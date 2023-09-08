@@ -13,34 +13,40 @@ pub fn execute_vote(
     info: MessageInfo,
     msg: VoteMsg,
 ) -> Result<Response, ContractError> {
+    use cosmwasm_std::StdResult;
+
     let mut response = Response::new();
-    let mut coin = one_coin(&info)?;
+    let coin = one_coin(&info)?;
 
     let bonus_window = BONUS_WINDOWS.load(deps.storage, msg.bonus_window_id)?;
 
-    if env.block.time < bonus_window.start_at || bonus_window.end_at < env.block.time {
-        return Err(ContractError::InvalidBonusWindowId {});
+    if bonus_window.denom != coin.denom {
+        return Err(ContractError::NoAllowedToken {});
     }
 
-    if bonus_window.denom != coin.denom {
-        return Err(ContractError::InvalidDenom {});
+    if env.block.time < bonus_window.start_at || bonus_window.end_at < env.block.time {
+        return Err(ContractError::InvalidBonusWindowPeriod {});
     }
 
     VOTED_VAULTS.update(
         deps.storage,
         (msg.bonus_window_id, msg.vault_id),
-        |voted_vault| match voted_vault {
-            Some(voted_vault) => {
-                voted_vault.voted_amount += coin.amount;
-                Ok(voted_vault)
+        |voted_vault| -> StdResult<_> {
+            match voted_vault {
+                Some(mut voted_vault) => {
+                    voted_vault.voted_amount += coin.amount;
+                    Ok(voted_vault)
+                }
+                None => Ok(VotedVault {
+                    bonus_window_id: msg.bonus_window_id,
+                    vault_id: msg.vault_id,
+                    voted_amount: coin.amount,
+                }),
             }
-            None => Ok(VotedVault {
-                bonus_window_id: msg.bonus_window_id,
-                vault_id: msg.vault_id,
-                voted_amount: coin.amount,
-            }),
         },
     )?;
+
+    response = response.add_attribute("action", "vote");
 
     Ok(response)
 }

@@ -1,14 +1,15 @@
 use crate::error::ContractError;
-use crate::msgs::DistributeBonusMsg;
+use crate::msgs::DeleteBonusWindowMsg;
+use crate::state::BONUS_WINDOWS;
 use crate::state::PARAMS;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 #[cfg(not(feature = "library"))]
-pub fn execute_distribute_bonus(
+pub fn execute_delete_bonus_window(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: DistributeBonusMsg,
+    msg: DeleteBonusWindowMsg,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
     let params = PARAMS.load(deps.storage)?;
@@ -18,10 +19,9 @@ pub fn execute_distribute_bonus(
         return Err(ContractError::Unauthorized {});
     }
 
-    // iterate VotedVaults
-    // for each VotedVault, calculate bonus amount
-    // send bonus amount to the vault
-    // delete VotedVault
+    BONUS_WINDOWS.remove(deps.storage, msg.bonus_window_id);
+
+    response = response.add_attribute("action", "delete_bonus_window");
 
     Ok(response)
 }
