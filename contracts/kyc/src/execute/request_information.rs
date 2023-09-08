@@ -26,7 +26,7 @@ pub fn execute_request_information(
     let id = INFORMATION_REQUEST_ID.load(deps.storage)?;
     let customer = deps.api.addr_validate(&msg.customer)?;
     let request = InformationRequest {
-        customer,
+        customer: customer.clone(),
         id,
         sender: info.sender,
         provider_id: msg.provider_id,
@@ -36,7 +36,7 @@ pub fn execute_request_information(
     };
 
     INFORMATION_REQUEST_ID.save(deps.storage, &(id + 1))?;
-    INFORMATION_REQUESTS.save(deps.storage, id, &request)?;
+    INFORMATION_REQUESTS.save(deps.storage, (customer, id), &request)?;
 
     response = response.add_attribute("action", "request_information");
 

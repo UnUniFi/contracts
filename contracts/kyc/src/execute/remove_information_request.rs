@@ -14,7 +14,9 @@ pub fn execute_remove_information_request(
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
 
-    let request = INFORMATION_REQUESTS.load(deps.storage, msg.request_id)?;
+    let customer = deps.api.addr_validate(&msg.customer)?;
+
+    let request = INFORMATION_REQUESTS.load(deps.storage, (customer.clone(), msg.request_id))?;
 
     match request.approved {
         Some(true) => {
@@ -39,7 +41,7 @@ pub fn execute_remove_information_request(
         }
     };
 
-    INFORMATION_REQUESTS.remove(deps.storage, msg.request_id);
+    INFORMATION_REQUESTS.remove(deps.storage, (customer, msg.request_id));
 
     response = response.add_attribute("action", "remove_information_request");
 

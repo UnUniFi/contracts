@@ -12,7 +12,8 @@ pub fn execute_reject_information_request(
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
 
-    let mut request = INFORMATION_REQUESTS.load(deps.storage, msg.request_id)?;
+    let mut request =
+        INFORMATION_REQUESTS.load(deps.storage, (info.sender.clone(), msg.request_id))?;
     if let Some(_) = &request.approved {
         return Err(ContractError::AlreadyApprovedOrRejected {});
     }
@@ -23,7 +24,7 @@ pub fn execute_reject_information_request(
 
     request.approved = Some(true);
 
-    INFORMATION_REQUESTS.save(deps.storage, msg.request_id, &request)?;
+    INFORMATION_REQUESTS.save(deps.storage, (info.sender, msg.request_id), &request)?;
 
     response = response.add_attribute("action", "reject_information_request");
 

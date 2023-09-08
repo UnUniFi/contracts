@@ -10,7 +10,7 @@ pub const PROVIDERS: Map<ProviderId, Provider> = Map::new("providers");
 pub const VERIFICATIONS: Map<(Addr, ProviderId), Verification> = Map::new("verifications");
 
 pub const INFORMATION_REQUEST_ID: Item<InformationRequestId> = Item::new("information_request_id");
-pub const INFORMATION_REQUESTS: Map<InformationRequestId, InformationRequest> =
+pub const INFORMATION_REQUESTS: Map<(Addr, InformationRequestId), InformationRequest> =
     Map::new("information_requests");
 
 pub type ProviderId = u64;

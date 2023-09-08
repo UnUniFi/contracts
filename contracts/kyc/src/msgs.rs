@@ -1,4 +1,4 @@
-use crate::types::{Params, Provider, Verification};
+use crate::types::{InformationRequest, Params, Provider, Verification};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Coin;
 
@@ -87,6 +87,7 @@ pub struct RejectInformationRequestMsg {
 
 #[cw_serde]
 pub struct RemoveInformationRequestMsg {
+    pub customer: String,
     pub request_id: u64,
 }
 
@@ -99,6 +100,8 @@ pub enum QueryMsg {
     Providers {},
     #[returns(Vec<Verification>)]
     Verifications { address: String },
+    #[returns(Vec<InformationRequest>)]
+    InformationRequests { address: String },
 }
 
 /// We currently take no arguments for migrations
