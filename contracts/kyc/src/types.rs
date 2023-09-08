@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Coin};
 
 #[cw_serde]
 pub struct Params {
@@ -19,10 +19,22 @@ pub struct Provider {
     pub security_contact: String,
     /// details define other optional details.
     pub details: String,
+    pub information_fee: Coin,
 }
 
 #[cw_serde]
 pub struct Verification {
     pub address: Addr,
     pub provider_id: u64,
+}
+
+#[cw_serde]
+pub struct InformationRequest {
+    pub customer: Addr,
+    pub id: u64,
+    pub sender: Addr,
+    pub provider_id: u64,
+    pub information_fee: Coin,
+    pub email: String,
+    pub approved: Option<bool>,
 }

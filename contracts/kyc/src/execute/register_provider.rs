@@ -26,6 +26,7 @@ pub fn execute_register_provider(
         website: msg.website,
         security_contact: msg.security_contact,
         details: msg.details,
+        information_fee: msg.information_fee,
     };
 
     PROVIDER_ID.save(deps.storage, &(id + 1))?;

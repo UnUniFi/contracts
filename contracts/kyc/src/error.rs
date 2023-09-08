@@ -23,17 +23,20 @@ pub enum ContractError {
     #[error("Insufficient funds to redeem voucher on channel")]
     InsufficientFunds {},
 
-    #[error("Only contract admin can do this")]
+    #[error("Unauthorized")]
     Unauthorized,
 
     #[error("Verification not found")]
     VerificationNotFound {},
 
+    #[error("Already approved or rejected")]
+    AlreadyApprovedOrRejected,
+
     #[error("Execute msg unknown")]
     UnknownRequest {},
 
-    #[error("Maximum address length")]
-    MaxAddrLength {},
+    #[error("Invalid information fee")]
+    InvalidInformationFee {},
 }
 
 impl From<FromUtf8Error> for ContractError {

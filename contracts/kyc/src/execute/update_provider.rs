@@ -35,6 +35,9 @@ pub fn execute_update_provider(
     if let Some(details) = msg.details {
         provider.details = details;
     }
+    if let Some(information_fee) = msg.information_fee {
+        provider.information_fee = information_fee;
+    }
 
     PROVIDERS.save(deps.storage, msg.id, &provider)?;
 

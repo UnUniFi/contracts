@@ -1,7 +1,11 @@
 use crate::error::ContractError;
+use crate::execute::approve_information_request::execute_approve_information_request;
 use crate::execute::create_verification::execute_create_verification;
 use crate::execute::register_provider::execute_register_provider;
+use crate::execute::reject_information_request::execute_reject_information_request;
+use crate::execute::remove_information_request::execute_remove_information_request;
 use crate::execute::remove_verification::execute_remove_verification;
+use crate::execute::request_information::execute_request_information;
 use crate::execute::update_params::execute_update_params;
 use crate::execute::update_provider::execute_update_provider;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -44,6 +48,16 @@ pub fn execute(
         ExecuteMsg::UpdateProvider(msg) => execute_update_provider(deps, env, info, msg),
         ExecuteMsg::CreateVerification(msg) => execute_create_verification(deps, env, info, msg),
         ExecuteMsg::RemoveVerification(msg) => execute_remove_verification(deps, env, info, msg),
+        ExecuteMsg::RequestInformation(msg) => execute_request_information(deps, env, info, msg),
+        ExecuteMsg::ApproveInformationRequest(msg) => {
+            execute_approve_information_request(deps, env, info, msg)
+        }
+        ExecuteMsg::RejectInformationRequest(msg) => {
+            execute_reject_information_request(deps, env, info, msg)
+        }
+        ExecuteMsg::RemoveInformationRequest(msg) => {
+            execute_remove_information_request(deps, env, info, msg)
+        }
     }
 }
 

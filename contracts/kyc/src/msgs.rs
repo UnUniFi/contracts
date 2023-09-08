@@ -1,5 +1,6 @@
 use crate::types::{Params, Provider, Verification};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Coin;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +14,10 @@ pub enum ExecuteMsg {
     UpdateProvider(UpdateProviderMsg),
     CreateVerification(CreateVerificationMsg),
     RemoveVerification(RemoveVerificationMsg),
+    RequestInformation(RequestInformationMsg),
+    ApproveInformationRequest(ApproveInformationRequestMsg),
+    RejectInformationRequest(RejectInformationRequestMsg),
+    RemoveInformationRequest(RemoveInformationRequestMsg),
 }
 
 #[cw_serde]
@@ -32,6 +37,7 @@ pub struct RegisterProviderMsg {
     pub security_contact: String,
     /// details define other optional details.
     pub details: String,
+    pub information_fee: Coin,
 }
 
 #[cw_serde]
@@ -47,6 +53,7 @@ pub struct UpdateProviderMsg {
     pub security_contact: Option<String>,
     /// details define other optional details.
     pub details: Option<String>,
+    pub information_fee: Option<Coin>,
 }
 
 #[cw_serde]
@@ -59,6 +66,28 @@ pub struct CreateVerificationMsg {
 pub struct RemoveVerificationMsg {
     pub provider_id: u64,
     pub customer: String,
+}
+
+#[cw_serde]
+pub struct RequestInformationMsg {
+    pub provider_id: u64,
+    pub customer: String,
+    pub email: String,
+}
+
+#[cw_serde]
+pub struct ApproveInformationRequestMsg {
+    pub request_id: u64,
+}
+
+#[cw_serde]
+pub struct RejectInformationRequestMsg {
+    pub request_id: u64,
+}
+
+#[cw_serde]
+pub struct RemoveInformationRequestMsg {
+    pub request_id: u64,
 }
 
 #[cw_serde]
