@@ -25,21 +25,24 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata depositor,
+        string calldata vaultDenom,
         uint64 vaultId,
-        address erc20,
+        string memory symbol,
         uint256 amount
     ) external payable {
         require(msg.value > 0, "Gas payment is required");
 
-        IERC20 tokenContract = IERC20(erc20);
-        tokenContract.transferFrom(msg.sender, address(this), amount);
+        address tokenAddress = gateway.tokenAddresses(symbol);
+        IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
+        IERC20(tokenAddress).approve(address(gateway), amount);
 
-        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultId);
+        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultId, vaultDenom);
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
             destinationChain,
             destinationAddress,
             payload,
+            amount,
             msg.sender
         );
         gateway.callContract(destinationChain, destinationAddress, payload);
@@ -47,6 +50,7 @@ contract YieldAggregatorOutpost is AxelarExecutable {
 
     function _encodePayloadToCosmWasm(
         string calldata depositor,
+        string calldata vaultDenom
         uint64 vaultId
     ) internal view returns (bytes memory) {
         // Schema
@@ -58,15 +62,18 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         //     bytes                    abi encoded argument values
 
         // contract call arguments for ExecuteMsg::receive_message_evm{ source_chain, source_address, payload }
-        bytes memory argValues = abi.encode(depositor, vaultId);
+        bytes memory argValues = abi.encode(depositor, vaultDenom, vaultId);
 
-        string[] memory argumentNameArray = new string[](2);
+        string[] memory argumentNameArray = new string[](3);
         argumentNameArray[0] = "depositor";
-        argumentNameArray[1] = "vault_id";
+        argumentNameArray[1] = "vault_denom";
+        argumentNameArray[2] = "vault_id";
 
-        string[] memory abiTypeArray = new string[](2);
+
+        string[] memory abiTypeArray = new string[](3);
         abiTypeArray[0] = "string";
-        abiTypeArray[1] = "uint64";
+        abiTypeArray[1] = "string";
+        abiTypeArray[2] = "uint64";
 
         bytes memory gmpPayload;
         gmpPayload = abi.encode(
@@ -80,8 +87,8 @@ contract YieldAggregatorOutpost is AxelarExecutable {
     }
 
     function _executeWithToken(
-        string calldata,
-        string calldata,
+        string calldata /*sourceChain*/, 
+        string calldata /*sourceAddress*/, 
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount
