@@ -1,6 +1,6 @@
 use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -59,6 +59,21 @@ pub struct StakeVaultShareMsg {
 pub enum QueryMsg {
     #[returns(Params)]
     Params {},
+    #[returns(DistributionAmountResp)]
+    DistributionAmount { bonus_window_id: u64 },
+}
+
+#[cw_serde]
+pub struct DistributionAmountResp {
+    bonus_window_id: u64,
+    for_all: Vec<Distribution>,
+    for_winners: Vec<Distribution>,
+}
+
+#[cw_serde]
+pub struct Distribution {
+    recipient: Addr,
+    amount: Coin,
 }
 
 /// We currently take no arguments for migrations

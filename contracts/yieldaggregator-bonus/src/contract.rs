@@ -5,6 +5,7 @@ use crate::execute::stake_vault_share::execute_stake_vault_share;
 use crate::execute::update_params::execute_update_params;
 use crate::execute::vote::execute_vote;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::query::distribution_amount::query_distribution_amount;
 use crate::query::params::query_params;
 use crate::state::PARAMS;
 use crate::types::Params;
@@ -47,6 +48,9 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::DistributionAmount { bonus_window_id } => {
+            to_binary(&query_distribution_amount(deps, bonus_window_id)?)
+        }
     }
 }
 
