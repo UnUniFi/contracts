@@ -5,8 +5,11 @@ use crate::execute::stake_vault_share::execute_stake_vault_share;
 use crate::execute::update_params::execute_update_params;
 use crate::execute::vote::execute_vote;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::query::bonus_windows::query_bonus_windows;
 use crate::query::distribution_amount::query_distribution_amount;
 use crate::query::params::query_params;
+use crate::query::vault_share_staking::query_vault_share_staking;
+use crate::query::voted_vaults::query_voted_vaults;
 use crate::state::PARAMS;
 use crate::types::Params;
 use cosmwasm_std::entry_point;
@@ -48,6 +51,14 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::BonusWindows {} => to_binary(&query_bonus_windows(deps)?),
+        QueryMsg::VotedVaults { bonus_window_id } => {
+            to_binary(&query_voted_vaults(deps, bonus_window_id)?)
+        }
+        QueryMsg::VaultShareStaking {
+            bonus_window_id,
+            address,
+        } => to_binary(&query_vault_share_staking(deps, bonus_window_id, address)?),
         QueryMsg::DistributionAmount { bonus_window_id } => {
             to_binary(&query_distribution_amount(deps, bonus_window_id)?)
         }

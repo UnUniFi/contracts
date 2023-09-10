@@ -1,4 +1,4 @@
-use crate::types::Params;
+use crate::types::{BonusWindow, Params, VaultShareStaking, VotedVault};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
 
@@ -59,6 +59,15 @@ pub struct StakeVaultShareMsg {
 pub enum QueryMsg {
     #[returns(Params)]
     Params {},
+    #[returns(Vec<BonusWindow>)]
+    BonusWindows {},
+    #[returns(Vec<VotedVault>)]
+    VotedVaults { bonus_window_id: u64 },
+    #[returns(Vec<VaultShareStaking>)]
+    VaultShareStaking {
+        bonus_window_id: u64,
+        address: String,
+    },
     #[returns(DistributionAmountResp)]
     DistributionAmount { bonus_window_id: u64 },
 }
