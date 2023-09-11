@@ -1,4 +1,5 @@
 use crate::helpers::setup;
+use cosmwasm_std::coin;
 use cosmwasm_std::testing::{mock_env, mock_info};
 use helpers::th_query;
 use kyc::error::ContractError;
@@ -25,6 +26,7 @@ fn test_update_provider() {
             website: "anyone".to_string(),
             security_contact: "anyone".to_string(),
             details: "anyone".to_string(),
+            information_fee: coin(0, "denom"),
         },
     )
     .unwrap();
@@ -43,6 +45,7 @@ fn test_update_provider() {
             website: None,
             security_contact: None,
             details: None,
+            information_fee: None,
         },
     )
     .unwrap_err();
@@ -62,6 +65,7 @@ fn test_update_provider() {
             website: None,
             security_contact: None,
             details: None,
+            information_fee: None,
         },
     )
     .unwrap();
