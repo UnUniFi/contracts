@@ -5,7 +5,6 @@ use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authority: String,
-    pub stake_denom: String,
 }
 
 #[cw_serde]

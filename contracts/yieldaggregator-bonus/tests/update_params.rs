@@ -1,6 +1,6 @@
 use crate::helpers::setup;
 use cosmwasm_std::testing::{mock_env, mock_info};
-use yieldaggregator_adapter::{
+use yieldaggregator_bonus::{
     error::ContractError, execute::update_params::execute_update_params, msgs::UpdateParamsMsg,
     query::params::query_params,
 };
@@ -19,7 +19,6 @@ fn test_update_params() {
         invalid_info,
         UpdateParamsMsg {
             authority: Some("authority2".to_string()),
-            denom_swap_contract_map: None,
         },
     )
     .unwrap_err();
@@ -35,7 +34,6 @@ fn test_update_params() {
         invalid_info,
         UpdateParamsMsg {
             authority: Some("authority2".to_string()),
-            denom_swap_contract_map: None,
         },
     )
     .unwrap();
