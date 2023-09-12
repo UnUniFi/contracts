@@ -27,6 +27,7 @@ fn test_create_verification() {
             security_contact: "anyone".to_string(),
             details: "anyone".to_string(),
             information_fee: coin(0, "denom"),
+            customer_fee_back_rate: "0.5".parse().unwrap(),
         },
     )
     .unwrap();

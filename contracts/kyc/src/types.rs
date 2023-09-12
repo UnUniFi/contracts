@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::{Addr, Coin, Decimal};
 
 #[cw_serde]
 pub struct Params {
@@ -20,6 +20,7 @@ pub struct Provider {
     /// details define other optional details.
     pub details: String,
     pub information_fee: Coin,
+    pub customer_fee_back_rate: Decimal,
 }
 
 #[cw_serde]

@@ -1,6 +1,6 @@
 use crate::types::{InformationRequest, Params, Provider, Verification};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Decimal};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -38,6 +38,7 @@ pub struct RegisterProviderMsg {
     /// details define other optional details.
     pub details: String,
     pub information_fee: Coin,
+    pub customer_fee_back_rate: Decimal,
 }
 
 #[cw_serde]
@@ -54,6 +55,7 @@ pub struct UpdateProviderMsg {
     /// details define other optional details.
     pub details: Option<String>,
     pub information_fee: Option<Coin>,
+    pub customer_fee_back_rate: Option<Decimal>,
 }
 
 #[cw_serde]

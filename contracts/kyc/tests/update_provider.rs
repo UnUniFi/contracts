@@ -27,6 +27,7 @@ fn test_update_provider() {
             security_contact: "anyone".to_string(),
             details: "anyone".to_string(),
             information_fee: coin(0, "denom"),
+            customer_fee_back_rate: "0.5".parse().unwrap(),
         },
     )
     .unwrap();
@@ -46,6 +47,7 @@ fn test_update_provider() {
             security_contact: None,
             details: None,
             information_fee: None,
+            customer_fee_back_rate: None,
         },
     )
     .unwrap_err();
@@ -66,6 +68,7 @@ fn test_update_provider() {
             security_contact: None,
             details: None,
             information_fee: None,
+            customer_fee_back_rate: None,
         },
     )
     .unwrap();
