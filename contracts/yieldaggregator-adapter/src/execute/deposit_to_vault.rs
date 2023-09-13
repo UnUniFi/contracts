@@ -43,8 +43,8 @@ pub fn execute_deposit_to_vault(
         let fee = Decimal::from_atomics(coin.amount, 0)?
             .checked_mul(params.fee_rate)?
             .to_uint_floor();
-        let lp_fee = Decimal::from_atomics(coin.amount, 0)?
-            .checked_mul(params.lp_fee_rate)?
+        let lp_fee = Decimal::from_atomics(fee, 0)?
+            .checked_mul(params.lp_fee_weight)?
             .to_uint_floor();
         let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
 
@@ -63,10 +63,16 @@ pub fn execute_deposit_to_vault(
         };
     }
 
-    response = response.add_message(CosmosMsg::Custom(UnunifiMsg::DeputyDepositToVault {
-        depositor: msg.depositor,
-        vault_id: msg.vault_id,
-        amount: coin,
+    // todo: impl on chain
+    // response = response.add_message(CosmosMsg::Custom(UnunifiMsg::DeputyDepositToVault {
+    //     depositor: msg.depositor,
+    //     vault_id: msg.vault_id,
+    //     amount: coin,
+    // }));
+
+    response = response.add_message(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+        to_address: msg.depositor,
+        amount:vec![coin],
     }));
 
     Ok(response)
