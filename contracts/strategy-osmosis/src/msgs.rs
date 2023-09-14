@@ -15,6 +15,7 @@ pub struct InstantiateMsg {
     pub lp_denom: String,
     pub transfer_channel_id: String,
     pub controller_transfer_channel_id: String,
+    pub superfluid_validator: String,
 }
 
 #[cw_serde]
@@ -42,6 +43,7 @@ pub struct UpdateConfigMsg {
     pub controller_deposit_denom: Option<String>,
     pub controller_transfer_channel_id: Option<String>,
     pub chain_id: Option<String>,
+    pub superfluid_validator: Option<String>,
 }
 
 #[cw_serde]
@@ -121,7 +123,9 @@ pub struct FeeInfo {
 
 /// We currently take no arguments for migrations
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub superfluid_validator: String,
+}
 
 #[cw_serde]
 pub struct ListChannelsResponse {

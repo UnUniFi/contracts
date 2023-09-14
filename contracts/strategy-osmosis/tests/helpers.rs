@@ -24,6 +24,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         lp_denom: "gamm/pool/1".to_string(),
         transfer_channel_id: "channel-1".to_string(),
         controller_transfer_channel_id: "channel-1".to_string(),
+        superfluid_validator: "".to_string(),
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();

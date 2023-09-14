@@ -52,6 +52,7 @@ pub fn instantiate(
         ica_channel_id: "".to_string(),
         ica_connection_id: "".to_string(),
         ica_account: "".to_string(),
+        superfluid_validator: msg.superfluid_validator,
     };
     CONFIG.save(deps.storage, &config)?;
 

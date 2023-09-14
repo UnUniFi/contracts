@@ -6,6 +6,7 @@ use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
 use cosmwasm_std::{DepsMut, Env, Response, StdResult, Storage, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinSwapExternAmountInResponse;
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
+use osmosis_std::types::osmosis::superfluid::MsgLockAndSuperfluidDelegateResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use std::str::FromStr;
@@ -137,10 +138,25 @@ pub fn execute_deposit_phase_epoch(
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
                             if tx_msg_data.data.len() > 0 {
-                                let msg_ret_result =
-                                    MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
-                                if let Ok(msg_ret) = msg_ret_result {
-                                    state.lock_id = msg_ret.id;
+                                if config.superfluid_validator != "".to_string()
+                                    && state.bonded_lp_amount == Uint128::from(0u128)
+                                {
+                                    // handle the case for MsgLockAndSuperfluidDelegate message
+                                    let msg_ret_result =
+                                        MsgLockAndSuperfluidDelegateResponse::decode(
+                                            &tx_msg_data.data[0].data[..],
+                                        );
+                                    if let Ok(msg_ret) = msg_ret_result {
+                                        state.lock_id = msg_ret.id;
+                                    }
+                                } else {
+                                    // handle the case for MsgLockTokensResponse message
+                                    let msg_ret_result = MsgLockTokensResponse::decode(
+                                        &tx_msg_data.data[0].data[..],
+                                    );
+                                    if let Ok(msg_ret) = msg_ret_result {
+                                        state.lock_id = msg_ret.id;
+                                    }
                                 }
                             }
                         }

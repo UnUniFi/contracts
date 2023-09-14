@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msgs::{ChannelInfo, UpdateConfigMsg};
 
-use crate::state::{CHANNEL_INFO, CONFIG};
+use crate::state::{CHANNEL_INFO, CONFIG, STATE};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
@@ -13,6 +13,7 @@ pub fn execute_update_config(
     msg: UpdateConfigMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
 
     // Permission check
     if info.sender != config.owner {
@@ -85,6 +86,13 @@ pub fn execute_update_config(
     if let Some(transfer_channel_id) = msg.controller_transfer_channel_id {
         config.controller_transfer_channel_id = transfer_channel_id.to_owned();
         resp = resp.add_attribute("transfer_channel_id", transfer_channel_id.to_string());
+    }
+
+    if let Some(superfluid_validator) = msg.superfluid_validator {
+        if state.bonded_lp_amount.is_zero() {
+            config.superfluid_validator = superfluid_validator.to_owned();
+            resp = resp.add_attribute("superfluid_validator", superfluid_validator.to_string());
+        }
     }
 
     CONFIG.save(deps.storage, &config)?;
