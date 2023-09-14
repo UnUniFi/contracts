@@ -22,11 +22,11 @@ contract YieldAggregatorOutpost is AxelarExecutable {
     }
 
     function depositToVault(
-        string calldata destinationChain,
-        string calldata destinationAddress,
+        string memory destinationChain,
+        string memory destinationAddress,
         string calldata depositor,
         string calldata vaultDenom,
-        uint64 vaultId,
+        string calldata vaultId,
         string memory symbol,
         uint256 amount
     ) external payable {
@@ -36,7 +36,7 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
         IERC20(tokenAddress).approve(address(gateway), amount);
 
-        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultId, vaultDenom);
+        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultDenom, vaultId);
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
             destinationChain,
@@ -62,18 +62,18 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         //     bytes                    abi encoded argument values
 
         // contract call arguments for ExecuteMsg::receive_message_evm{ source_chain, source_address, payload }
-        bytes memory argValues = abi.encode(depositor, vaultDenom, vaultId);
+        bytes memory argValues = abi.encode(depositor, vaultId, vaultDenom);
 
         string[] memory argumentNameArray = new string[](3);
         argumentNameArray[0] = "depositor";
-        argumentNameArray[1] = "vault_denom";
-        argumentNameArray[2] = "vault_id";
+        argumentNameArray[1] = "vault_id";
+        argumentNameArray[2] = "swap_output_denom";
 
 
         string[] memory abiTypeArray = new string[](3);
         abiTypeArray[0] = "string";
-        abiTypeArray[1] = "string";
-        abiTypeArray[2] = "uint64";
+        abiTypeArray[1] = "uint64";
+        abiTypeArray[2] = "string";
 
         bytes memory gmpPayload;
         gmpPayload = abi.encode(
