@@ -26,41 +26,44 @@ pub fn execute_deposit_to_vault(
 
     // https://docs.axelar.dev/dev/general-message-passing/cosmos-gmp
 
+    // todo : impl swap
     let params = PARAMS.load(deps.storage)?;
 
     if let Some(swap_output_denom) = msg.swap_output_denom {
-        let contract = params
-            .symbol_swap_contract_map
-            .get(&swap_output_denom)
-            .ok_or(ContractError::Unauthorized {})?;
+        if coin.denom != swap_output_denom {
+            let contract = params
+                .denom_swap_contract_map
+                .get(&swap_output_denom)
+                .ok_or(ContractError::Unauthorized {})?;
 
-        let request = QueryRequest::<Empty>::Wasm(WasmQuery::Smart {
-            contract_addr: contract.to_string(),
-            msg: to_binary(&QueryMsg::Params {})?,
-        });
-        let params = deps.querier.query::<Params>(&request)?;
+            let request = QueryRequest::<Empty>::Wasm(WasmQuery::Smart {
+                contract_addr: contract.to_string(),
+                msg: to_binary(&QueryMsg::Params {})?,
+            });
+            let params = deps.querier.query::<Params>(&request)?;
 
-        let fee = Decimal::from_atomics(coin.amount, 0)?
-            .checked_mul(params.fee_rate)?
-            .to_uint_floor();
-        let lp_fee = Decimal::from_atomics(fee, 0)?
-            .checked_mul(params.lp_fee_weight)?
-            .to_uint_floor();
-        let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
+            let fee = Decimal::from_atomics(coin.amount, 0)?
+                .checked_mul(params.fee_rate)?
+                .to_uint_floor();
+            let lp_fee = Decimal::from_atomics(fee, 0)?
+                .checked_mul(params.lp_fee_weight)?
+                .to_uint_floor();
+            let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
 
-        response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract.to_string(),
-            msg: to_binary(&SwapMsg {
-                output_denom: swap_output_denom.clone(),
-                recipient: None,
-            })?,
-            funds: vec![coin],
-        }));
+            response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract.to_string(),
+                msg: to_binary(&SwapMsg {
+                    output_denom: swap_output_denom.clone(),
+                    recipient: None,
+                })?,
+                funds: vec![coin],
+            }));
 
-        coin = Coin {
-            denom: swap_output_denom,
-            amount: fee_subtracted,
-        };
+            coin = Coin {
+                denom: swap_output_denom,
+                amount: fee_subtracted,
+            };
+        }
     }
 
     // todo: impl on chain
@@ -72,7 +75,7 @@ pub fn execute_deposit_to_vault(
 
     response = response.add_message(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
         to_address: msg.depositor,
-        amount:vec![coin],
+        amount: vec![coin],
     }));
 
     Ok(response)
