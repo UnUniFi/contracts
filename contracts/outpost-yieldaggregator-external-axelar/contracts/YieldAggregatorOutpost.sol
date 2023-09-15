@@ -37,7 +37,11 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         IERC20(tokenAddress).approve(address(gateway), amount);
 
         // 1. Generate GMP payload
-        bytes memory payload = _encodePayloadToCosmWasm(depositor, vaultDenom, vaultId);
+        bytes memory payload = _encodePayloadToCosmWasm(
+            depositor,
+            vaultDenom,
+            vaultId
+        );
         // 2. Pay for gas
         gasService.payNativeGasForContractCall{value: msg.value}(
             address(this),
@@ -53,9 +57,9 @@ contract YieldAggregatorOutpost is AxelarExecutable {
 
     function _encodePayloadToCosmWasm(
         string calldata depositor,
-        string calldata vaultDenom
-        string vaultId
-    ) internal view returns (bytes memory) {
+        string calldata vaultDenom,
+        string calldata vaultId
+    ) internal pure returns (bytes memory) {
         // Schema
         //   bytes4  version number (0x00000001)
         //   bytes   ABI-encoded payload, indicating function name and arguments:
@@ -71,7 +75,6 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         argumentNameArray[0] = "depositor";
         argumentNameArray[1] = "vault_id";
         argumentNameArray[2] = "swap_output_denom";
-
 
         string[] memory abiTypeArray = new string[](3);
         abiTypeArray[0] = "string";
@@ -90,8 +93,8 @@ contract YieldAggregatorOutpost is AxelarExecutable {
     }
 
     function _executeWithToken(
-        string calldata /*sourceChain*/, 
-        string calldata /*sourceAddress*/, 
+        string calldata, /*sourceChain*/
+        string calldata, /*sourceAddress*/
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount
