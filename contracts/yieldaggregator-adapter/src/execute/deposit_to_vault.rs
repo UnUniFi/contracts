@@ -66,7 +66,7 @@ pub fn execute_deposit_to_vault(
         }
     }
 
-    // todo: impl on chain
+    // // todo: impl on chain
     // response = response.add_message(CosmosMsg::Custom(UnunifiMsg::DeputyDepositToVault {
     //     depositor: msg.depositor,
     //     vault_id: msg.vault_id,

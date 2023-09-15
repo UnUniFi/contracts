@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint64;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -24,7 +25,7 @@ pub struct UpdateParamsMsg {
 #[cw_serde]
 pub struct DepositToVaultMsg {
     pub depositor: String,
-    pub vault_id: u64,
+    pub vault_id: Uint64,
     pub swap_output_denom: Option<String>,
 }
 
