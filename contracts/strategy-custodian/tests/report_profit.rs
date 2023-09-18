@@ -4,7 +4,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy_custodian::{
-    error::ContractError, execute::report_profit::execute_report_profit, msgs::ReportProfitMsg,
+    error::ContractError, execute::report_profit::execute_report_profit, msgs::ReportProfitMsg, query::share_and_deposit::query_total_deposit,
 };
 
 mod helpers;
@@ -20,11 +20,11 @@ fn test_report_profit() {
         mock_env(),
         invalid_info,
         ReportProfitMsg {
-            profit: Uint128::new(100),
-            is_positive: true,
-        },
-    )
-    .unwrap_err();
+                profit: Uint128::new(100),
+                is_positive: true,
+            },
+        )
+        .unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Success:
@@ -34,11 +34,13 @@ fn test_report_profit() {
         mock_env(),
         info,
         ReportProfitMsg {
-            profit: Uint128::new(100),
-            is_positive: true,
-        },
-    )
-    .unwrap();
-
+                profit: Uint128::new(100),
+                is_positive: true,
+            },
+        )
+        .unwrap();
     assert_eq!(0, res.messages.len());
+
+    let total_deposit = query_total_deposit(deps.as_ref()).unwrap();
+    assert_eq!(Uint128::new(100), total_deposit.total_deopsit);
 }
