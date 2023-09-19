@@ -7,7 +7,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::{
 };
 use osmosis_std::types::osmosis::lockup::{MsgBeginUnlocking, MsgLockTokens};
 use osmosis_std::types::osmosis::superfluid::{
-    MsgLockAndSuperfluidDelegate, MsgSuperfluidUndelegateAndUnbondLock,
+    MsgLockAndSuperfluidDelegate, MsgSuperfluidDelegate, MsgSuperfluidUndelegateAndUnbondLock,
 };
 use prost::EncodeError;
 use prost_types::Any;
@@ -102,6 +102,13 @@ pub fn swap_msg_to_any(msg: MsgSwapExactAmountIn) -> Result<Any, EncodeError> {
 pub fn lock_tokens_msg_to_any(msg: MsgLockTokens) -> Result<Any, EncodeError> {
     return Ok(Any {
         type_url: "/osmosis.lockup.MsgLockTokens".to_owned(),
+        value: msg.to_proto_bytes(),
+    });
+}
+
+pub fn superfluid_delegate_msg_to_any(msg: MsgSuperfluidDelegate) -> Result<Any, EncodeError> {
+    return Ok(Any {
+        type_url: "/osmosis.superfluid.MsgSuperfluidDelegate".to_owned(),
         value: msg.to_proto_bytes(),
     });
 }

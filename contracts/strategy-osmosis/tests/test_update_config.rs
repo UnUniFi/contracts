@@ -45,6 +45,7 @@ fn update_config() {
             pool_id: None,
             chain_id: None,
             superfluid_validator: None,
+            automate_superfluid: None,
         },
     )
     .unwrap();
@@ -75,6 +76,7 @@ fn update_config() {
             pool_id: None,
             chain_id: None,
             superfluid_validator: None,
+            automate_superfluid: None,
         },
     )
     .unwrap_err();

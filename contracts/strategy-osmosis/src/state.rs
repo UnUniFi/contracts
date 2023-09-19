@@ -28,6 +28,7 @@ pub struct Config {
     pub pool_id: u64, // 1 for ATOM/OSMO
 
     pub superfluid_validator: String,
+    pub automate_superfluid: bool,
 
     pub deposit_token: DepositToken,      // Base | Quote
     pub controller_deposit_denom: String, // `ibc/xxxxuatom`

@@ -25,6 +25,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         transfer_channel_id: "channel-1".to_string(),
         controller_transfer_channel_id: "channel-1".to_string(),
         superfluid_validator: "".to_string(),
+        automate_superfluid: true,
     };
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();

@@ -14,6 +14,14 @@ use osmosis_std::types::osmosis::superfluid::{
 };
 use ununifi_binding::v0::binding::UnunifiMsg;
 
+pub fn should_lock_and_superfluid_delegate(
+    superfluid_validator: String,
+    bonded_lp_amount: Uint128,
+    automate_superfluid: bool,
+) -> bool {
+    superfluid_validator != "".to_string() && bonded_lp_amount.is_zero() && automate_superfluid
+}
+
 pub fn execute_ica_bond_liquidity(
     store: &mut dyn Storage,
     env: Env,
@@ -26,9 +34,11 @@ pub fn execute_ica_bond_liquidity(
     }
 
     // requires superfluid delegation only for the first time
-    if config.superfluid_validator != "".to_string()
-        && state.bonded_lp_amount == Uint128::from(0u128)
-    {
+    if should_lock_and_superfluid_delegate(
+        config.superfluid_validator.to_string(),
+        state.bonded_lp_amount,
+        config.automate_superfluid,
+    ) {
         let msg = MsgLockAndSuperfluidDelegate {
             sender: config.ica_account.to_string(),
             coins: vec![OsmosisCoin {

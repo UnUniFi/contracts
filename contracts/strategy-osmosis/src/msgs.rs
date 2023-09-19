@@ -16,6 +16,7 @@ pub struct InstantiateMsg {
     pub transfer_channel_id: String,
     pub controller_transfer_channel_id: String,
     pub superfluid_validator: String,
+    pub automate_superfluid: bool,
 }
 
 #[cw_serde]
@@ -23,6 +24,7 @@ pub enum ExecuteMsg {
     UpdateConfig(UpdateConfigMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
+    SuperfluidDelegate(ExecuteSuperfluidDelegateMsg),
     ExecuteEpoch(ExecuteEpochMsg),
 }
 
@@ -44,6 +46,7 @@ pub struct UpdateConfigMsg {
     pub controller_transfer_channel_id: Option<String>,
     pub chain_id: Option<String>,
     pub superfluid_validator: Option<String>,
+    pub automate_superfluid: Option<bool>,
 }
 
 #[cw_serde]
@@ -61,6 +64,9 @@ pub struct StakeMsg {}
 pub struct UnstakeMsg {
     pub amount: Uint128,
 }
+
+#[cw_serde]
+pub struct ExecuteSuperfluidDelegateMsg {}
 
 #[cw_serde]
 pub struct ExecuteEpochMsg {}

@@ -89,10 +89,18 @@ pub fn execute_update_config(
     }
 
     if let Some(superfluid_validator) = msg.superfluid_validator {
-        if state.bonded_lp_amount.is_zero() {
+        if state.bonded_lp_amount.is_zero()
+            || !config.automate_superfluid
+            || config.superfluid_validator == ""
+        {
             config.superfluid_validator = superfluid_validator.to_owned();
             resp = resp.add_attribute("superfluid_validator", superfluid_validator.to_string());
         }
+    }
+
+    if let Some(automate_superfluid) = msg.automate_superfluid {
+        config.automate_superfluid = automate_superfluid.to_owned();
+        resp = resp.add_attribute("automate_superfluid", "true");
     }
 
     CONFIG.save(deps.storage, &config)?;

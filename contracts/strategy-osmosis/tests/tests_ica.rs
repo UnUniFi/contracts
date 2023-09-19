@@ -36,6 +36,7 @@ fn determine_ica_amounts_for_deposit() {
         ica_connection_id: "".to_string(),
         ica_account: "".to_string(),
         superfluid_validator: "".to_string(),
+        automate_superfluid: true,
     };
 
     let state = State {
@@ -89,6 +90,7 @@ fn determine_ica_amounts_for_withdraw() {
         ica_account: "".to_string(),
         phase_step: PhaseStep::RemoveLiquidity,
         superfluid_validator: "".to_string(),
+        automate_superfluid: true,
     };
 
     let state = State {

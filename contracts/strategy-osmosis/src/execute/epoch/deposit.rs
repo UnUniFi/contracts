@@ -14,7 +14,10 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 
 use super::helpers::determine_ica_amounts;
 use super::liquidity::execute_ica_join_swap_extern_amount_in;
-use super::lockup::{execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity};
+use super::lockup::{
+    execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity,
+    should_lock_and_superfluid_delegate,
+};
 use super::token_transfer::execute_ibc_transfer_to_host;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
@@ -138,9 +141,11 @@ pub fn execute_deposit_phase_epoch(
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
                             if tx_msg_data.data.len() > 0 {
-                                if config.superfluid_validator != "".to_string()
-                                    && state.bonded_lp_amount == Uint128::from(0u128)
-                                {
+                                if should_lock_and_superfluid_delegate(
+                                    config.superfluid_validator,
+                                    state.bonded_lp_amount,
+                                    config.automate_superfluid,
+                                ) {
                                     // handle the case for MsgLockAndSuperfluidDelegate message
                                     let msg_ret_result =
                                         MsgLockAndSuperfluidDelegateResponse::decode(
