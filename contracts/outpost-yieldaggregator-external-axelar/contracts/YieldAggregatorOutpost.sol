@@ -9,7 +9,7 @@ import {IAxelarGateway} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/
 import {IAxelarGasService} from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol";
 
 contract YieldAggregatorOutpost is AxelarExecutable {
-    IAxelarGasService public immutable gasService;
+    IAxelarGasService public immutable gasReciever;
     string public chainName; // name of the chain this contract is deployed to
 
     constructor(
@@ -17,7 +17,7 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         address gasReceiver_,
         string memory chainName_
     ) AxelarExecutable(gateway_) {
-        gasService = IAxelarGasService(gasReceiver_);
+        gasReciever = IAxelarGasService(gasReceiver_);
         chainName = chainName_;
     }
 
@@ -35,18 +35,18 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         IERC20(tokenAddress).approve(address(gateway), amount);
 
         // 1. Generate GMP payload
-        bytes memory payload = _encodePayloadToCosmWasm(
+        bytes memory payloadToCW = _encodePayloadToCosmWasm(
             depositor,
             vaultDenom,
             vaultId
         );
         // 2. Pay for gas
         if (msg.value > 0) {
-            gasService.payNativeGasForContractCallWithToken{value: msg.value}(
+            gasReciever.payNativeGasForContractCallWithToken{value: msg.value}(
                 address(this),
                 destinationChain,
                 destinationAddress,
-                payload,
+                payloadToCW,
                 symbol,
                 amount,
                 msg.sender
@@ -57,7 +57,7 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         gateway.callContractWithToken(
             destinationChain,
             destinationAddress,
-            payload,
+            payloadToCW,
             symbol,
             amount
         );
@@ -67,7 +67,7 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         string calldata depositor,
         string calldata vaultDenom,
         string calldata vaultId
-    ) internal view returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         // Schema
         //   bytes4  version number (0x00000001)
         //   bytes   ABI-encoded payload, indicating function name and arguments:
@@ -97,7 +97,11 @@ contract YieldAggregatorOutpost is AxelarExecutable {
             argValues
         );
 
-        return abi.encodePacked(bytes4(0x00000001), gmpPayload);
+        return
+            abi.encodePacked(
+                bytes4(uint32(1)), // version number
+                gmpPayload
+            );
     }
 
     function _executeWithToken(
