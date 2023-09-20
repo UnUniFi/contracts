@@ -46,6 +46,7 @@ fn update_config() {
             chain_id: None,
             superfluid_validator: None,
             automate_superfluid: None,
+            extern_tokens: None,
         },
     )
     .unwrap();
@@ -77,6 +78,7 @@ fn update_config() {
             chain_id: None,
             superfluid_validator: None,
             automate_superfluid: None,
+            extern_tokens: None,
         },
     )
     .unwrap_err();

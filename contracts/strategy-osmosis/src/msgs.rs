@@ -1,4 +1,4 @@
-use crate::state::DepositToken;
+use crate::state::{DepositToken, ExternToken};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
 use cosmwasm_std::{Coin, Decimal, Uint128};
@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
     pub controller_transfer_channel_id: String,
     pub superfluid_validator: String,
     pub automate_superfluid: bool,
+    pub extern_tokens: Vec<ExternToken>,
 }
 
 #[cw_serde]
@@ -47,6 +48,7 @@ pub struct UpdateConfigMsg {
     pub chain_id: Option<String>,
     pub superfluid_validator: Option<String>,
     pub automate_superfluid: Option<bool>,
+    pub extern_tokens: Option<Vec<ExternToken>>,
 }
 
 #[cw_serde]
@@ -166,6 +168,10 @@ pub enum PhaseStep {
     IbcTransferToHostCallback,
     RequestIcqAfterIbcTransferToHost,
     ResponseIcqAfterIbcTransferToHost,
+    SellExternTokens,
+    SellExternTokensCallback,
+    RequestIcqAfterSellExternTokens,
+    ResponseIcqAfterSellExternTokens,
     AddLiquidity,
     AddLiquidityCallback,
     BondLiquidity,
@@ -202,6 +208,14 @@ impl ToString for PhaseStep {
             }
             PhaseStep::ResponseIcqAfterIbcTransferToHost => {
                 String::from("response_icq_after_ibc_transfer_to_host")
+            }
+            PhaseStep::SellExternTokens => String::from("sell_extern_tokens"),
+            PhaseStep::SellExternTokensCallback => String::from("sell_extern_tokens_callback"),
+            PhaseStep::RequestIcqAfterSellExternTokens => {
+                String::from("request_icq_after_sell_extern_tokens")
+            }
+            PhaseStep::ResponseIcqAfterSellExternTokens => {
+                String::from("response_icq_after_sell_extern_tokens")
             }
             PhaseStep::AddLiquidity => String::from("add_liquidity"),
             PhaseStep::AddLiquidityCallback => String::from("add_liquidity_callback"),

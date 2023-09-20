@@ -55,6 +55,7 @@ pub fn instantiate(
         ica_account: "".to_string(),
         superfluid_validator: msg.superfluid_validator,
         automate_superfluid: msg.automate_superfluid,
+        extern_tokens: msg.extern_tokens.clone(),
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -77,6 +78,7 @@ pub fn instantiate(
         controller_free_amount: Uint128::from(0u128),
         controller_pending_transfer_amount: Uint128::from(0u128),
         controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        extern_token_amounts: vec![Uint128::from(0u128); msg.extern_tokens.len()],
     };
     STATE.save(deps.storage, &state)?;
 

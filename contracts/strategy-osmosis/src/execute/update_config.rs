@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::msgs::{ChannelInfo, UpdateConfigMsg};
 
 use crate::state::{CHANNEL_INFO, CONFIG, STATE};
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Uint128};
 use ununifi_binding::v0::binding::UnunifiMsg;
 
 /// Only owner can execute it.
@@ -13,7 +13,7 @@ pub fn execute_update_config(
     msg: UpdateConfigMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
-    let state = STATE.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
 
     // Permission check
     if info.sender != config.owner {
@@ -103,6 +103,14 @@ pub fn execute_update_config(
         resp = resp.add_attribute("automate_superfluid", "true");
     }
 
+    if let Some(extern_tokens) = msg.extern_tokens {
+        config.extern_tokens = extern_tokens.to_owned();
+        resp = resp.add_attribute("extern_tokens", "true");
+
+        state.extern_token_amounts = vec![Uint128::from(0u128); extern_tokens.len()];
+    }
+
     CONFIG.save(deps.storage, &config)?;
+    STATE.save(deps.storage, &state)?;
     Ok(resp)
 }

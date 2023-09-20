@@ -37,6 +37,7 @@ fn determine_ica_amounts_for_deposit() {
         ica_account: "".to_string(),
         superfluid_validator: "".to_string(),
         automate_superfluid: true,
+        extern_tokens: vec![],
     };
 
     let state = State {
@@ -58,6 +59,7 @@ fn determine_ica_amounts_for_deposit() {
         controller_free_amount: Uint128::from(10000u128),
         controller_pending_transfer_amount: Uint128::from(0u128),
         controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        extern_token_amounts: vec![],
     };
 
     let ica_amounts = determine_ica_amounts(config, state);
@@ -91,6 +93,7 @@ fn determine_ica_amounts_for_withdraw() {
         phase_step: PhaseStep::RemoveLiquidity,
         superfluid_validator: "".to_string(),
         automate_superfluid: true,
+        extern_tokens: vec![],
     };
 
     let state = State {
@@ -112,6 +115,7 @@ fn determine_ica_amounts_for_withdraw() {
         total_shares: Uint128::from(0u128),
         total_withdrawn: Uint128::from(0u128),
         pending_icq: 0u64,
+        extern_token_amounts: vec![],
     };
     let ica_amounts = determine_ica_amounts(config, state);
 

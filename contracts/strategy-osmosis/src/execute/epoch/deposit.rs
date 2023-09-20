@@ -18,6 +18,7 @@ use super::lockup::{
     execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity,
     should_lock_and_superfluid_delegate,
 };
+use super::swap::{execute_ica_sell_extern_tokens, get_extern_token_sell_messages};
 use super::token_transfer::execute_ibc_transfer_to_host;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
@@ -75,6 +76,36 @@ pub fn execute_deposit_phase_epoch(
             next_phase_step = PhaseStep::ResponseIcqAfterIbcTransferToHost;
         }
         PhaseStep::ResponseIcqAfterIbcTransferToHost => {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                let msgs = get_extern_token_sell_messages(deps.storage)?;
+                if msgs.len() > 0 {
+                    next_phase_step = PhaseStep::SellExternTokens
+                } else {
+                    next_phase_step = PhaseStep::AddLiquidity;
+                }
+            }
+        }
+        PhaseStep::SellExternTokens => {
+            rsp = execute_ica_sell_extern_tokens(deps.storage, env);
+            next_phase_step = PhaseStep::SellExternTokensCallback;
+        }
+        PhaseStep::SellExternTokensCallback => {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                if success {
+                    next_phase_step = PhaseStep::RequestIcqAfterSellExternTokens;
+                } else {
+                    next_phase_step = PhaseStep::AddLiquidity;
+                }
+            }
+        }
+        PhaseStep::RequestIcqAfterSellExternTokens => {
+            // - icq balance of ica account when `Deposit` phase
+            rsp = submit_icq_for_host(deps.storage, env);
+            next_phase_step = PhaseStep::ResponseIcqAfterSellExternTokens;
+        }
+        PhaseStep::ResponseIcqAfterSellExternTokens => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::AddLiquidity;
