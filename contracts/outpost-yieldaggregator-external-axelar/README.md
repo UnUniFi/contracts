@@ -15,6 +15,5 @@ npx hardhat run scripts/deploy.ts
 ## For Goerli
 
 ```shell
-./build_release.sh
-npx hardhat run scripts/deploy.js --network goerli
+npx hardhat run scripts/deploy.ts --network goerli
 ```

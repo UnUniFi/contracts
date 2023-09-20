@@ -30,8 +30,6 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         string memory symbol,
         uint256 amount
     ) external payable {
-        require(msg.value > 0, "Gas payment is required");
-
         address tokenAddress = gateway.tokenAddresses(symbol);
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
         IERC20(tokenAddress).approve(address(gateway), amount);
@@ -43,23 +41,33 @@ contract YieldAggregatorOutpost is AxelarExecutable {
             vaultId
         );
         // 2. Pay for gas
-        gasService.payNativeGasForContractCall{value: msg.value}(
-            address(this),
+        if (msg.value > 0) {
+            gasService.payNativeGasForContractCallWithToken{value: msg.value}(
+                address(this),
+                destinationChain,
+                destinationAddress,
+                payload,
+                symbol,
+                amount,
+                msg.sender
+            );
+        }
+
+        // 3. Make GMP call
+        gateway.callContractWithToken(
             destinationChain,
             destinationAddress,
             payload,
-            msg.sender
+            symbol,
+            amount
         );
-
-        // 3. Make GMP call
-        gateway.callContract(destinationChain, destinationAddress, payload);
     }
 
     function _encodePayloadToCosmWasm(
         string calldata depositor,
         string calldata vaultDenom,
         string calldata vaultId
-    ) internal pure returns (bytes memory) {
+    ) internal view returns (bytes memory) {
         // Schema
         //   bytes4  version number (0x00000001)
         //   bytes   ABI-encoded payload, indicating function name and arguments:
@@ -99,8 +107,6 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         string calldata tokenSymbol,
         uint256 amount
     ) internal override {
-        // TODO: verify sourceChain_ and sourceAddress_
-        // sourceAddress_ must be the outpost internal contract.
         address recipient = abi.decode(payload, (address));
         address tokenAddress = gateway.tokenAddresses(tokenSymbol);
 
