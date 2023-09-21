@@ -67,11 +67,17 @@ pub fn sudo_kv_query_result(
         }
 
         for (i, extern_token) in config.extern_tokens.iter().enumerate() {
-            state.extern_token_amounts[i] = amount;
-            resp = resp.add_attribute(
-                format!("free_{}", extern_token.extern_token),
-                state.free_lp_amount,
-            );
+            let extern_balance_key = create_account_denom_balance_key(
+                converted_addr_bytes.clone(),
+                extern_token.extern_token.to_string(),
+            )?;
+            if query_key == extern_balance_key {
+                state.extern_token_amounts[i] = amount;
+                resp = resp.add_attribute(
+                    format!("free_{}", extern_token.extern_token),
+                    state.free_lp_amount,
+                );
+            }
         }
     } else {
         // GAMM_STORE_KEY
