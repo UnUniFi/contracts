@@ -9,6 +9,7 @@ pub fn query_distribution_amount(
 ) -> StdResult<DistributionAmountResp> {
     let bonus_window = BONUS_WINDOWS.load(deps.storage, bonus_window_id)?;
 
-    let resp = DistributionAmountResp {};
-    Ok(resp)
+    todo!()
+    // let resp = DistributionAmountResp {};
+    // Ok(resp)
 }

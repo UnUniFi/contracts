@@ -18,10 +18,10 @@
     {
       "type": "object",
       "required": [
-        "providers"
+        "bonus_windows"
       ],
       "properties": {
-        "providers": {
+        "bonus_windows": {
           "type": "object",
           "additionalProperties": false
         }
@@ -31,17 +31,19 @@
     {
       "type": "object",
       "required": [
-        "verifications"
+        "voted_vaults"
       ],
       "properties": {
-        "verifications": {
+        "voted_vaults": {
           "type": "object",
           "required": [
-            "address"
+            "bonus_window_id"
           ],
           "properties": {
-            "address": {
-              "type": "string"
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -52,17 +54,46 @@
     {
       "type": "object",
       "required": [
-        "information_requests"
+        "vault_share_staking"
       ],
       "properties": {
-        "information_requests": {
+        "vault_share_staking": {
           "type": "object",
           "required": [
-            "address"
+            "address",
+            "bonus_window_id"
           ],
           "properties": {
             "address": {
               "type": "string"
+            },
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "distribution_amount"
+      ],
+      "properties": {
+        "distribution_amount": {
+          "type": "object",
+          "required": [
+            "bonus_window_id"
+          ],
+          "properties": {
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false

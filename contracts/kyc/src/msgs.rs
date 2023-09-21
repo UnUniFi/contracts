@@ -1,5 +1,6 @@
-use crate::types::{Params, Provider, Verification};
+use crate::types::{InformationRequest, Params, Provider, Verification};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Coin, Decimal};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +14,10 @@ pub enum ExecuteMsg {
     UpdateProvider(UpdateProviderMsg),
     CreateVerification(CreateVerificationMsg),
     RemoveVerification(RemoveVerificationMsg),
+    RequestInformation(RequestInformationMsg),
+    ApproveInformationRequest(ApproveInformationRequestMsg),
+    RejectInformationRequest(RejectInformationRequestMsg),
+    RemoveInformationRequest(RemoveInformationRequestMsg),
 }
 
 #[cw_serde]
@@ -32,6 +37,8 @@ pub struct RegisterProviderMsg {
     pub security_contact: String,
     /// details define other optional details.
     pub details: String,
+    pub information_fee: Coin,
+    pub customer_fee_back_rate: Decimal,
 }
 
 #[cw_serde]
@@ -47,6 +54,8 @@ pub struct UpdateProviderMsg {
     pub security_contact: Option<String>,
     /// details define other optional details.
     pub details: Option<String>,
+    pub information_fee: Option<Coin>,
+    pub customer_fee_back_rate: Option<Decimal>,
 }
 
 #[cw_serde]
@@ -62,6 +71,29 @@ pub struct RemoveVerificationMsg {
 }
 
 #[cw_serde]
+pub struct RequestInformationMsg {
+    pub provider_id: u64,
+    pub customer: String,
+    pub email: String,
+}
+
+#[cw_serde]
+pub struct ApproveInformationRequestMsg {
+    pub request_id: u64,
+}
+
+#[cw_serde]
+pub struct RejectInformationRequestMsg {
+    pub request_id: u64,
+}
+
+#[cw_serde]
+pub struct RemoveInformationRequestMsg {
+    pub customer: String,
+    pub request_id: u64,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Params)]
@@ -70,6 +102,8 @@ pub enum QueryMsg {
     Providers {},
     #[returns(Vec<Verification>)]
     Verifications { address: String },
+    #[returns(Vec<InformationRequest>)]
+    InformationRequests { address: String },
 }
 
 /// We currently take no arguments for migrations

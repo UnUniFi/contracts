@@ -18,16 +18,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let authority = deps.api.addr_validate(&msg.authority)?;
-    let denom_swap_contract_map = msg
-        .denom_swap_contract_map
-        .iter()
-        .map(|(k, v)| -> StdResult<_> { Ok((k.clone(), deps.api.addr_validate(v)?)) })
-        .collect::<StdResult<_>>()?;
 
-    let config = Params {
-        authority,
-        denom_swap_contract_map,
-    };
+    let config = Params { authority };
     PARAMS.save(deps.storage, &config)?;
 
     Ok(Response::new())

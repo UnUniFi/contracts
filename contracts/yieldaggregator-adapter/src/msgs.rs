@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::types::Params;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint64;
@@ -7,7 +5,6 @@ use cosmwasm_std::Uint64;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub authority: String,
-    pub denom_swap_contract_map: BTreeMap<String, String>,
 }
 
 #[cw_serde]
@@ -19,14 +16,12 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct UpdateParamsMsg {
     pub authority: Option<String>,
-    pub denom_swap_contract_map: Option<BTreeMap<String, String>>,
 }
 
 #[cw_serde]
 pub struct DepositToVaultMsg {
     pub depositor: String,
     pub vault_id: Uint64,
-    pub swap_output_denom: Option<String>,
 }
 
 #[cw_serde]

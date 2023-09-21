@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "authority",
+    "stake_denom"
+  ],
+  "properties": {
+    "authority": {
+      "type": "string"
+    },
+    "stake_denom": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

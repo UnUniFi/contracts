@@ -19,7 +19,6 @@ fn test_update_params() {
         invalid_info,
         UpdateParamsMsg {
             authority: Some("authority2".to_string()),
-            denom_swap_contract_map: None,
         },
     )
     .unwrap_err();
@@ -35,7 +34,6 @@ fn test_update_params() {
         invalid_info,
         UpdateParamsMsg {
             authority: Some("authority2".to_string()),
-            denom_swap_contract_map: None,
         },
     )
     .unwrap();

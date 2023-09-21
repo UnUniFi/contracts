@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Array_of_Provider",
+  "title": "Array_of_InformationRequest",
   "type": "array",
   "items": {
-    "$ref": "#/definitions/Provider"
+    "$ref": "#/definitions/InformationRequest"
   },
   "definitions": {
     "Addr": {
@@ -25,32 +25,27 @@
         }
       }
     },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
-    },
-    "Provider": {
+    "InformationRequest": {
       "type": "object",
       "required": [
-        "address",
-        "customer_fee_back_rate",
-        "details",
+        "customer",
+        "email",
         "id",
-        "identity",
         "information_fee",
-        "name",
-        "security_contact",
-        "website"
+        "provider_id",
+        "sender"
       ],
       "properties": {
-        "address": {
+        "approved": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "customer": {
           "$ref": "#/definitions/Addr"
         },
-        "customer_fee_back_rate": {
-          "$ref": "#/definitions/Decimal"
-        },
-        "details": {
-          "description": "details define other optional details.",
+        "email": {
           "type": "string"
         },
         "id": {
@@ -58,23 +53,16 @@
           "format": "uint64",
           "minimum": 0.0
         },
-        "identity": {
-          "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
-          "type": "string"
-        },
         "information_fee": {
           "$ref": "#/definitions/Coin"
         },
-        "name": {
-          "type": "string"
+        "provider_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
-        "security_contact": {
-          "description": "security_contact defines an optional email for security contact.",
-          "type": "string"
-        },
-        "website": {
-          "description": "website defines an optional website link.",
-          "type": "string"
+        "sender": {
+          "$ref": "#/definitions/Addr"
         }
       },
       "additionalProperties": false

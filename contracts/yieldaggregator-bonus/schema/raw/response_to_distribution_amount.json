@@ -1,10 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Array_of_Provider",
-  "type": "array",
-  "items": {
-    "$ref": "#/definitions/Provider"
+  "title": "DistributionAmountResp",
+  "type": "object",
+  "required": [
+    "bonus_window_id",
+    "for_all",
+    "for_winners"
+  ],
+  "properties": {
+    "bonus_window_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "for_all": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Distribution"
+      }
+    },
+    "for_winners": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Distribution"
+      }
+    }
   },
+  "additionalProperties": false,
   "definitions": {
     "Addr": {
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
@@ -25,56 +47,18 @@
         }
       }
     },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
-    },
-    "Provider": {
+    "Distribution": {
       "type": "object",
       "required": [
-        "address",
-        "customer_fee_back_rate",
-        "details",
-        "id",
-        "identity",
-        "information_fee",
-        "name",
-        "security_contact",
-        "website"
+        "amount",
+        "recipient"
       ],
       "properties": {
-        "address": {
-          "$ref": "#/definitions/Addr"
-        },
-        "customer_fee_back_rate": {
-          "$ref": "#/definitions/Decimal"
-        },
-        "details": {
-          "description": "details define other optional details.",
-          "type": "string"
-        },
-        "id": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "identity": {
-          "description": "identity defines an optional identity signature (ex. UPort or Keybase).",
-          "type": "string"
-        },
-        "information_fee": {
+        "amount": {
           "$ref": "#/definitions/Coin"
         },
-        "name": {
-          "type": "string"
-        },
-        "security_contact": {
-          "description": "security_contact defines an optional email for security contact.",
-          "type": "string"
-        },
-        "website": {
-          "description": "website defines an optional website link.",
-          "type": "string"
+        "recipient": {
+          "$ref": "#/definitions/Addr"
         }
       },
       "additionalProperties": false
