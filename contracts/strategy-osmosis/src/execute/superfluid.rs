@@ -5,7 +5,7 @@ use crate::state::{PARAMS, STATE};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError};
 use ica_tx::helpers::send_ica_tx;
 use osmosis_std::types::osmosis::superfluid::MsgSuperfluidDelegate;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_superfluid_delegate(
     deps: DepsMut,
@@ -16,7 +16,7 @@ pub fn execute_superfluid_delegate(
     let state = STATE.load(deps.storage)?;
 
     // Permission check
-    if info.sender != params.owner {
+    if info.sender != params.authority {
         return Err(ContractError::Unauthorized {});
     }
 

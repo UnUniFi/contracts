@@ -173,9 +173,9 @@ pub fn execute_deposit_phase_epoch(
                         if let Ok(tx_msg_data) = tx_msg_data_result {
                             if tx_msg_data.data.len() > 0 {
                                 if should_lock_and_superfluid_delegate(
-                                    config.superfluid_validator,
+                                    params.superfluid_validator,
                                     state.bonded_lp_amount,
-                                    config.automate_superfluid,
+                                    params.automate_superfluid,
                                 ) {
                                     // handle the case for MsgLockAndSuperfluidDelegate message
                                     let msg_ret_result =
