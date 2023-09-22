@@ -44,6 +44,9 @@ fn update_config() {
             controller_deposit_denom: Some("uguu".to_string()),
             pool_id: None,
             chain_id: None,
+            superfluid_validator: None,
+            automate_superfluid: None,
+            extern_tokens: None,
         },
     )
     .unwrap();
@@ -73,6 +76,9 @@ fn update_config() {
             controller_deposit_denom: Some("stake".to_string()),
             pool_id: None,
             chain_id: None,
+            superfluid_validator: None,
+            automate_superfluid: None,
+            extern_tokens: None,
         },
     )
     .unwrap_err();

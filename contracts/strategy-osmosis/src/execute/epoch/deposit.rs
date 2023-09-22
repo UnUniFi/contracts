@@ -6,6 +6,7 @@ use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
 use cosmwasm_std::{DepsMut, Env, Response, StdResult, Storage, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgJoinSwapExternAmountInResponse;
 use osmosis_std::types::osmosis::lockup::MsgLockTokensResponse;
+use osmosis_std::types::osmosis::superfluid::MsgLockAndSuperfluidDelegateResponse;
 use prost::Message;
 use proto::cosmos::base::abci::v1beta1::TxMsgData;
 use std::str::FromStr;
@@ -13,7 +14,11 @@ use ununifi_binding::v0::binding::UnunifiMsg;
 
 use super::helpers::determine_ica_amounts;
 use super::liquidity::execute_ica_join_swap_extern_amount_in;
-use super::lockup::{execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity};
+use super::lockup::{
+    execute_ica_begin_unbonding_lp_tokens, execute_ica_bond_liquidity,
+    should_lock_and_superfluid_delegate,
+};
+use super::swap::{execute_ica_sell_extern_tokens, get_extern_token_sell_messages};
 use super::token_transfer::execute_ibc_transfer_to_host;
 
 pub fn calc_matured_unbondings(store: &dyn Storage, env: Env) -> StdResult<Uint128> {
@@ -71,6 +76,36 @@ pub fn execute_deposit_phase_epoch(
             next_phase_step = PhaseStep::ResponseIcqAfterIbcTransferToHost;
         }
         PhaseStep::ResponseIcqAfterIbcTransferToHost => {
+            // handle ICQ callback
+            if called_from == EpochCallSource::IcqCallback {
+                let msgs = get_extern_token_sell_messages(deps.storage)?;
+                if msgs.len() > 0 {
+                    next_phase_step = PhaseStep::SellExternTokens
+                } else {
+                    next_phase_step = PhaseStep::AddLiquidity;
+                }
+            }
+        }
+        PhaseStep::SellExternTokens => {
+            rsp = execute_ica_sell_extern_tokens(deps.storage, env);
+            next_phase_step = PhaseStep::SellExternTokensCallback;
+        }
+        PhaseStep::SellExternTokensCallback => {
+            // handle ICA callback
+            if called_from == EpochCallSource::IcaCallback {
+                if success {
+                    next_phase_step = PhaseStep::RequestIcqAfterSellExternTokens;
+                } else {
+                    next_phase_step = PhaseStep::AddLiquidity;
+                }
+            }
+        }
+        PhaseStep::RequestIcqAfterSellExternTokens => {
+            // - icq balance of ica account when `Deposit` phase
+            rsp = submit_icq_for_host(deps.storage, env);
+            next_phase_step = PhaseStep::ResponseIcqAfterSellExternTokens;
+        }
+        PhaseStep::ResponseIcqAfterSellExternTokens => {
             // handle ICQ callback
             if called_from == EpochCallSource::IcqCallback {
                 next_phase_step = PhaseStep::AddLiquidity;
@@ -137,10 +172,27 @@ pub fn execute_deposit_phase_epoch(
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
                             if tx_msg_data.data.len() > 0 {
-                                let msg_ret_result =
-                                    MsgLockTokensResponse::decode(&tx_msg_data.data[0].data[..]);
-                                if let Ok(msg_ret) = msg_ret_result {
-                                    state.lock_id = msg_ret.id;
+                                if should_lock_and_superfluid_delegate(
+                                    config.superfluid_validator,
+                                    state.bonded_lp_amount,
+                                    config.automate_superfluid,
+                                ) {
+                                    // handle the case for MsgLockAndSuperfluidDelegate message
+                                    let msg_ret_result =
+                                        MsgLockAndSuperfluidDelegateResponse::decode(
+                                            &tx_msg_data.data[0].data[..],
+                                        );
+                                    if let Ok(msg_ret) = msg_ret_result {
+                                        state.lock_id = msg_ret.id;
+                                    }
+                                } else {
+                                    // handle the case for MsgLockTokensResponse message
+                                    let msg_ret_result = MsgLockTokensResponse::decode(
+                                        &tx_msg_data.data[0].data[..],
+                                    );
+                                    if let Ok(msg_ret) = msg_ret_result {
+                                        state.lock_id = msg_ret.id;
+                                    }
                                 }
                             }
                         }

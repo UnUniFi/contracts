@@ -42,8 +42,6 @@ pub fn submit_icq_for_host(
     _env: Env,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut state = STATE.load(store)?;
-    state.pending_icq = 4u64;
-    STATE.save(store, &state)?;
 
     let config = CONFIG.load(store)?;
     let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
@@ -62,7 +60,7 @@ pub fn submit_icq_for_host(
     )?;
     let gamm_pool_key = create_pool_key(config.pool_id.to_owned())?;
 
-    let msgs = vec![
+    let mut msgs = vec![
         UnunifiMsg::SubmitICQRequest {
             chain_id: config.chain_id.to_string(),
             connection_id: config.ica_connection_id.to_string(),
@@ -88,6 +86,22 @@ pub fn submit_icq_for_host(
             query_key: Binary(gamm_pool_key),
         },
     ];
+
+    for extern_token in config.extern_tokens {
+        let extern_balance_key = create_account_denom_balance_key(
+            converted_addr_bytes.clone(),
+            extern_token.extern_token.to_string(),
+        )?;
+        msgs.push(UnunifiMsg::SubmitICQRequest {
+            chain_id: config.chain_id.to_string(),
+            connection_id: config.ica_connection_id.to_string(),
+            query_prefix: BANK_STORE_KEY.to_string(),
+            query_key: Binary(extern_balance_key),
+        })
+    }
+
+    state.pending_icq = msgs.len() as u64;
+    STATE.save(store, &state)?;
 
     // Note: bonded lp and unbonding lp token balances are managed without icq on contract side
     let resp = Response::new()
