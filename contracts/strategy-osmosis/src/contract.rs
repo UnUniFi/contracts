@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::execute::stake::execute_stake;
+use crate::execute::superfluid::execute_superfluid_delegate;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_params::execute_update_params;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, PhaseStep, QueryMsg};
@@ -54,6 +55,9 @@ pub fn instantiate(
         ica_channel_id: "".to_string(),
         ica_connection_id: "".to_string(),
         ica_account: "".to_string(),
+        superfluid_validator: msg.superfluid_validator,
+        automate_superfluid: msg.automate_superfluid,
+        extern_tokens: msg.extern_tokens.clone(),
     };
     PARAMS.save(deps.storage, &params)?;
 
@@ -76,6 +80,7 @@ pub fn instantiate(
         controller_free_amount: Uint128::from(0u128),
         controller_pending_transfer_amount: Uint128::from(0u128),
         controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        extern_token_amounts: vec![Uint128::from(0u128); msg.extern_tokens.len()],
     };
     STATE.save(deps.storage, &state)?;
 
@@ -120,6 +125,7 @@ pub fn execute(
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
         ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
+        ExecuteMsg::SuperfluidDelegate(_) => execute_superfluid_delegate(deps, env, info),
         ExecuteMsg::Epoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None),
     }
 }

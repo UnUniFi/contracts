@@ -4,7 +4,6 @@ use crate::state::PARAMS;
 use cosmwasm_std::BankMsg;
 use cosmwasm_std::Coin;
 use cosmwasm_std::CosmosMsg;
-use cosmwasm_std::Decimal;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw_utils::one_coin;
 
@@ -15,22 +14,23 @@ pub fn execute_swap(
     info: MessageInfo,
     msg: SwapMsg,
 ) -> Result<Response, ContractError> {
+    use crate::query::fee::query_estimate_fee;
+
     let mut response = Response::new();
-    let config = PARAMS.load(deps.storage)?;
+    let params = PARAMS.load(deps.storage)?;
 
     let coin = one_coin(&info)?;
 
-    if !config.denoms_same_origin.contains(&coin.denom) {
+    if !params.denoms_same_origin.contains(&coin.denom)
+        || !params.denoms_same_origin.contains(&msg.output_denom)
+    {
         return Err(ContractError::InvalidDenom);
     }
 
-    let fee = Decimal::from_atomics(coin.amount, 0)?
-        .checked_mul(config.fee_rate)?
-        .to_uint_floor();
-    let lp_fee = Decimal::from_atomics(coin.amount, 0)?
-        .checked_mul(config.lp_fee_rate)?
-        .to_uint_floor();
-    let fee_subtracted = coin.amount.checked_sub(fee)?.checked_sub(lp_fee)?;
+    let fee = query_estimate_fee(deps.as_ref(), coin.amount.clone())?;
+
+    let non_lp_fee = fee.fee;
+    let fee_subtracted = fee.output_amount;
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
         to_address: match msg.recipient {
@@ -44,10 +44,10 @@ pub fn execute_swap(
     }));
 
     response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: config.fee_collector.to_string(),
+        to_address: params.fee_collector.to_string(),
         amount: vec![Coin {
             denom: coin.denom,
-            amount: fee,
+            amount: non_lp_fee,
         }],
     }));
 

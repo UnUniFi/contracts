@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "params"
+      ],
+      "properties": {
+        "params": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bonus_windows"
+      ],
+      "properties": {
+        "bonus_windows": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "voted_vaults"
+      ],
+      "properties": {
+        "voted_vaults": {
+          "type": "object",
+          "required": [
+            "bonus_window_id"
+          ],
+          "properties": {
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vault_share_staking"
+      ],
+      "properties": {
+        "vault_share_staking": {
+          "type": "object",
+          "required": [
+            "address",
+            "bonus_window_id"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "distribution_amount"
+      ],
+      "properties": {
+        "distribution_amount": {
+          "type": "object",
+          "required": [
+            "bonus_window_id"
+          ],
+          "properties": {
+            "bonus_window_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

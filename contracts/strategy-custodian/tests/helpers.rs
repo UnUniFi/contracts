@@ -12,7 +12,7 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
 
     // instantiate an empty contract
     let instantiate_msg = InstantiateMsg {
-        deposit_denom: "uguu".to_string(),
+        deposit_denom: "denom".to_string(),
         performance_fee_rate: Decimal::zero(),
         withdraw_fee_rate: Decimal::zero(),
         min_withdraw_fee: None,

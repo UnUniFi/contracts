@@ -7,7 +7,7 @@ use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, Response, Uint128};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::liquidity::execute_ica_remove_liquidity;
-use super::swap::execute_ica_swap_two_tokens_to_deposit_token;
+use super::swap::execute_swap_to_deposit_token;
 use super::token_transfer::execute_ibc_transfer_to_controller;
 
 pub fn execute_withdraw_phase_epoch(
@@ -74,8 +74,8 @@ pub fn execute_withdraw_phase_epoch(
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
             }
-            // - swap full osmo to atom
-            rsp = execute_ica_swap_two_tokens_to_deposit_token(deps.storage, env);
+            // - e.g. swap full osmo to atom
+            rsp = execute_swap_to_deposit_token(deps.storage, env);
             next_phase_step = PhaseStep::SwapTwoTokensToDepositTokenCallback;
         }
         PhaseStep::SwapTwoTokensToDepositTokenCallback => {

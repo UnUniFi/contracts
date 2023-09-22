@@ -2,6 +2,7 @@ use crate::msgs::{ChannelInfo, Phase, PhaseStep};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
+use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 
 #[cw_serde]
 pub enum DepositToken {
@@ -18,6 +19,13 @@ impl ToString for DepositToken {
     }
 }
 
+// SwapAmountInRoute
+#[cw_serde]
+pub struct ExternToken {
+    pub extern_token: String,
+    pub swap_in_route: Vec<SwapAmountInRoute>,
+}
+
 #[cw_serde]
 pub struct Params {
     pub authority: Addr,
@@ -27,11 +35,15 @@ pub struct Params {
     pub chain_id: String,
     pub pool_id: u64, // 1 for ATOM/OSMO
 
+    pub superfluid_validator: String,
+    pub automate_superfluid: bool,
+
     pub deposit_token: DepositToken,      // Base | Quote
     pub controller_deposit_denom: String, // `ibc/xxxxuatom`
     pub quote_denom: String,              // OSMO for ATOM/OSMO
     pub base_denom: String,               // ATOM for ATOM/OSMO
     pub lp_denom: String,                 // "gamm/pool/1" for ATOM/OSMO
+    pub extern_tokens: Vec<ExternToken>,
 
     pub transfer_timeout: u64,
     pub transfer_channel_id: String,
@@ -59,6 +71,7 @@ pub struct State {
     pub pending_lp_removal_amount: Uint128,
     pub free_quote_amount: Uint128,
     pub free_base_amount: Uint128,
+    pub extern_token_amounts: Vec<Uint128>,
     pub controller_free_amount: Uint128,
     pub controller_pending_transfer_amount: Uint128,
     pub controller_stacked_amount_to_deposit: Uint128,

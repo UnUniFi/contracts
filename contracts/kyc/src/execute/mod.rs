@@ -1,5 +1,9 @@
+pub mod approve_information_request;
 pub mod create_verification;
 pub mod register_provider;
+pub mod reject_information_request;
+pub mod remove_information_request;
 pub mod remove_verification;
+pub mod request_information;
 pub mod update_params;
 pub mod update_provider;

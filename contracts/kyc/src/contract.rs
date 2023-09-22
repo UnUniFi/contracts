@@ -1,14 +1,19 @@
 use crate::error::ContractError;
+use crate::execute::approve_information_request::execute_approve_information_request;
 use crate::execute::create_verification::execute_create_verification;
 use crate::execute::register_provider::execute_register_provider;
+use crate::execute::reject_information_request::execute_reject_information_request;
+use crate::execute::remove_information_request::execute_remove_information_request;
 use crate::execute::remove_verification::execute_remove_verification;
+use crate::execute::request_information::execute_request_information;
 use crate::execute::update_params::execute_update_params;
 use crate::execute::update_provider::execute_update_provider;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::query::information_requests::query_information_requests;
 use crate::query::params::query_params;
 use crate::query::providers::query_providers;
 use crate::query::verifications::query_verifications;
-use crate::state::{PARAMS, PROVIDER_ID};
+use crate::state::{INFORMATION_REQUEST_ID, PARAMS, PROVIDER_ID};
 use crate::types::Params;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -26,6 +31,7 @@ pub fn instantiate(
     PARAMS.save(deps.storage, &config)?;
 
     PROVIDER_ID.save(deps.storage, &0)?;
+    INFORMATION_REQUEST_ID.save(deps.storage, &0)?;
 
     Ok(Response::new())
 }
@@ -44,6 +50,16 @@ pub fn execute(
         ExecuteMsg::UpdateProvider(msg) => execute_update_provider(deps, env, info, msg),
         ExecuteMsg::CreateVerification(msg) => execute_create_verification(deps, env, info, msg),
         ExecuteMsg::RemoveVerification(msg) => execute_remove_verification(deps, env, info, msg),
+        ExecuteMsg::RequestInformation(msg) => execute_request_information(deps, env, info, msg),
+        ExecuteMsg::ApproveInformationRequest(msg) => {
+            execute_approve_information_request(deps, env, info, msg)
+        }
+        ExecuteMsg::RejectInformationRequest(msg) => {
+            execute_reject_information_request(deps, env, info, msg)
+        }
+        ExecuteMsg::RemoveInformationRequest(msg) => {
+            execute_remove_information_request(deps, env, info, msg)
+        }
     }
 }
 
@@ -53,6 +69,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
         QueryMsg::Providers {} => to_binary(&query_providers(deps)?),
         QueryMsg::Verifications { address } => to_binary(&query_verifications(deps, address)?),
+        QueryMsg::InformationRequests { address } => {
+            to_binary(&query_information_requests(deps, address)?)
+        }
     }
 }
 

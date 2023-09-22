@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "authority",
+    "denom_swap_contract_map"
+  ],
+  "properties": {
+    "authority": {
+      "type": "string"
+    },
+    "denom_swap_contract_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -3,7 +3,6 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Uint128,
 };
-use helpers::th_query;
 use strategy_custodian::{
     error::ContractError, execute::report_profit::execute_report_profit, msgs::ReportProfitMsg,
 };
@@ -11,7 +10,7 @@ use strategy_custodian::{
 mod helpers;
 
 #[test]
-fn test_stake() {
+fn test_report_profit() {
     let mut deps = setup();
 
     // Error: because of the permission
