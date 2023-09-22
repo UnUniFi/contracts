@@ -1,5 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 // Go to https://infura.io, sign up, create a new API key
 // in its dashboard, and replace "KEY" with it
@@ -24,11 +27,15 @@ const config: HardhatUserConfig = {
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIV_KEY],
     },
+    mumbai: {
+      url: `https://polygon-mumbai.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [PRIV_KEY],
+    },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.POLYGONSCAN_API_KEY,
   },
 };
 

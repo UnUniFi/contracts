@@ -16,4 +16,5 @@ npx hardhat run scripts/deploy.ts
 
 ```shell
 npx hardhat run scripts/deploy.ts --network goerli
+npx hardhat verify YOUR_CONTRACT_ADDRESS AXL_GATEWAY_ADDRESS AXL_GAS_SERVICE_ADDRESS CHAIN_name --network goerli
 ```
