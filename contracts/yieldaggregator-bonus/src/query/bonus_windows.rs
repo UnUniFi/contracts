@@ -11,3 +11,9 @@ pub fn query_bonus_windows(deps: Deps) -> StdResult<Vec<BonusWindow>> {
         .collect::<StdResult<Vec<_>>>()?;
     Ok(bonus_windows)
 }
+
+#[cfg(not(feature = "library"))]
+pub fn query_bonus_window(deps: Deps, id: u64) -> StdResult<BonusWindow> {
+    let bonus_window = BONUS_WINDOWS.load(deps.storage, id)?;
+    Ok(bonus_window)
+}
