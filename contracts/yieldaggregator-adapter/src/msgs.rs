@@ -21,8 +21,7 @@ pub struct UpdateParamsMsg {
 #[cw_serde]
 pub struct DepositToVaultMsg {
     pub depositor: String,
-    pub vault_id: Uint64,
-    pub swap_output_denom: Option<String>,
+    pub vault_id: String,
 }
 
 #[cw_serde]

@@ -82,12 +82,10 @@ contract YieldAggregatorOutpost is AxelarExecutable {
         string[] memory argumentNameArray = new string[](3);
         argumentNameArray[0] = "depositor";
         argumentNameArray[1] = "vault_id";
-        argumentNameArray[2] = "swap_output_denom";
 
         string[] memory abiTypeArray = new string[](3);
         abiTypeArray[0] = "string";
         abiTypeArray[1] = "string";
-        abiTypeArray[2] = "string";
 
         bytes memory gmpPayload;
         gmpPayload = abi.encode(

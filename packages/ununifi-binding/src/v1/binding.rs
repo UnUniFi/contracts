@@ -20,7 +20,7 @@ pub enum UnunifiMsg {
     #[serde(rename = "deputy_deposit_to_vault")]
     DeputyDepositToVault {
         depositor: String,
-        vault_id: u64,
+        vault_id: String,
         amount: Coin,
     },
 }

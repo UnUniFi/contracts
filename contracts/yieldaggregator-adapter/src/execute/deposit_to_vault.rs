@@ -20,17 +20,16 @@ pub fn execute_deposit_to_vault(
 
     // https://docs.axelar.dev/dev/general-message-passing/cosmos-gmp
 
-    // // todo: impl on chain
-    // response = response.add_message(CosmosMsg::Custom(UnunifiMsg::DeputyDepositToVault {
-    //     depositor: msg.depositor,
-    //     vault_id: msg.vault_id,
-    //     amount: coin,
-    // }));
-
-    response = response.add_message(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
-        to_address: msg.depositor,
-        amount: vec![coin],
+    response = response.add_message(CosmosMsg::Custom(UnunifiMsg::DeputyDepositToVault {
+        depositor: msg.depositor,
+        vault_id: msg.vault_id,
+        amount: coin,
     }));
+
+    // response = response.add_message(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+    //     to_address: msg.depositor,
+    //     amount: vec![coin],
+    // }));
 
     Ok(response)
 }
