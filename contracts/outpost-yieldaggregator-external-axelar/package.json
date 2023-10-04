@@ -4,14 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "rm -rf artifacts && hardhat compile",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "@axelar-network/axelar-gmp-sdk-solidity": "^4.0.3"
+  },
   "devDependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "^4.0.3",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@openzeppelin/contracts": "^4.9.3",
+    "dotenv": "^16.3.1",
     "hardhat": "^2.17.1"
   }
 }

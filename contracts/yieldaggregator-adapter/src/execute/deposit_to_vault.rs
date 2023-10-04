@@ -26,5 +26,10 @@ pub fn execute_deposit_to_vault(
         amount: coin,
     }));
 
+    // response = response.add_message(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+    //     to_address: msg.depositor,
+    //     amount: vec![coin],
+    // }));
+
     Ok(response)
 }
