@@ -31,6 +31,14 @@ const config: HardhatUserConfig = {
       url: `https://polygon-mumbai.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIV_KEY],
     },
+    fuji: {
+      url: `https://avalanche-fuji.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [PRIV_KEY],
+    },
+    arbitrum: {
+      url: `https://arbitrum-goerli.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [PRIV_KEY],
+    },
   },
   etherscan: {
     // Your API key for Etherscan
