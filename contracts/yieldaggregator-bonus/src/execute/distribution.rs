@@ -12,6 +12,8 @@ pub fn execute_distribution(
     info: MessageInfo,
     msg: DistributionMsg,
 ) -> Result<Response, ContractError> {
+    use std::vec;
+
     let mut res = Response::new();
     let params = PARAMS.load(deps.storage)?;
 
@@ -107,7 +109,12 @@ pub fn execute_distribution(
     // SO, after the implementation of that, we can delete the BonusWindow here
     delete_unnecessary_data(deps.storage, msg.bonus_window_id, voted_vault_ids, reward_for_stakers.keys().collect())?;
 
-    res = res.add_attribute("action", "distribution");
+    res = res.add_attributes(vec![
+        attr("action", "distribution"),
+        attr("total_voted_amount", total_voted_amount),
+        attr("vote_winners", format!("{:?}", voting_winners)),
+        attr("total_staking_info", format!("{:?}", total_staking_info_for_all)),
+    ]);
     
     Ok(res)
 }
