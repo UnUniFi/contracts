@@ -13,11 +13,11 @@ fn test_register_bonus_window() {
 
     // Error due to the permission
     {
-        let invalid_info = mock_info("anyone", &[]);
+        let invalid_info = mock_info("anyone", &coins(100, "tst"));
         let msg = RegisterBonusWindowMsg {
             denom: "tst".to_string(),
-            budget_for_all: Uint128::zero(),
-            apr_for_winners: vec![Decimal::zero()],
+            budget_for_all: Uint128::new(100),
+            reward_for_winners: vec![Uint128::zero()],
             start_at: Timestamp::default(),
             end_at: Timestamp::default(),
         };
@@ -27,7 +27,7 @@ fn test_register_bonus_window() {
             invalid_info,
             msg,
         ).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {});
+        assert_eq!(err, ContractError::Unauthorized {});        
     }
 
     // Error due to the insufficient budget
@@ -36,7 +36,7 @@ fn test_register_bonus_window() {
         let msg = RegisterBonusWindowMsg {
             denom: "tst".to_string(),
             budget_for_all: Uint128::new(100),
-            apr_for_winners: vec![Decimal::zero()],
+            reward_for_winners: vec![Uint128::new(100)],
             start_at: Timestamp::default(),
             end_at: Timestamp::default(),
         };
@@ -51,11 +51,11 @@ fn test_register_bonus_window() {
 
     // Success
     {
-        let info = mock_info("authority", &coins(100, "tst"));
+        let info = mock_info("authority", &coins(200, "tst"));
         let msg = RegisterBonusWindowMsg {
             denom: "tst".to_string(),
             budget_for_all: Uint128::new(100),
-            apr_for_winners: vec![Decimal::zero()],
+            reward_for_winners: vec![Uint128::new(100)],
             start_at: Timestamp::default(),
             end_at: Timestamp::default(),
         };
@@ -83,7 +83,7 @@ fn test_register_bonus_window() {
         let msg = RegisterBonusWindowMsg {
             denom: "tst".to_string(),
             budget_for_all: Uint128::zero(),
-            apr_for_winners: vec![Decimal::zero()],
+            reward_for_winners: vec![Uint128::new(100)],
             start_at: Timestamp::default(),
             end_at: Timestamp::default(),
         };
