@@ -252,6 +252,8 @@ pub fn create_send_msg_for_rewards(
     Ok(send_msgs)
 }
 
+// Delete the data won't be use again
+// NOTE: Add these data in the events for the future reference
 pub fn delete_unnecessary_data(
     store: &mut dyn Storage,
     bonus_window_id: u64,
