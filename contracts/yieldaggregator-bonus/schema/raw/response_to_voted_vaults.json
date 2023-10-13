@@ -13,16 +13,10 @@
     "VotedVault": {
       "type": "object",
       "required": [
-        "bonus_window_id",
         "vault_id",
         "voted_amount"
       ],
       "properties": {
-        "bonus_window_id": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
         "vault_id": {
           "type": "integer",
           "format": "uint64",
