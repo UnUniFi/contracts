@@ -1,6 +1,7 @@
 use crate::types::{BonusWindow, Params, VaultShareStaking, VotedVault};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
+use crate::query::vault_share_staking::TotalStakingInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -11,9 +12,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateParams(UpdateParamsMsg),
     RegisterBonusWindow(RegisterBonusWindowMsg),
-    DeleteBonusWindow(DeleteBonusWindowMsg),
     Vote(VoteMsg),
     StakeVaultShare(StakeVaultShareMsg),
+    Distribution(DistributionMsg),
 }
 
 #[cw_serde]
@@ -25,7 +26,7 @@ pub struct UpdateParamsMsg {
 pub struct RegisterBonusWindowMsg {
     pub denom: String,
     pub budget_for_all: Uint128,
-    pub apr_for_winners: Vec<Decimal>,
+    pub reward_for_winners: Vec<Uint128>,
     pub start_at: Timestamp,
     pub end_at: Timestamp,
 }
@@ -54,6 +55,19 @@ pub struct StakeVaultShareMsg {
 }
 
 #[cw_serde]
+pub struct DistributionMsg {
+    pub bonus_window_id: u64,
+    pub price_data: Vec<PriceData>,
+}
+
+// The unit of price is established as one vault_share_token.
+#[cw_serde]
+pub struct PriceData {
+    pub price: Decimal,
+    pub vault_id: u64,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Params)]
@@ -65,18 +79,26 @@ pub enum QueryMsg {
     #[returns(Vec<VaultShareStaking>)]
     VaultShareStaking {
         bonus_window_id: u64,
+        vault_id: u64,
         address: String,
     },
-    #[returns(DistributionAmountResp)]
-    DistributionAmount { bonus_window_id: u64 },
+    // #[returns(DistributionAmountResp)]
+    // DistributionAmount { bonus_window_id: u64 },
+    #[returns(TotalStakingInfo)]
+    TotalStakingInfoForAVault {
+        bonus_window_id: u64,
+        vault_id: u64,
+    },
+    #[returns(Vec<TotalStakingInfo>)]
+    TotalStakingInfo { bonus_window_id: u64 },
 }
 
-#[cw_serde]
-pub struct DistributionAmountResp {
-    bonus_window_id: u64,
-    for_all: Vec<Distribution>,
-    for_winners: Vec<Distribution>,
-}
+// #[cw_serde]
+// pub struct DistributionAmountResp {
+//     bonus_window_id: u64,
+//     for_all: Vec<Distribution>,
+//     for_winners: Vec<Distribution>,
+// }
 
 #[cw_serde]
 pub struct Distribution {

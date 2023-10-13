@@ -29,18 +29,6 @@
     {
       "type": "object",
       "required": [
-        "delete_bonus_window"
-      ],
-      "properties": {
-        "delete_bonus_window": {
-          "$ref": "#/definitions/DeleteBonusWindowMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "vote"
       ],
       "properties": {
@@ -61,6 +49,18 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "distribution"
+      ],
+      "properties": {
+        "distribution": {
+          "$ref": "#/definitions/DistributionMsg"
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -68,13 +68,38 @@
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     },
-    "DeleteBonusWindowMsg": {
+    "DistributionMsg": {
       "type": "object",
       "required": [
-        "bonus_window_id"
+        "bonus_window_id",
+        "price_data"
       ],
       "properties": {
         "bonus_window_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "price_data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PriceData"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PriceData": {
+      "type": "object",
+      "required": [
+        "price",
+        "vault_id"
+      ],
+      "properties": {
+        "price": {
+          "$ref": "#/definitions/Decimal"
+        },
+        "vault_id": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
@@ -85,19 +110,13 @@
     "RegisterBonusWindowMsg": {
       "type": "object",
       "required": [
-        "apr_for_winners",
         "budget_for_all",
         "denom",
         "end_at",
+        "reward_for_winners",
         "start_at"
       ],
       "properties": {
-        "apr_for_winners": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Decimal"
-          }
-        },
         "budget_for_all": {
           "$ref": "#/definitions/Uint128"
         },
@@ -106,6 +125,12 @@
         },
         "end_at": {
           "$ref": "#/definitions/Timestamp"
+        },
+        "reward_for_winners": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Uint128"
+          }
         },
         "start_at": {
           "$ref": "#/definitions/Timestamp"

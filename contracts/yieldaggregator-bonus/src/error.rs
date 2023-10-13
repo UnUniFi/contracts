@@ -40,7 +40,10 @@ pub enum ContractError {
     InsufficientBudget {},
 
     #[error("Bonus window not ended yet")]
-    BonusWindowNotEndedYet
+    BonusWindowNotEndedYet {},
+
+    #[error("Invalid vault share token price data for the bonus window")]
+    InvalidVaultShareTokenPriceData{},
 }
 
 impl From<FromUtf8Error> for ContractError {

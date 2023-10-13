@@ -3,14 +3,10 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "authority",
-    "stake_denom"
+    "authority"
   ],
   "properties": {
     "authority": {
-      "type": "string"
-    },
-    "stake_denom": {
       "type": "string"
     }
   },

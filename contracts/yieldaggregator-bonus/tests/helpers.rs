@@ -15,7 +15,6 @@ pub fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let instantiate_msg = InstantiateMsg {
         authority: "authority".to_string(),
     };
-    let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
     assert_eq!(0, res.messages.len());
 

@@ -2,8 +2,7 @@ use crate::error::ContractError;
 use crate::msgs::VoteMsg;
 use crate::state::BONUS_WINDOWS;
 use crate::state::VOTED_VAULTS;
-use crate::types::VotedVault;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::one_coin;
 
 #[cfg(not(feature = "library"))]
@@ -13,8 +12,6 @@ pub fn execute_vote(
     info: MessageInfo,
     msg: VoteMsg,
 ) -> Result<Response, ContractError> {
-    use cosmwasm_std::StdResult;
-
     let mut response = Response::new();
     let coin = one_coin(&info)?;
 
@@ -31,20 +28,16 @@ pub fn execute_vote(
     VOTED_VAULTS.update(
         deps.storage,
         (msg.bonus_window_id, msg.vault_id),
-        |voted_vault| -> StdResult<_> {
-            match voted_vault {
-                Some(mut voted_vault) => {
-                    voted_vault.voted_amount += coin.amount;
-                    Ok(voted_vault)
+        |voted_amount| -> StdResult<_> {
+            match voted_amount {
+                Some(mut voted_amount) => {
+                    voted_amount += coin.amount;
+                    Ok(voted_amount)
                 }
-                None => Ok(VotedVault {
-                    bonus_window_id: msg.bonus_window_id,
-                    vault_id: msg.vault_id,
-                    voted_amount: coin.amount,
-                }),
+                None => Ok( coin.amount ),
             }
         },
-    )?;
+    )?;        
 
     response = response.add_attribute("action", "vote");
 
