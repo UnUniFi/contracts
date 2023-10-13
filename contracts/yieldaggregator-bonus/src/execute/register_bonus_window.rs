@@ -27,7 +27,8 @@ pub fn execute_register_bonus_window(
         return Err(ContractError::NoAllowedToken {});
     }
 
-    if deposit.amount < msg.budget_for_all {
+    let total_apr = msg.reward_for_winners.iter().sum();
+    if deposit.amount.ne(&msg.budget_for_all.checked_add(total_apr).unwrap()) {
         return Err(ContractError::InsufficientBudget {});
     }
 
@@ -44,7 +45,7 @@ pub fn execute_register_bonus_window(
         id: latest_id,
         denom: msg.denom,
         budget_for_all: msg.budget_for_all,
-        apr_for_winners: msg.apr_for_winners,
+        reward_for_winners: msg.reward_for_winners,
         start_at: msg.start_at,
         end_at: msg.end_at,
     };

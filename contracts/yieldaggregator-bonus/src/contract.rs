@@ -1,14 +1,14 @@
 use crate::error::ContractError;
-use crate::execute::delete_bonus_window::execute_delete_bonus_window;
 use crate::execute::register_bonus_window::execute_register_bonus_window;
 use crate::execute::stake_vault_share::execute_stake_vault_share;
 use crate::execute::update_params::execute_update_params;
 use crate::execute::vote::execute_vote;
+use crate::execute::distribution::execute_distribution;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::bonus_windows::query_bonus_windows;
-use crate::query::distribution_amount::query_distribution_amount;
+// use crate::query::distribution_amount::query_distribution_amount;
 use crate::query::params::query_params;
-use crate::query::vault_share_staking::query_vault_share_staking;
+use crate::query::vault_share_staking::{query_vault_share_staking, query_total_staking_info_for_a_vault, query_total_staking_info};
 use crate::query::voted_vaults::query_voted_vaults;
 use crate::state::PARAMS;
 use crate::types::Params;
@@ -41,9 +41,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
         ExecuteMsg::RegisterBonusWindow(msg) => execute_register_bonus_window(deps, env, info, msg),
-        ExecuteMsg::DeleteBonusWindow(msg) => execute_delete_bonus_window(deps, env, info, msg),
         ExecuteMsg::StakeVaultShare(msg) => execute_stake_vault_share(deps, env, info, msg),
         ExecuteMsg::Vote(msg) => execute_vote(deps, env, info, msg),
+        ExecuteMsg::Distribution(msg) => execute_distribution(deps, env, info, msg),
     }
 }
 
@@ -57,11 +57,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::VaultShareStaking {
             bonus_window_id,
+            vault_id,
             address,
-        } => to_binary(&query_vault_share_staking(deps, bonus_window_id, address)?),
-        QueryMsg::DistributionAmount { bonus_window_id } => {
-            to_binary(&query_distribution_amount(deps, bonus_window_id)?)
-        }
+        } => to_binary(&query_vault_share_staking(deps, bonus_window_id, vault_id, address)?),
+        // QueryMsg::DistributionAmount { bonus_window_id } => {
+        //     to_binary(&query_distribution_amount(deps, bonus_window_id)?)
+        // }
+        QueryMsg::TotalStakingInfoForAVault { bonus_window_id, vault_id } => {
+            to_binary(&query_total_staking_info_for_a_vault(deps, bonus_window_id, vault_id)?)
+        },
+        QueryMsg::TotalStakingInfo { bonus_window_id } => {
+            to_binary(&query_total_staking_info(deps, bonus_window_id)?)
+        },
     }
 }
 
