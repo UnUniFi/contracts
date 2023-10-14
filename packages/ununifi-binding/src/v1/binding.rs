@@ -16,6 +16,15 @@ pub enum UnunifiMsg {
         chain_id: String,
         query_prefix: String,
         query_key: Binary,
+    },    
+    #[serde(rename = "deputy_list_nft")]
+    DeputyListNft {
+        lister: String,
+        class_id: String,
+        token_id: String,
+        bid_denom: String,
+        min_deposit_rate: String, // cosmos.Dec
+        min_bid_period: String, // google.protobuf.Duration
     },
     #[serde(rename = "deputy_deposit_to_vault")]
     DeputyDepositToVault {

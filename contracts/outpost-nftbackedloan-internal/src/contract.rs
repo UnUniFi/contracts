@@ -12,6 +12,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    // todo: create class
     Ok(Response::new())
 }
 

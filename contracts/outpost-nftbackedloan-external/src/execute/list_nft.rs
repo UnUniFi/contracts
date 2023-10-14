@@ -13,6 +13,7 @@ pub fn execute_list_nft(
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
 
+    // before this contract nft approve on frontend
     response = response.add_message(CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
         contract_addr: msg.cw721_contract,
         msg: to_binary(&cw721::Cw721ExecuteMsg::TransferNft {
@@ -23,6 +24,7 @@ pub fn execute_list_nft(
     }));
 
     // TODO: send IBC packet to the internal contract
+    // Ref: https://github.com/cosmos/ibc-apps/tree/main/modules/ibc-hooks
 
     Ok(response)
 }
