@@ -35,6 +35,12 @@ pub enum ContractError {
 
     #[error("Already staked")]
     AlreadyStaked {},
+
+    #[error("Insufficient budget to register bonus window")]
+    InsufficientBudget {},
+
+    #[error("Bonus window not ended yet")]
+    BonusWindowNotEndedYet
 }
 
 impl From<FromUtf8Error> for ContractError {

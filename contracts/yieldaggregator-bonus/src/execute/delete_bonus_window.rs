@@ -7,7 +7,7 @@ use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 #[cfg(not(feature = "library"))]
 pub fn execute_delete_bonus_window(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: DeleteBonusWindowMsg,
 ) -> Result<Response, ContractError> {
@@ -17,6 +17,13 @@ pub fn execute_delete_bonus_window(
     // Permission check
     if info.sender != params.authority {
         return Err(ContractError::Unauthorized {});
+    }
+
+    let bonus_window = BONUS_WINDOWS.load(deps.storage, msg.bonus_window_id)?;
+
+    // Check if the bonus window is already ended
+    if env.block.time < bonus_window.end_at {
+        return Err(ContractError::BonusWindowNotEndedYet {});
     }
 
     BONUS_WINDOWS.remove(deps.storage, msg.bonus_window_id);

@@ -12,6 +12,8 @@ pub fn execute_register_bonus_window(
     info: MessageInfo,
     msg: RegisterBonusWindowMsg,
 ) -> Result<Response, ContractError> {
+    use cw_utils::one_coin;
+
     let mut response = Response::new();
     let params = PARAMS.load(deps.storage)?;
 
@@ -20,17 +22,33 @@ pub fn execute_register_bonus_window(
         return Err(ContractError::Unauthorized {});
     }
 
-    let id = 0u64;
+    let deposit = one_coin(&info)?;
+    if deposit.denom != msg.denom {
+        return Err(ContractError::NoAllowedToken {});
+    }
+
+    if deposit.amount < msg.budget_for_all {
+        return Err(ContractError::InsufficientBudget {});
+    }
+
+    let latest_id = BONUS_WINDOWS.last(deps.storage)
+        .map(|res|  
+            match res {
+                Some((_, bw)) => bw.id.checked_add(1).unwrap(),
+                None => 0,
+            }
+        )
+        .unwrap_or(0);
 
     let bonus_window = BonusWindow {
-        id: id,
+        id: latest_id,
         denom: msg.denom,
         budget_for_all: msg.budget_for_all,
         apr_for_winners: msg.apr_for_winners,
         start_at: msg.start_at,
         end_at: msg.end_at,
     };
-    BONUS_WINDOWS.save(deps.storage, id, &bonus_window)?;
+    BONUS_WINDOWS.save(deps.storage, latest_id, &bonus_window)?;
 
     response = response.add_attribute("action", "register_bonus_window");
 

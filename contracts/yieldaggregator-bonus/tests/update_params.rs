@@ -27,11 +27,11 @@ fn test_update_params() {
     let params = query_params(deps.as_ref()).unwrap();
     assert_eq!(params.authority.as_str(), "authority");
 
-    let invalid_info = mock_info("authority", &[]);
+    let info = mock_info("authority", &[]);
     execute_update_params(
         deps.as_mut(),
         mock_env(),
-        invalid_info,
+        info,
         UpdateParamsMsg {
             authority: Some("authority2".to_string()),
         },
@@ -40,4 +40,19 @@ fn test_update_params() {
 
     let params = query_params(deps.as_ref()).unwrap();
     assert_eq!(params.authority.as_str(), "authority2");
+
+    // // Success
+    // let info = mock_info("authority", &[]);
+    // execute_update_params(
+    //     deps.as_mut(),
+    //     mock_env(),
+    //     invalid_info,
+    //     UpdateParamsMsg {
+    //             authority: Some("authority2".to_string()),
+    //     },
+    // )
+    // .unwrap();
+
+    // let params = query_params(deps.as_ref()).unwrap();
+    // assert_eq!(params.authority.as_str(), "authority2");
 }
