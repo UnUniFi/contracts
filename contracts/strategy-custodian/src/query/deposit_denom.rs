@@ -8,5 +8,8 @@ pub fn query_deposit_denom(deps: Deps) -> StdResult<DepositDenomResp> {
     let params: Params = PARAMS.load(deps.storage)?;
     Ok(DepositDenomResp {
         denom: params.deposit_denom,
+        target_chain_id: "".to_string(),
+        target_chain_denom: "".to_string(),
+        target_chain_addr: "".to_string(),
     })
 }
