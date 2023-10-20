@@ -9,3 +9,12 @@ pub struct TransferCallbackData {
     pub memo: String,
     pub success: bool,
 }
+
+#[cw_serde]
+pub struct DepositCallbackData {
+    pub denom: String,
+    pub amount: String,
+    pub sender: String,
+    pub receiver: String,
+    pub success: bool,
+}

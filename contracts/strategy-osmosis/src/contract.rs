@@ -18,8 +18,10 @@ use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositToken, EpochCallSource, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
 };
+use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
 use crate::sudo::transfer_callback::sudo_transfer_callback;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -110,6 +112,15 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response<UnunifiMsg
             data.success,
         ),
         SudoMsg::IBCLifecycleComplete(_) => Ok(Response::new()),
+        SudoMsg::DepositCallback(data) => sudo_deposit_callback(
+            deps,
+            env,
+            data.denom,
+            data.amount,
+            data.sender,
+            data.receiver,
+            data.success,
+        ),
     }
 }
 

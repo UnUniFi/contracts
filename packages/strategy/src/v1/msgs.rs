@@ -1,6 +1,7 @@
 use super::sudo::{
-    ibc_hooks::IBCLifecycleComplete, interchainquery::KvIcqCallbackData,
-    records::TransferCallbackData,
+    ibc_hooks::IBCLifecycleComplete,
+    interchainquery::KvIcqCallbackData,
+    records::{DepositCallbackData, TransferCallbackData},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
@@ -47,6 +48,9 @@ pub struct VersionResp {
 #[cw_serde]
 pub struct DepositDenomResp {
     pub denom: String,
+    pub target_chain_id: String,
+    pub target_chain_denom: String,
+    pub target_chain_addr: String,
 }
 
 #[cw_serde]
@@ -75,6 +79,8 @@ pub struct KycResp {
 pub enum SudoMsg {
     #[serde(rename = "transfer_callback")]
     TransferCallback(TransferCallbackData),
+    #[serde(rename = "deposit_callback")]
+    DepositCallback(DepositCallbackData),
     #[serde(rename = "kv_icq_callback")]
     KvIcqCallback(KvIcqCallbackData),
     #[serde(rename = "ibc_lifecycle_complete")]
