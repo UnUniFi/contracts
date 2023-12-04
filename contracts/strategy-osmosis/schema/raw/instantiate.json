@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "automate_superfluid",
+    "base_denom",
+    "chain_id",
+    "controller_deposit_denom",
+    "controller_transfer_channel_id",
+    "extern_tokens",
+    "lp_denom",
+    "pool_id",
+    "quote_denom",
+    "superfluid_validator",
+    "transfer_channel_id",
+    "transfer_timeout",
+    "unbond_period"
+  ],
+  "properties": {
+    "automate_superfluid": {
+      "type": "boolean"
+    },
+    "base_denom": {
+      "type": "string"
+    },
+    "chain_id": {
+      "type": "string"
+    },
+    "controller_deposit_denom": {
+      "type": "string"
+    },
+    "controller_transfer_channel_id": {
+      "type": "string"
+    },
+    "extern_tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ExternToken"
+      }
+    },
+    "lp_denom": {
+      "type": "string"
+    },
+    "pool_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "quote_denom": {
+      "type": "string"
+    },
+    "superfluid_validator": {
+      "type": "string"
+    },
+    "transfer_channel_id": {
+      "type": "string"
+    },
+    "transfer_timeout": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "unbond_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ExternToken": {
+      "type": "object",
+      "required": [
+        "extern_token",
+        "swap_in_route"
+      ],
+      "properties": {
+        "extern_token": {
+          "type": "string"
+        },
+        "swap_in_route": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SwapAmountInRoute"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SwapAmountInRoute": {
+      "type": "object",
+      "required": [
+        "pool_id",
+        "token_out_denom"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "token_out_denom": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

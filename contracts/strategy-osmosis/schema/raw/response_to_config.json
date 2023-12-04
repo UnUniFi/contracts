@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "type": "object",
+  "required": [
+    "automate_superfluid",
+    "base_denom",
+    "chain_id",
+    "controller_deposit_denom",
+    "controller_transfer_channel_id",
+    "deposit_token",
+    "extern_tokens",
+    "ica_account",
+    "ica_channel_id",
+    "ica_connection_id",
+    "lp_denom",
+    "owner",
+    "phase",
+    "phase_step",
+    "pool_id",
+    "quote_denom",
+    "superfluid_validator",
+    "transfer_channel_id",
+    "transfer_timeout",
+    "unbond_period"
+  ],
+  "properties": {
+    "automate_superfluid": {
+      "type": "boolean"
+    },
+    "base_denom": {
+      "type": "string"
+    },
+    "chain_id": {
+      "type": "string"
+    },
+    "controller_deposit_denom": {
+      "type": "string"
+    },
+    "controller_transfer_channel_id": {
+      "type": "string"
+    },
+    "deposit_token": {
+      "$ref": "#/definitions/DepositToken"
+    },
+    "extern_tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ExternToken"
+      }
+    },
+    "ica_account": {
+      "type": "string"
+    },
+    "ica_channel_id": {
+      "type": "string"
+    },
+    "ica_connection_id": {
+      "type": "string"
+    },
+    "lp_denom": {
+      "type": "string"
+    },
+    "owner": {
+      "$ref": "#/definitions/Addr"
+    },
+    "phase": {
+      "$ref": "#/definitions/Phase"
+    },
+    "phase_step": {
+      "$ref": "#/definitions/PhaseStep"
+    },
+    "pool_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "quote_denom": {
+      "type": "string"
+    },
+    "superfluid_validator": {
+      "type": "string"
+    },
+    "transfer_channel_id": {
+      "type": "string"
+    },
+    "transfer_timeout": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "unbond_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "DepositToken": {
+      "type": "string",
+      "enum": [
+        "base",
+        "quote"
+      ]
+    },
+    "ExternToken": {
+      "type": "object",
+      "required": [
+        "extern_token",
+        "swap_in_route"
+      ],
+      "properties": {
+        "extern_token": {
+          "type": "string"
+        },
+        "swap_in_route": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SwapAmountInRoute"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Phase": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "withdraw"
+      ]
+    },
+    "PhaseStep": {
+      "type": "string",
+      "enum": [
+        "ibc_transfer_to_host",
+        "ibc_transfer_to_host_callback",
+        "request_icq_after_ibc_transfer_to_host",
+        "response_icq_after_ibc_transfer_to_host",
+        "sell_extern_tokens",
+        "sell_extern_tokens_callback",
+        "request_icq_after_sell_extern_tokens",
+        "response_icq_after_sell_extern_tokens",
+        "add_liquidity",
+        "add_liquidity_callback",
+        "bond_liquidity",
+        "bond_liquidity_callback",
+        "request_icq_after_bond_liquidity",
+        "response_icq_after_bond_liquidity",
+        "begin_unbonding_for_pending_requests",
+        "begin_unbonding_for_pending_requests_callback",
+        "check_matured_unbondings",
+        "remove_liquidity",
+        "remove_liquidity_callback",
+        "request_icq_after_remove_liquidity",
+        "response_icq_after_remove_liquidity",
+        "swap_two_tokens_to_deposit_token",
+        "swap_two_tokens_to_deposit_token_callback",
+        "request_icq_after_swap_two_tokens_to_deposit_token",
+        "response_icq_after_swap_two_tokens_to_deposit_token",
+        "ibc_transfer_to_controller",
+        "ibc_transfer_to_controller_callback",
+        "request_icq_after_ibc_transfer_to_controller",
+        "response_icq_after_ibc_transfer_to_controller",
+        "distribute_to_unbonded_users"
+      ]
+    },
+    "SwapAmountInRoute": {
+      "type": "object",
+      "required": [
+        "pool_id",
+        "token_out_denom"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "token_out_denom": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
