@@ -3,18 +3,11 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "authority",
-    "denom_swap_contract_map"
+    "authority"
   ],
   "properties": {
     "authority": {
       "type": "string"
-    },
-    "denom_swap_contract_map": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
     }
   },
   "additionalProperties": false

@@ -3,18 +3,11 @@
   "title": "Params",
   "type": "object",
   "required": [
-    "authority",
-    "symbol_swap_contract_map"
+    "authority"
   ],
   "properties": {
     "authority": {
       "$ref": "#/definitions/Addr"
-    },
-    "symbol_swap_contract_map": {
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/Addr"
-      }
     }
   },
   "additionalProperties": false,

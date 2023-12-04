@@ -7,18 +7,11 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "authority",
-      "denom_swap_contract_map"
+      "authority"
     ],
     "properties": {
       "authority": {
         "type": "string"
-      },
-      "denom_swap_contract_map": {
-        "type": "object",
-        "additionalProperties": {
-          "type": "string"
-        }
       }
     },
     "additionalProperties": false
@@ -63,12 +56,6 @@
           "depositor": {
             "type": "string"
           },
-          "swap_output_denom": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "vault_id": {
             "type": "integer",
             "format": "uint64",
@@ -85,15 +72,6 @@
               "string",
               "null"
             ]
-          },
-          "denom_swap_contract_map": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "additionalProperties": {
-              "type": "string"
-            }
           }
         },
         "additionalProperties": false
@@ -127,18 +105,11 @@
       "title": "Params",
       "type": "object",
       "required": [
-        "authority",
-        "symbol_swap_contract_map"
+        "authority"
       ],
       "properties": {
         "authority": {
           "$ref": "#/definitions/Addr"
-        },
-        "symbol_swap_contract_map": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Addr"
-          }
         }
       },
       "additionalProperties": false,
