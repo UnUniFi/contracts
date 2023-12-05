@@ -28,6 +28,7 @@ pub enum ExecuteMsg {
     Unstake(UnstakeMsg),
     SuperfluidDelegate(SuperfluidDelegateMsg),
     Epoch(EpochMsg),
+    UpdateLegacyUnbondingRecipients(UpdateLegacyUnbondingRecipientsMsg),
 }
 
 #[cw_serde]
@@ -50,6 +51,18 @@ pub struct UpdateParamsMsg {
     pub superfluid_validator: Option<String>,
     pub automate_superfluid: Option<bool>,
     pub extern_tokens: Option<Vec<ExternToken>>,
+}
+
+#[cw_serde]
+pub struct UpdateUnbondingRecipient {
+    pub unbonding_id: u64,
+    pub recipient: String,
+}
+
+#[cw_serde]
+pub struct UpdateLegacyUnbondingRecipientsMsg {
+    pub authority: Option<String>,
+    pub updates: Vec<UpdateUnbondingRecipient>,
 }
 
 #[cw_serde]

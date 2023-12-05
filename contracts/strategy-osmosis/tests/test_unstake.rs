@@ -55,5 +55,5 @@ fn unstake() {
         },
     )
     .unwrap();
-    assert_eq!(10, res.attributes[3].value.parse::<u128>().unwrap());
+    assert_eq!(10, res.attributes[4].value.parse::<u128>().unwrap());
 }

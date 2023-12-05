@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::execute::stake::execute_stake;
 use crate::execute::superfluid::execute_superfluid_delegate;
-use crate::execute::unstake::execute_unstake;
+use crate::execute::unstake::{execute_unstake, execute_update_unbonding_recipients};
 use crate::execute::update_params::execute_update_params;
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, PhaseStep, QueryMsg};
 use crate::query::amounts::query_amounts;
@@ -139,6 +139,9 @@ pub fn execute(
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
         ExecuteMsg::SuperfluidDelegate(_) => execute_superfluid_delegate(deps, env, info),
         ExecuteMsg::Epoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None),
+        ExecuteMsg::UpdateLegacyUnbondingRecipients(msg) => {
+            execute_update_unbonding_recipients(deps, env, info, msg)
+        }
     }
 }
 

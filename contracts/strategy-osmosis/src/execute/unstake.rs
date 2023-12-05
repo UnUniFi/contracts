@@ -1,8 +1,9 @@
 use crate::error::{ContractError, NoDeposit};
+use crate::msgs::UpdateLegacyUnbondingRecipientsMsg;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
-    DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
-    UNBONDINGS,
+    DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER,
+    STATE, UNBONDINGS,
 };
 
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
@@ -75,9 +76,41 @@ pub fn execute_unstake(
 
     let rsp = Response::new()
         .add_attribute("action", "unstake")
+        .add_attribute("unbonding_id", state.last_unbonding_id.to_string())
         .add_attribute("sender", sender.to_string())
         .add_attribute("recipient", recipient_addr.to_string())
         .add_attribute("amount", amount)
         .add_attribute("share_amount", share_amount);
+    Ok(rsp)
+}
+
+pub fn execute_update_unbonding_recipients(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    msg: UpdateLegacyUnbondingRecipientsMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+    for update in msg.updates {
+        let recipient = deps.api.addr_validate(update.recipient.as_str())?;
+        UNBONDINGS.update(
+            deps.storage,
+            update.unbonding_id,
+            |unbonding: Option<Unbonding>| -> StdResult<_> {
+                if let Some(mut unwrapped) = unbonding {
+                    unwrapped.sender = recipient;
+                    return Ok(unwrapped);
+                }
+                Err(cosmwasm_std::StdError::NotFound {
+                    kind: "not available unbonding".to_string(),
+                })
+            },
+        )?;
+    }
+
+    let rsp = Response::new().add_attribute("action", "update_unbonding");
     Ok(rsp)
 }
