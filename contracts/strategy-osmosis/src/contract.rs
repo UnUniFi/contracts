@@ -16,7 +16,8 @@ use crate::query::state::query_state;
 use crate::query::unbonding::query_unbonding;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
-    DepositToken, EpochCallSource, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
+    DepositInfo, DepositToken, EpochCallSource, LegacyDepositInfo, Params, State, DEPOSITS,
+    LEGACY_CONFIG, LEGACY_DEPOSITS, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
 };
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
@@ -25,7 +26,7 @@ use crate::sudo::transfer_callback::sudo_transfer_callback;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, Uint128,
 };
 use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
@@ -167,9 +168,51 @@ pub fn query_version(_: Deps) -> StdResult<VersionResp> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    // Config to Params (owner => authority)
+    let legacy_config = LEGACY_CONFIG.load(deps.storage)?;
+    let params = Params {
+        authority: legacy_config.owner,
+        unbond_period: legacy_config.unbond_period,
+        phase: legacy_config.phase,
+        phase_step: legacy_config.phase_step,
+        chain_id: legacy_config.chain_id,
+        pool_id: legacy_config.pool_id,
+        superfluid_validator: legacy_config.superfluid_validator,
+        automate_superfluid: legacy_config.automate_superfluid,
+        deposit_token: legacy_config.deposit_token,
+        controller_deposit_denom: legacy_config.controller_deposit_denom,
+        quote_denom: legacy_config.quote_denom,
+        base_denom: legacy_config.base_denom,
+        lp_denom: legacy_config.lp_denom,
+        extern_tokens: legacy_config.extern_tokens,
+        transfer_timeout: legacy_config.transfer_timeout,
+        transfer_channel_id: legacy_config.transfer_channel_id,
+        controller_transfer_channel_id: legacy_config.controller_transfer_channel_id,
+        ica_channel_id: legacy_config.ica_channel_id,
+        ica_connection_id: legacy_config.ica_connection_id,
+        ica_account: legacy_config.ica_account,
+    };
+    PARAMS.save(deps.storage, &params)?;
+
+    // Config to Params (amount => share)
+    let legacy_deposits = LEGACY_DEPOSITS
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| {
+            let (_, v) = item?;
+            Ok(v)
+        })
+        .collect::<StdResult<Vec<LegacyDepositInfo>>>()?;
+    for ld in legacy_deposits {
+        let deposit = DepositInfo {
+            sender: ld.sender.to_owned(),
+            share: ld.amount,
+        };
+        DEPOSITS.save(deps.storage, ld.sender.to_string(), &deposit)?;
+    }
+
     Ok(Response::default())
 }

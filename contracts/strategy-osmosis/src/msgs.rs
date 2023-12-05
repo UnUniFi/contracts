@@ -120,9 +120,7 @@ pub enum QueryMsg {
 
 /// We currently take no arguments for migrations
 #[cw_serde]
-pub struct MigrateMsg {
-    pub superfluid_validator: String,
-}
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct ListChannelsResponse {
