@@ -1,12 +1,14 @@
 use crate::error::{ContractError, NoDeposit};
-use crate::msgs::UpdateLegacyUnbondingRecipientsMsg;
+use crate::msgs::{ProcessInstantUnbondingsMsg, UpdateLegacyUnbondingRecipientsMsg};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER,
     STATE, UNBONDINGS,
 };
 
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{
+    coins, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+};
 use strategy::v1::msgs::UnstakeMsg;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
@@ -112,5 +114,58 @@ pub fn execute_update_unbonding_recipients(
     }
 
     let rsp = Response::new().add_attribute("action", "update_unbonding");
+    Ok(rsp)
+}
+
+pub fn execute_instant_unbondings(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    msg: ProcessInstantUnbondingsMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut state = STATE.load(deps.storage)?;
+    let mut rsp = Response::new().add_attribute("action", "instant_unbondings");
+    for update in msg.unbondings {
+        let unbonding = UNBONDINGS.load(deps.storage, update.unbonding_id)?;
+        // decrease total unbonding lp amount
+        state.unbonding_lp_amount -= unbonding.amount;
+
+        // remove unbonding
+        UNBONDINGS.remove(deps.storage, update.unbonding_id);
+
+        // update the share amount on the sender
+        let share_receiver = deps.api.addr_validate(update.share_receiver.as_str())?;
+        DEPOSITS.update(
+            deps.storage,
+            share_receiver.to_string(),
+            |deposit: Option<DepositInfo>| -> StdResult<_> {
+                if let Some(unwrapped) = deposit {
+                    return Ok(DepositInfo {
+                        sender: share_receiver.clone(),
+                        share: unwrapped.share.checked_add(update.share_recover_amount)?,
+                    });
+                }
+                Ok(DepositInfo {
+                    sender: share_receiver.clone(),
+                    share: update.share_recover_amount,
+                })
+            },
+        )?;
+
+        // token send to unbonding recipient
+        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: unbonding.sender.to_string(),
+            amount: coins(update.withdrawal.u128(), &params.controller_deposit_denom),
+        });
+        rsp = rsp.add_message(bank_send_msg)
+    }
+
+    STATE.save(deps.storage, &state)?;
+
     Ok(rsp)
 }

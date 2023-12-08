@@ -29,6 +29,7 @@ pub enum ExecuteMsg {
     SuperfluidDelegate(SuperfluidDelegateMsg),
     Epoch(EpochMsg),
     UpdateLegacyUnbondingRecipients(UpdateLegacyUnbondingRecipientsMsg),
+    ProcessInstantUnbondings(ProcessInstantUnbondingsMsg),
 }
 
 #[cw_serde]
@@ -61,8 +62,20 @@ pub struct UpdateUnbondingRecipient {
 
 #[cw_serde]
 pub struct UpdateLegacyUnbondingRecipientsMsg {
-    pub authority: Option<String>,
     pub updates: Vec<UpdateUnbondingRecipient>,
+}
+
+#[cw_serde]
+pub struct InstantUnbonding {
+    pub unbonding_id: u64,
+    pub withdrawal: Uint128,
+    pub share_recover_amount: Uint128,
+    pub share_receiver: String,
+}
+
+#[cw_serde]
+pub struct ProcessInstantUnbondingsMsg {
+    pub unbondings: Vec<InstantUnbonding>,
 }
 
 #[cw_serde]
