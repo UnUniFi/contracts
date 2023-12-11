@@ -180,47 +180,5 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    // Config to Params (owner => authority)
-    let legacy_config = LEGACY_CONFIG.load(deps.storage)?;
-    let params = Params {
-        authority: legacy_config.owner,
-        unbond_period: legacy_config.unbond_period,
-        phase: legacy_config.phase,
-        phase_step: legacy_config.phase_step,
-        chain_id: legacy_config.chain_id,
-        pool_id: legacy_config.pool_id,
-        superfluid_validator: legacy_config.superfluid_validator,
-        automate_superfluid: legacy_config.automate_superfluid,
-        deposit_token: legacy_config.deposit_token,
-        controller_deposit_denom: legacy_config.controller_deposit_denom,
-        quote_denom: legacy_config.quote_denom,
-        base_denom: legacy_config.base_denom,
-        lp_denom: legacy_config.lp_denom,
-        extern_tokens: legacy_config.extern_tokens,
-        transfer_timeout: legacy_config.transfer_timeout,
-        transfer_channel_id: legacy_config.transfer_channel_id,
-        controller_transfer_channel_id: legacy_config.controller_transfer_channel_id,
-        ica_channel_id: legacy_config.ica_channel_id,
-        ica_connection_id: legacy_config.ica_connection_id,
-        ica_account: legacy_config.ica_account,
-    };
-    PARAMS.save(deps.storage, &params)?;
-
-    // Config to Params (amount => share)
-    let legacy_deposits = LEGACY_DEPOSITS
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| {
-            let (_, v) = item?;
-            Ok(v)
-        })
-        .collect::<StdResult<Vec<LegacyDepositInfo>>>()?;
-    for ld in legacy_deposits {
-        let deposit = DepositInfo {
-            sender: ld.sender.to_owned(),
-            share: ld.amount,
-        };
-        DEPOSITS.save(deps.storage, ld.sender.to_string(), &deposit)?;
-    }
-
     Ok(Response::default())
 }
