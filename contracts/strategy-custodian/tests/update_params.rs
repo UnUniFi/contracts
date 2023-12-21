@@ -33,14 +33,15 @@ fn test_update_params() {
     let params = query_params(deps.as_ref()).unwrap();
     assert_eq!(params.admin.as_str(), "admin");
 
-    let invalid_info = mock_info("admin", &[]);
+    // Success
+    let info = mock_info("admin", &[]);
     execute_update_params(
         deps.as_mut(),
         mock_env(),
-        invalid_info,
+        info.clone(),
         UpdateParamsMsg {
             admin: Some("admin2".to_string()),
-            deposit_denom: None,
+            deposit_denom: Some("denom2".to_string()),
             performance_fee_rate: None,
             withdraw_fee_rate: None,
             min_withdraw_fee: None,
@@ -52,4 +53,5 @@ fn test_update_params() {
 
     let params = query_params(deps.as_ref()).unwrap();
     assert_eq!(params.admin.as_str(), "admin2");
+    assert_eq!(params.deposit_denom.as_str(), "denom2");
 }

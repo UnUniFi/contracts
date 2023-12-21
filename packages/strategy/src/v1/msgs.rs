@@ -70,6 +70,16 @@ pub struct FeeResp {
 }
 
 #[cw_serde]
+pub struct TotalShareResp {
+    pub total_share: Uint128,
+}
+
+#[cw_serde]
+pub struct TotalDepositResp {
+    pub total_deopsit: Uint128,
+}
+
+#[cw_serde]
 pub struct KycResp {
     pub kyc_required: bool,
     pub trusted_provider_ids: Vec<u64>,

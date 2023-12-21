@@ -5,7 +5,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use strategy::v1::msgs::{StakeMsg, UnstakeMsg};
-use strategy_custodian::execute::{stake::execute_stake, unstake::execute_unstake};
+use strategy_custodian::{execute::{stake::execute_stake, unstake::execute_unstake}, query::amounts::query_amounts};
 
 mod helpers;
 
@@ -28,7 +28,7 @@ fn test_unstake() {
         },
     )
     .unwrap_err();
-
+    
     // Success:
     let info = mock_info("staker", &[]);
     let res = execute_unstake(
@@ -49,7 +49,7 @@ fn test_unstake() {
     let res = execute_unstake(
         deps.as_mut(),
         mock_env(),
-        info,
+        info.clone(),
         UnstakeMsg {
             share_amount: Uint128::new(50u128),
             recipient: Some("recipient".to_string()),
@@ -58,4 +58,16 @@ fn test_unstake() {
     .unwrap();
 
     assert_eq!(0, res.messages.len());
+
+    let staker_amounts = query_amounts(deps.as_ref(), info.sender.into_string()).unwrap();
+    assert_eq!(Uint128::new(50), staker_amounts.total_deposited);
+    assert_eq!(Uint128::zero(), staker_amounts.bonding_standby);
+    assert_eq!(Uint128::new(50), staker_amounts.unbonding);
+    assert_eq!(Uint128::zero(), staker_amounts.bonded);
+
+    let recipient_amounts = query_amounts(deps.as_ref(), "recipient".to_string()).unwrap();
+    assert_eq!(Uint128::new(50), recipient_amounts.total_deposited);
+    assert_eq!(Uint128::zero(), recipient_amounts.bonding_standby);
+    assert_eq!(Uint128::new(50), recipient_amounts.unbonding);
+    assert_eq!(Uint128::zero(), recipient_amounts.bonded);
 }
