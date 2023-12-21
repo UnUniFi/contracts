@@ -1,4 +1,5 @@
 use std::num::TryFromIntError;
+use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
@@ -19,6 +20,9 @@ pub enum ContractError {
 
     #[error("Proto decode error")]
     DecodeError(#[from] prost::DecodeError),
+
+    #[error("Proto decode error")]
+    Utf8Error(#[from] Utf8Error),
 
     #[error("{0}")]
     Payment(#[from] PaymentError),

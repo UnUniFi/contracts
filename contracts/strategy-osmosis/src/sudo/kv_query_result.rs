@@ -8,6 +8,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::Pool as OsmosisBalancerPool;
 use prost::Message;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
+use std::str;
 use std::str::FromStr;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
@@ -51,9 +52,12 @@ pub fn sudo_kv_query_result(
         if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
         if data.len() > 0 {
-            // TODO: to update if Osmosis update Cosmos version to v0.47
-            let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
-            amount = Uint128::from_str(balance.amount.as_str())?;
+            // before SDK v0.47
+            // let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
+            // amount = Uint128::from_str(balance.amount.as_str())?;
+
+            // from SDK v0.47
+            amount = Uint128::from_str(str::from_utf8(data.as_slice())?)?;
         }
         if query_key == base_balance_key {
             state.free_base_amount = amount;
