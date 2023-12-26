@@ -156,6 +156,7 @@ pub fn execute_instant_unbondings(
                 })
             },
         )?;
+        state.total_shares += update.share_recover_amount;
 
         // token send to unbonding recipient
         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {

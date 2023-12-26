@@ -180,5 +180,19 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    let deposits: Vec<DepositInfo> = DEPOSITS
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| {
+            let (_, v) = item?;
+            Ok(v)
+        })
+        .collect::<StdResult<Vec<DepositInfo>>>()?;
+    let mut total_shares = Uint128::from(0u128);
+    for deposit in deposits {
+        total_shares = total_shares + deposit.share;
+    }
+    let mut state = STATE.load(deps.storage)?;
+    state.total_shares = total_shares;
+    STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }
