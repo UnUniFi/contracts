@@ -1,5 +1,5 @@
-use crate::state::{DepositToken, ExternToken};
-use cosmwasm_schema::cw_serde;
+use crate::state::{DepositToken, ExternToken, Config,State, Unbonding};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::IbcEndpoint;
 use cosmwasm_std::{Coin, Decimal, Uint128};
 
@@ -103,22 +103,31 @@ pub struct IcaBeginUnbondLpTokensMsg {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(Config)]
     Config {},
+    #[returns(State)]
     State {},
+    #[returns(Uint128)]
     Bonded {
         addr: String,
     },
+    #[returns(Uint128)]
     Unbonding {
         addr: String,
     },
+    #[returns(FeeInfo)]
     Fee {},
     /// Show all channels connected to.
+    #[returns(ListChannelsResponse)]
     ListChannels {},
     /// Returns the details of the name channel, error if not created.
+    #[returns(ChannelResponse)]
     Channel {
         id: String,
     },
+    #[returns(Vec<Unbonding>)]
     Unbondings {},
 }
 

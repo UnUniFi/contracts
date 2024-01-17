@@ -38,12 +38,6 @@
         "depositor": {
           "type": "string"
         },
-        "swap_output_denom": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "vault_id": {
           "type": "integer",
           "format": "uint64",
@@ -60,15 +54,6 @@
             "string",
             "null"
           ]
-        },
-        "denom_swap_contract_map": {
-          "type": [
-            "object",
-            "null"
-          ],
-          "additionalProperties": {
-            "type": "string"
-          }
         }
       },
       "additionalProperties": false
