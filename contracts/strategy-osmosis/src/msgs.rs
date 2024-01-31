@@ -247,7 +247,7 @@ impl ToString for PhaseStep {
                 String::from("begin_unbonding_for_pending_requests_callback")
             }
             PhaseStep::CheckMaturedUnbondings => String::from("check_matured_unbondings"),
-            PhaseStep::RemoveLiquidity => String::from("remove_qiquidity"),
+            PhaseStep::RemoveLiquidity => String::from("remove_liquidity"),
             PhaseStep::RemoveLiquidityCallback => String::from("remove_liquidity_callback"),
             PhaseStep::RequestIcqAfterRemoveLiquidity => {
                 String::from("request_icq_after_remove_liquidity")
