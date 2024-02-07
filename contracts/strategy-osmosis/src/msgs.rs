@@ -282,6 +282,29 @@ impl ToString for PhaseStep {
     }
 }
 
+pub fn phase_from_phase_step(step: PhaseStep) -> Phase {
+    match step {
+        PhaseStep::IbcTransferToHost => Phase::Deposit,
+        PhaseStep::IbcTransferToHostCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterIbcTransferToHost => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterIbcTransferToHost => Phase::Deposit,
+        PhaseStep::SellExternTokens => Phase::Deposit,
+        PhaseStep::SellExternTokensCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterSellExternTokens => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterSellExternTokens => Phase::Deposit,
+        PhaseStep::AddLiquidity => Phase::Deposit,
+        PhaseStep::AddLiquidityCallback => Phase::Deposit,
+        PhaseStep::BondLiquidity => Phase::Deposit,
+        PhaseStep::BondLiquidityCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterBondLiquidity => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterBondLiquidity => Phase::Deposit,
+        PhaseStep::BeginUnbondingForPendingRequests => Phase::Deposit,
+        PhaseStep::BeginUnbondingForPendingRequestsCallback => Phase::Deposit,
+        PhaseStep::CheckMaturedUnbondings => Phase::Deposit,
+        _ => Phase::Withdraw,
+    }
+}
+
 #[cw_serde]
 pub struct ChannelInfo {
     /// id of this channel

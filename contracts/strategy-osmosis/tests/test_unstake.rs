@@ -4,8 +4,10 @@ use strategy::v1::msgs::{StakeMsg, UnstakeMsg};
 use strategy_osmosis::error::{ContractError, NoDeposit};
 use strategy_osmosis::execute::stake::execute_stake;
 use strategy_osmosis::execute::unstake::execute_unstake;
+use strategy_osmosis::msgs::QueryMsg;
+use strategy_osmosis::state::{State, HOST_LP_RATE_MULTIPLIER, STATE};
 
-use crate::helpers::setup;
+use crate::helpers::{setup, th_query};
 
 mod helpers;
 
@@ -31,6 +33,11 @@ fn unstake() {
     // Error: because of insufficient deposit
     let stake_info = mock_info(sender, &coins(100 as u128, "uguu"));
     _ = execute_stake(deps.as_mut(), mock_env(), stake_info, StakeMsg {});
+
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.bonded_lp_amount = Uint128::from(10000u128) * HOST_LP_RATE_MULTIPLIER;
+    _ = STATE.save(deps.as_mut().storage, &state);
+
     let unstake_info = mock_info(sender, &coins(10000 as u128, "uguu"));
     let result = execute_unstake(
         deps.as_mut(),

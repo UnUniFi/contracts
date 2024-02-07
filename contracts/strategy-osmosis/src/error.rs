@@ -47,6 +47,12 @@ pub enum ContractError {
 
     #[error("Unbonding item limitation reached")]
     UnbondingItemLimitReached {},
+
+    #[error("Insufficient bonded lp tokens")]
+    InsufficientBondedLpTokens {},
+
+    #[error("Phase and PhaseStep mismatch")]
+    PhaseAndPhaseStepMismatch {},
 }
 
 impl From<FromUtf8Error> for ContractError {

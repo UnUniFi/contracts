@@ -26,7 +26,8 @@ pub fn determine_ica_amounts(params: Params, state: State) -> IcaAmounts {
             to_swap_amount: Uint128::from(0u128),
             to_remove_lp: Uint128::from(0u128),
             to_transfer_to_controller: Uint128::from(0u128),
-            to_transfer_to_host: state.controller_free_amount,
+            to_transfer_to_host: state.controller_stacked_amount_to_deposit
+                + state.controller_pending_transfer_amount, // consider ibc transfer stuck case
             to_return_amount: Uint128::from(0u128),
         };
     }

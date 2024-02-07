@@ -50,6 +50,7 @@ fn determine_ica_amounts_for_deposit() {
         lp_redemption_rate: Uint128::from(2u128),
         lock_id: 0u64,
         bonded_lp_amount: Uint128::from(0u128),
+        unbond_request_lp_amount: Uint128::from(0u128),
         unbonding_lp_amount: Uint128::from(0u128),
         free_lp_amount: Uint128::from(0u128),
         pending_bond_lp_amount: Uint128::from(0u128),
@@ -58,7 +59,7 @@ fn determine_ica_amounts_for_deposit() {
         free_base_amount: Uint128::from(10000u128),
         controller_free_amount: Uint128::from(10000u128),
         controller_pending_transfer_amount: Uint128::from(0u128),
-        controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        controller_stacked_amount_to_deposit: Uint128::from(10000u128),
         extern_token_amounts: vec![],
     };
 
@@ -99,6 +100,7 @@ fn determine_ica_amounts_for_withdraw() {
     let state = State {
         lock_id: 0u64,
         bonded_lp_amount: Uint128::from(0u128),
+        unbond_request_lp_amount: Uint128::from(0u128),
         unbonding_lp_amount: Uint128::from(0u128),
         pending_bond_lp_amount: Uint128::from(0u128),
         pending_lp_removal_amount: Uint128::from(0u128),

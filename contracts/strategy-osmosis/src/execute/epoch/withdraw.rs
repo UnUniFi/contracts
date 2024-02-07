@@ -32,7 +32,10 @@ pub fn execute_withdraw_phase_epoch(
             // assumption: matured unbondings on the contract is same as matured unbondings on host chain
             let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             for mut unbonding in unbondings {
-                if unbonding.start_time + params.unbond_period < env.block.time.seconds() {
+                // mark the items already started unbonding and passed unbond period
+                if unbonding.pending_start == false
+                    && unbonding.start_time + params.unbond_period < env.block.time.seconds()
+                {
                     unbonding.marked = true;
                     UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                 }

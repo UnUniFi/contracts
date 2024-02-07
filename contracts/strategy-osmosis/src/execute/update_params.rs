@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msgs::{ChannelInfo, UpdateParamsMsg};
+use crate::msgs::{phase_from_phase_step, ChannelInfo, UpdateParamsMsg};
 
 use crate::state::{CHANNEL_INFO, PARAMS, STATE};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Uint128};
@@ -54,6 +54,9 @@ pub fn execute_update_params(
     if let Some(phase_step) = msg.phase_step {
         params.phase_step = phase_step.to_owned();
         resp = resp.add_attribute("phase_step", phase_step.to_string());
+        if phase_from_phase_step(phase_step) != params.phase {
+            return Err(ContractError::PhaseAndPhaseStepMismatch {});
+        }
     }
     if let Some(transfer_timeout) = msg.transfer_timeout {
         params.transfer_timeout = transfer_timeout.to_owned();

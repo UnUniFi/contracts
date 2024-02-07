@@ -92,11 +92,11 @@ pub fn execute_ica_bond_liquidity(
 pub fn execute_ica_begin_unbonding_lp_tokens(
     store: &mut dyn Storage,
     env: Env,
-    unbonding_lp_amount: Uint128,
+    begin_unbonding_lp_amount: Uint128,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let params = PARAMS.load(store)?;
     let state = STATE.load(store)?;
-    if unbonding_lp_amount.is_zero() {
+    if begin_unbonding_lp_amount.is_zero() {
         return Ok(Response::new());
     }
 
@@ -107,7 +107,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
             lock_id: state.lock_id,
             coin: Some(OsmosisCoin {
                 denom: params.lp_denom,
-                amount: unbonding_lp_amount.to_string(),
+                amount: begin_unbonding_lp_amount.to_string(),
             }),
         };
         if let Ok(msg_any) = superfluid_undelegate_and_unbond_lock_to_any(msg) {
@@ -131,7 +131,7 @@ pub fn execute_ica_begin_unbonding_lp_tokens(
         id: state.lock_id,
         coins: vec![OsmosisCoin {
             denom: params.lp_denom,
-            amount: unbonding_lp_amount.to_string(),
+            amount: begin_unbonding_lp_amount.to_string(),
         }],
     };
     if let Ok(msg_any) = begin_unlocking_msg_to_any(msg) {

@@ -77,10 +77,7 @@ pub fn sudo_kv_query_result(
             )?;
             if query_key == extern_balance_key {
                 state.extern_token_amounts[i] = amount;
-                resp = resp.add_attribute(
-                    format!("free_{}", extern_token.extern_token),
-                    state.free_lp_amount,
-                );
+                resp = resp.add_attribute(format!("free_{}", extern_token.extern_token), amount);
             }
         }
     } else {

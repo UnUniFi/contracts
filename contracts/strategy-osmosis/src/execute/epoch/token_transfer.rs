@@ -30,7 +30,7 @@ pub fn execute_ibc_transfer_to_host(
     };
 
     state.controller_stacked_amount_to_deposit = Uint128::from(0u128);
-    state.controller_pending_transfer_amount += to_transfer_to_host;
+    state.controller_pending_transfer_amount = to_transfer_to_host;
     STATE.save(store, &state)?;
 
     let res = Response::new()

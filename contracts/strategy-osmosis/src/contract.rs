@@ -18,8 +18,7 @@ use crate::query::state::query_state;
 use crate::query::unbonding::query_unbonding;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
-    DepositInfo, DepositToken, EpochCallSource, LegacyDepositInfo, Params, State, DEPOSITS,
-    LEGACY_CONFIG, LEGACY_DEPOSITS, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
+    DepositToken, EpochCallSource, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
 };
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
@@ -28,7 +27,7 @@ use crate::sudo::transfer_callback::sudo_transfer_callback;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, Uint128,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
@@ -76,6 +75,7 @@ pub fn instantiate(
         lp_redemption_rate: Uint128::from(200000u128),
         lock_id: 0u64,
         bonded_lp_amount: Uint128::from(0u128),
+        unbond_request_lp_amount: Uint128::from(0u128),
         unbonding_lp_amount: Uint128::from(0u128),
         free_lp_amount: Uint128::from(0u128),
         pending_bond_lp_amount: Uint128::from(0u128),
@@ -176,23 +176,9 @@ pub fn query_version(_: Deps) -> StdResult<VersionResp> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let deposits: Vec<DepositInfo> = DEPOSITS
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| {
-            let (_, v) = item?;
-            Ok(v)
-        })
-        .collect::<StdResult<Vec<DepositInfo>>>()?;
-    let mut total_shares = Uint128::from(0u128);
-    for deposit in deposits {
-        total_shares = total_shares + deposit.share;
-    }
-    let mut state = STATE.load(deps.storage)?;
-    state.total_shares = total_shares;
-    STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }

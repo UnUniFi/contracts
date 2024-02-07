@@ -39,6 +39,9 @@ fn epoch_deposit_phase_flow() {
     let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     params.phase_step = PhaseStep::IbcTransferToHost;
     PARAMS.save(deps.as_mut().storage, &params).unwrap();
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.controller_stacked_amount_to_deposit = Uint128::from(10000u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
 
     let amount = coins(10000, params.controller_deposit_denom.clone());
     // send some funds to the contract
@@ -293,6 +296,10 @@ fn epoch_deposit_phase_flow() {
         marked: false,
     };
     _ = UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
+
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.unbond_request_lp_amount = Uint128::from(100u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
 
     let res = execute_epoch(
         deps.as_mut(),

@@ -60,15 +60,12 @@ pub fn execute_unstake(
     // increase last unbonding id
     // NOTE: eventually, we should remove these params from params because it's simply double counting
     state.last_unbonding_id += 1;
-    state.unbonding_lp_amount += unbonding.amount;
-    if state.bonded_lp_amount < unbonding.amount {
-        state.bonded_lp_amount = Uint128::from(0u128);
-    } else {
-        state.bonded_lp_amount = state
-            .bonded_lp_amount
-            .checked_sub(unbonding.amount)
-            .unwrap_or(Uint128::from(0u128));
+    if state.bonded_lp_amount < state.unbond_request_lp_amount + unbonding.amount {
+        return Err(ContractError::InsufficientBondedLpTokens {});
     }
+
+    state.unbond_request_lp_amount += unbonding.amount;
+
     state.total_shares = state
         .total_shares
         .checked_sub(share_amount)

@@ -65,6 +65,10 @@ pub struct State {
     pub lp_redemption_rate: Uint128,
     pub lock_id: u64,
     pub bonded_lp_amount: Uint128,
+    // unbonding amount to request unbonding through ica
+    pub unbond_request_lp_amount: Uint128,
+    // unbonding amount initiated on host - available till remove liquidity operation's executed
+    // - should not confuse with host unbonding amount - during unbonding period, this value should be same
     pub unbonding_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
