@@ -145,36 +145,26 @@ pub const STAKE_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000u128); // 10^6
 pub const HOST_LP_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000_000000_000000u128); // 10^18
 
 #[cw_serde]
-pub struct LegacyConfig {
-    pub owner: Addr,
-    pub unbond_period: u64,
-    pub phase: Phase,
-    pub phase_step: PhaseStep, // counted from 1 for each phase
-    pub chain_id: String,
-    pub pool_id: u64, // 1 for ATOM/OSMO
-
-    pub superfluid_validator: String,
-    pub automate_superfluid: bool,
-
-    pub deposit_token: DepositToken,      // Base | Quote
-    pub controller_deposit_denom: String, // `ibc/xxxxuatom`
-    pub quote_denom: String,              // OSMO for ATOM/OSMO
-    pub base_denom: String,               // ATOM for ATOM/OSMO
-    pub lp_denom: String,                 // "gamm/pool/1" for ATOM/OSMO
-    pub extern_tokens: Vec<ExternToken>,
-
-    pub transfer_timeout: u64,
-    pub transfer_channel_id: String,
-    pub controller_transfer_channel_id: String,
-    pub ica_channel_id: String,
-    pub ica_connection_id: String,
-    pub ica_account: String,
+pub struct LegacyState {
+    pub last_unbonding_id: u64,
+    pub redemption_rate: Uint128,
+    pub total_shares: Uint128,
+    pub total_deposit: Uint128,
+    pub total_withdrawn: Uint128,
+    pub pending_icq: u64,
+    pub lp_redemption_rate: Uint128,
+    pub lock_id: u64,
+    pub bonded_lp_amount: Uint128,
+    pub unbonding_lp_amount: Uint128,
+    pub free_lp_amount: Uint128,
+    pub pending_bond_lp_amount: Uint128,
+    pub pending_lp_removal_amount: Uint128,
+    pub free_quote_amount: Uint128,
+    pub free_base_amount: Uint128,
+    pub extern_token_amounts: Vec<Uint128>,
+    pub controller_free_amount: Uint128,
+    pub controller_pending_transfer_amount: Uint128,
+    pub controller_stacked_amount_to_deposit: Uint128,
 }
-pub const LEGACY_CONFIG: Item<LegacyConfig> = Item::new("config");
 
-#[cw_serde]
-pub struct LegacyDepositInfo {
-    pub sender: Addr,
-    pub amount: Uint128, // contract deposit ratio
-}
-pub const LEGACY_DEPOSITS: Map<String, LegacyDepositInfo> = Map::new("deposits");
+pub const LEGACY_STATE: Item<LegacyState> = Item::new("state");
