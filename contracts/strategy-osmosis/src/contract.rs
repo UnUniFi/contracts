@@ -3,9 +3,10 @@ use crate::execute::epoch::epoch::execute_epoch;
 use crate::execute::stake::execute_stake;
 use crate::execute::superfluid::execute_superfluid_delegate;
 use crate::execute::unstake::{
-    execute_instant_unbondings, execute_unstake, execute_update_unbonding_recipients,
+    execute_instant_unbondings, execute_reset_unbond_request_lp_amount,
+    execute_reset_unbondings_to_beginning_state, execute_unstake,
 };
-use crate::execute::update_params::execute_update_params;
+use crate::execute::update_params::{execute_update_params, execute_update_state};
 use crate::msgs::{ExecuteMsg, InstantiateMsg, MigrateMsg, Phase, PhaseStep, QueryMsg};
 use crate::query::amounts::query_amounts;
 use crate::query::bonded::query_bonded;
@@ -18,7 +19,7 @@ use crate::query::state::query_state;
 use crate::query::unbonding::query_unbonding;
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
-    DepositToken, EpochCallSource, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
+    DepositToken, EpochCallSource, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE, UNBONDINGS,
 };
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
@@ -137,12 +138,16 @@ pub fn execute(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     match msg {
         ExecuteMsg::UpdateParams(msg) => execute_update_params(deps, env, info, msg),
+        ExecuteMsg::UpdateState(msg) => execute_update_state(deps, env, info, msg),
         ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
         ExecuteMsg::SuperfluidDelegate(_) => execute_superfluid_delegate(deps, env, info),
         ExecuteMsg::Epoch(_) => execute_epoch(deps, env, EpochCallSource::NormalEpoch, true, None),
-        ExecuteMsg::UpdateLegacyUnbondingRecipients(msg) => {
-            execute_update_unbonding_recipients(deps, env, info, msg)
+        ExecuteMsg::ResetUnbondingsToBeginState(msg) => {
+            execute_reset_unbondings_to_beginning_state(deps, env, info, msg)
+        }
+        ExecuteMsg::ResetUnbondRequestLpAmount(msg) => {
+            execute_reset_unbond_request_lp_amount(deps, env, info, msg)
         }
         ExecuteMsg::ProcessInstantUnbondings(msg) => {
             execute_instant_unbondings(deps, env, info, msg)
@@ -176,9 +181,29 @@ pub fn query_version(_: Deps) -> StdResult<VersionResp> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    // - unbond_request_lp_amount - set from unbondings query
+    let mut state = STATE.load(deps.storage)?;
+    let mut unbond_request_lp_amount = Uint128::zero();
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.start_time == 0 || unbonding.pending_start == true {
+            unbond_request_lp_amount += unbonding.amount;
+        }
+    }
+    state.unbond_request_lp_amount = unbond_request_lp_amount;
+    STATE.save(deps.storage, &state)?;
+
+    // - Clean up zero amount unbondings
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.amount.is_zero() {
+            UNBONDINGS.remove(deps.storage, unbonding.id);
+        }
+    }
+
     Ok(Response::default())
 }

@@ -1,5 +1,7 @@
 use crate::error::{ContractError, NoDeposit};
-use crate::msgs::{ProcessInstantUnbondingsMsg, UpdateLegacyUnbondingRecipientsMsg};
+use crate::msgs::{
+    ProcessInstantUnbondingsMsg, ResetUnbondRequestLpAmountMsg, ResetUnbondingsToBeginStateMsg,
+};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
     DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER,
@@ -23,6 +25,9 @@ pub fn execute_unstake(
     let recipient = msg.recipient;
     let mut state = STATE.load(deps.storage)?;
     let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
+    if share_amount.is_zero() {
+        return Ok(Response::new());
+    }
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -83,34 +88,52 @@ pub fn execute_unstake(
     Ok(rsp)
 }
 
-pub fn execute_update_unbonding_recipients(
+pub fn execute_reset_unbond_request_lp_amount(
     deps: DepsMut,
     _: Env,
     info: MessageInfo,
-    msg: UpdateLegacyUnbondingRecipientsMsg,
+    _msg: ResetUnbondRequestLpAmountMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let params = PARAMS.load(deps.storage)?;
     if info.sender != params.authority {
         return Err(ContractError::Unauthorized {});
     }
-    for update in msg.updates {
-        let recipient = deps.api.addr_validate(update.recipient.as_str())?;
-        UNBONDINGS.update(
-            deps.storage,
-            update.unbonding_id,
-            |unbonding: Option<Unbonding>| -> StdResult<_> {
-                if let Some(mut unwrapped) = unbonding {
-                    unwrapped.sender = recipient;
-                    return Ok(unwrapped);
-                }
-                Err(cosmwasm_std::StdError::NotFound {
-                    kind: "not available unbonding".to_string(),
-                })
-            },
-        )?;
+    // - unbond_request_lp_amount - set from unbondings query
+    let mut state = STATE.load(deps.storage)?;
+    let mut unbond_request_lp_amount = Uint128::zero();
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.start_time == 0 || unbonding.pending_start == true {
+            unbond_request_lp_amount += unbonding.amount;
+        }
+    }
+    state.unbond_request_lp_amount = unbond_request_lp_amount;
+    STATE.save(deps.storage, &state)?;
+
+    let rsp = Response::new().add_attribute("action", "reset_unbond_request_lp_amount");
+    Ok(rsp)
+}
+
+pub fn execute_reset_unbondings_to_beginning_state(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    _msg: ResetUnbondingsToBeginStateMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+    // - unbond_request_lp_amount - set from unbondings query
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for mut unbonding in unbondings {
+        unbonding.start_time = 0;
+        unbonding.pending_start = false;
+        unbonding.marked = false;
+        UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
     }
 
-    let rsp = Response::new().add_attribute("action", "update_unbonding");
+    let rsp = Response::new().add_attribute("action", "reset_unbondings_to_beginning_state");
     Ok(rsp)
 }
 

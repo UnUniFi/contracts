@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msgs::{phase_from_phase_step, ChannelInfo, UpdateParamsMsg};
+use crate::msgs::{phase_from_phase_step, ChannelInfo, UpdateParamsMsg, UpdateStateMsg};
 
 use crate::state::{CHANNEL_INFO, PARAMS, STATE};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Uint128};
@@ -114,6 +114,113 @@ pub fn execute_update_params(
     }
 
     PARAMS.save(deps.storage, &params)?;
+    STATE.save(deps.storage, &state)?;
+    Ok(resp)
+}
+
+pub fn execute_update_state(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: UpdateStateMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
+
+    // Permission check
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut resp = Response::new().add_attribute("action", "update_state");
+
+    if let Some(bonded_lp_amount) = msg.bonded_lp_amount {
+        state.bonded_lp_amount = bonded_lp_amount;
+        resp = resp.add_attribute("bonded_lp_amount", bonded_lp_amount.to_string());
+    }
+
+    if let Some(unbonding_lp_amount) = msg.unbonding_lp_amount {
+        state.unbonding_lp_amount = unbonding_lp_amount;
+        resp = resp.add_attribute("unbonding_lp_amount", unbonding_lp_amount.to_string());
+    }
+
+    if let Some(total_shares) = msg.total_shares {
+        state.total_shares = total_shares;
+        resp = resp.add_attribute("total_shares", total_shares.to_string());
+    }
+
+    if let Some(total_deposit) = msg.total_deposit {
+        state.total_deposit = total_deposit;
+        resp = resp.add_attribute("total_deposit", total_deposit.to_string());
+    }
+
+    if let Some(total_withdrawn) = msg.total_withdrawn {
+        state.total_withdrawn = total_withdrawn;
+        resp = resp.add_attribute("total_withdrawn", total_withdrawn.to_string());
+    }
+
+    if let Some(pending_icq) = msg.pending_icq {
+        state.pending_icq = pending_icq;
+        resp = resp.add_attribute("pending_icq", pending_icq.to_string());
+    }
+
+    if let Some(unbond_request_lp_amount) = msg.unbond_request_lp_amount {
+        state.unbond_request_lp_amount = unbond_request_lp_amount;
+        resp = resp.add_attribute(
+            "unbond_request_lp_amount",
+            unbond_request_lp_amount.to_string(),
+        );
+    }
+
+    if let Some(free_lp_amount) = msg.free_lp_amount {
+        state.free_lp_amount = free_lp_amount;
+        resp = resp.add_attribute("free_lp_amount", free_lp_amount.to_string());
+    }
+
+    if let Some(pending_bond_lp_amount) = msg.pending_bond_lp_amount {
+        state.pending_bond_lp_amount = pending_bond_lp_amount;
+        resp = resp.add_attribute("pending_bond_lp_amount", pending_bond_lp_amount.to_string());
+    }
+
+    if let Some(pending_lp_removal_amount) = msg.pending_lp_removal_amount {
+        state.pending_lp_removal_amount = pending_lp_removal_amount;
+        resp = resp.add_attribute(
+            "pending_lp_removal_amount",
+            pending_lp_removal_amount.to_string(),
+        );
+    }
+
+    if let Some(free_quote_amount) = msg.free_quote_amount {
+        state.free_quote_amount = free_quote_amount;
+        resp = resp.add_attribute("free_quote_amount", free_quote_amount.to_string());
+    }
+
+    if let Some(free_base_amount) = msg.free_base_amount {
+        state.free_base_amount = free_base_amount;
+        resp = resp.add_attribute("free_base_amount", free_base_amount.to_string());
+    }
+
+    if let Some(controller_free_amount) = msg.controller_free_amount {
+        state.controller_free_amount = controller_free_amount;
+        resp = resp.add_attribute("controller_free_amount", controller_free_amount.to_string());
+    }
+
+    if let Some(controller_pending_transfer_amount) = msg.controller_pending_transfer_amount {
+        state.controller_pending_transfer_amount = controller_pending_transfer_amount;
+        resp = resp.add_attribute(
+            "controller_pending_transfer_amount",
+            controller_pending_transfer_amount.to_string(),
+        );
+    }
+
+    if let Some(controller_stacked_amount_to_deposit) = msg.controller_stacked_amount_to_deposit {
+        state.controller_stacked_amount_to_deposit = controller_stacked_amount_to_deposit;
+        resp = resp.add_attribute(
+            "controller_stacked_amount_to_deposit",
+            controller_stacked_amount_to_deposit.to_string(),
+        );
+    }
+
     STATE.save(deps.storage, &state)?;
     Ok(resp)
 }

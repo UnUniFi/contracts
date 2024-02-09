@@ -24,11 +24,13 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateParams(UpdateParamsMsg),
+    UpdateState(UpdateStateMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
     SuperfluidDelegate(SuperfluidDelegateMsg),
     Epoch(EpochMsg),
-    UpdateLegacyUnbondingRecipients(UpdateLegacyUnbondingRecipientsMsg),
+    ResetUnbondRequestLpAmount(ResetUnbondRequestLpAmountMsg),
+    ResetUnbondingsToBeginState(ResetUnbondingsToBeginStateMsg),
     ProcessInstantUnbondings(ProcessInstantUnbondingsMsg),
 }
 
@@ -55,15 +57,29 @@ pub struct UpdateParamsMsg {
 }
 
 #[cw_serde]
-pub struct UpdateUnbondingRecipient {
-    pub unbonding_id: u64,
-    pub recipient: String,
+pub struct UpdateStateMsg {
+    pub bonded_lp_amount: Option<Uint128>,
+    pub unbonding_lp_amount: Option<Uint128>,
+    pub total_shares: Option<Uint128>,
+    pub total_deposit: Option<Uint128>,
+    pub total_withdrawn: Option<Uint128>,
+    pub pending_icq: Option<u64>,
+    pub unbond_request_lp_amount: Option<Uint128>,
+    pub free_lp_amount: Option<Uint128>,
+    pub pending_bond_lp_amount: Option<Uint128>,
+    pub pending_lp_removal_amount: Option<Uint128>,
+    pub free_quote_amount: Option<Uint128>,
+    pub free_base_amount: Option<Uint128>,
+    pub controller_free_amount: Option<Uint128>,
+    pub controller_pending_transfer_amount: Option<Uint128>,
+    pub controller_stacked_amount_to_deposit: Option<Uint128>,
 }
 
 #[cw_serde]
-pub struct UpdateLegacyUnbondingRecipientsMsg {
-    pub updates: Vec<UpdateUnbondingRecipient>,
-}
+pub struct ResetUnbondRequestLpAmountMsg {}
+
+#[cw_serde]
+pub struct ResetUnbondingsToBeginStateMsg {}
 
 #[cw_serde]
 pub struct InstantUnbonding {
