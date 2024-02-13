@@ -283,6 +283,7 @@ pub fn execute_deposit_phase_epoch(
                     let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
                     for mut unbonding in unbondings {
                         if unbonding.start_time != 0 && unbonding.pending_start == true {
+                            unbonding.start_time = 0;
                             unbonding.pending_start = false;
                             UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                         }
