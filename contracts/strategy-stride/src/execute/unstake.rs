@@ -1,5 +1,5 @@
 use crate::error::{ContractError, NoDeposit};
-use crate::state::{DepositInfo, DEPOSITS, PARAMS, STAKE_RATE_MULTIPLIER, STATE};
+use crate::state::{DepositInfo, DEPOSITS, PARAMS, STATE};
 
 use cosmwasm_std::{
     coins, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
@@ -17,7 +17,6 @@ pub fn execute_unstake(
     let sender = info.sender;
     let recipient = msg.recipient;
     let mut state = STATE.load(deps.storage)?;
-    let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -25,7 +24,7 @@ pub fn execute_unstake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    share: unwrapped.share.checked_sub(share_amount)?,
+                    amount: unwrapped.amount.checked_sub(amount)?,
                 });
             }
             Err(NoDeposit {}.into())
@@ -37,17 +36,18 @@ pub fn execute_unstake(
         recipient_addr = deps.api.addr_validate(recipient_str.as_str())?;
     }
 
-    state.total_shares = state
-        .total_shares
-        .checked_sub(share_amount)
+    state.total_amount = state
+        .total_amount
+        .checked_sub(amount)
         .unwrap_or(Uint128::from(0u128));
 
+    state.total_withdrawn += amount;
     STATE.save(deps.storage, &state)?;
 
     let params = PARAMS.load(deps.storage)?;
     let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: recipient_addr.to_string(),
-        amount: coins(amount.u128(), &params.deposit_denom),
+        amount: coins(amount.u128(), &params.ls_denom),
     });
 
     let rsp = Response::new()
@@ -55,7 +55,6 @@ pub fn execute_unstake(
         .add_attribute("sender", sender.to_string())
         .add_attribute("recipient", recipient_addr.to_string())
         .add_attribute("amount", amount)
-        .add_attribute("share_amount", share_amount)
         .add_message(bank_send_msg);
     Ok(rsp)
 }

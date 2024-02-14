@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::{POOLS_PREFIX, STAKEIBC_STORE_KEY};
-use crate::state::{PARAMS, STATE};
+use crate::state::PARAMS;
 use cosmwasm_std::{Binary, Env, Response, Storage};
 use ununifi_binding::v1::binding::UnunifiMsg;
 
@@ -19,7 +19,7 @@ pub fn submit_icq_for_redemption(
     let params = PARAMS.load(store)?;
     let zone_pool_key = create_host_zone_key(0u64)?;
 
-    let mut msgs = vec![UnunifiMsg::RequestKvIcq {
+    let msgs = vec![UnunifiMsg::RequestKvIcq {
         chain_id: params.chain_id.to_string(),
         connection_id: params.connection_id.to_string(),
         query_prefix: STAKEIBC_STORE_KEY.to_string(),
