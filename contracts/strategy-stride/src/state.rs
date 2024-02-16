@@ -8,7 +8,7 @@ pub struct Params {
     pub chain_id: String,
     pub denom: String,           // `uatom`
     pub ls_denom: String,        // `ibc/xxxxstuatom`
-    pub ls_denom_native: String, // `ibc/xxxxstuatom`
+    pub ls_denom_native: String, // `stuatom`
     pub ls_rate_feeder: String,  // redemption rate feeder
     pub connection_id: String,
 }
