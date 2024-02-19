@@ -179,7 +179,7 @@ pub fn execute_deposit_phase_epoch(
                     if let Some(ret_bytes) = ret {
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
-                            if tx_msg_data.data.len() > 0 {
+                            if tx_msg_data.msg_responses.len() > 0 {
                                 if should_lock_and_superfluid_delegate(
                                     params.superfluid_validator,
                                     state.bonded_lp_amount,
@@ -188,7 +188,7 @@ pub fn execute_deposit_phase_epoch(
                                     // handle the case for MsgLockAndSuperfluidDelegate message
                                     let msg_ret_result =
                                         MsgLockAndSuperfluidDelegateResponse::decode(
-                                            &tx_msg_data.data[0].data[..],
+                                            &tx_msg_data.msg_responses[0].value[..],
                                         );
                                     if let Ok(msg_ret) = msg_ret_result {
                                         state.lock_id = msg_ret.id;
@@ -196,7 +196,7 @@ pub fn execute_deposit_phase_epoch(
                                 } else {
                                     // handle the case for MsgLockTokensResponse message
                                     let msg_ret_result = MsgLockTokensResponse::decode(
-                                        &tx_msg_data.data[0].data[..],
+                                        &tx_msg_data.msg_responses[0].value[..],
                                     );
                                     if let Ok(msg_ret) = msg_ret_result {
                                         state.lock_id = msg_ret.id;
