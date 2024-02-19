@@ -139,9 +139,9 @@ pub fn execute_deposit_phase_epoch(
                     if let Some(ret_bytes) = ret {
                         let tx_msg_data_result = TxMsgData::decode(&ret_bytes[..]);
                         if let Ok(tx_msg_data) = tx_msg_data_result {
-                            for data in tx_msg_data.data {
+                            for data in tx_msg_data.msg_responses {
                                 let msg_ret_result =
-                                    MsgJoinSwapExternAmountInResponse::decode(&data.data[..]);
+                                    MsgJoinSwapExternAmountInResponse::decode(&data.value[..]);
                                 if let Ok(msg_ret) = msg_ret_result {
                                     let share_out_amount =
                                         Uint128::from_str(msg_ret.share_out_amount.as_str())?;
