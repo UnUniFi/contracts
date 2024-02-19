@@ -38,6 +38,7 @@ pub fn execute_stake(
         },
     )?;
     state.total_deposit += amount;
+    state.controller_stacked_amount_to_deposit += amount;
     STATE.save(deps.storage, &state)?;
 
     let rsp = Response::default()
