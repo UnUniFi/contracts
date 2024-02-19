@@ -186,48 +186,5 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let legacy_state = LEGACY_STATE.load(deps.storage)?;
-    let mut state = State {
-        last_unbonding_id: legacy_state.last_unbonding_id,
-        redemption_rate: legacy_state.redemption_rate,
-        total_shares: legacy_state.total_shares,
-        total_deposit: legacy_state.total_deposit,
-        total_withdrawn: legacy_state.total_withdrawn,
-        pending_icq: legacy_state.pending_icq,
-        lp_redemption_rate: legacy_state.lp_redemption_rate,
-        lock_id: legacy_state.lock_id,
-        bonded_lp_amount: legacy_state.bonded_lp_amount,
-        unbond_request_lp_amount: Uint128::zero(),
-        unbonding_lp_amount: legacy_state.unbonding_lp_amount,
-        free_lp_amount: legacy_state.free_lp_amount,
-        pending_bond_lp_amount: legacy_state.pending_bond_lp_amount,
-        pending_lp_removal_amount: legacy_state.pending_lp_removal_amount,
-        free_quote_amount: legacy_state.free_quote_amount,
-        free_base_amount: legacy_state.free_base_amount,
-        extern_token_amounts: legacy_state.extern_token_amounts,
-        controller_free_amount: legacy_state.controller_free_amount,
-        controller_pending_transfer_amount: legacy_state.controller_pending_transfer_amount,
-        controller_stacked_amount_to_deposit: legacy_state.controller_stacked_amount_to_deposit,
-    };
-
-    // unbond_request_lp_amount - set from unbondings query
-    let mut unbond_request_lp_amount = Uint128::zero();
-    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
-    for unbonding in unbondings {
-        if unbonding.start_time == 0 || unbonding.pending_start == true {
-            unbond_request_lp_amount += unbonding.amount;
-        }
-    }
-    state.unbond_request_lp_amount = unbond_request_lp_amount;
-    STATE.save(deps.storage, &state)?;
-
-    // - Clean up zero amount unbondings
-    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
-    for unbonding in unbondings {
-        if unbonding.amount.is_zero() {
-            UNBONDINGS.remove(deps.storage, unbonding.id);
-        }
-    }
-
     Ok(Response::default())
 }
