@@ -49,7 +49,6 @@ pub fn sudo_kv_query_result(
 
     let mut resp = Response::new().add_attribute("action", "sudo_kv_query_result");
     if query_prefix == BANK_STORE_KEY {
-        if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
         if data.len() > 0 {
             // before SDK v0.47

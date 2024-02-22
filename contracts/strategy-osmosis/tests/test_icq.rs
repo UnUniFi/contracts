@@ -1,6 +1,9 @@
+use crate::helpers::th_query;
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Binary, CosmosMsg};
+use cosmwasm_std::{Binary, CosmosMsg, Uint128};
 use helpers::setup;
+use std::str;
+use std::str::FromStr;
 use strategy_osmosis::helpers::decode_and_convert;
 use strategy_osmosis::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
@@ -8,8 +11,6 @@ use strategy_osmosis::icq::{
 use strategy_osmosis::msgs::QueryMsg;
 use strategy_osmosis::state::{Params, PARAMS, STATE};
 use ununifi_binding::v1::binding::UnunifiMsg;
-
-use crate::helpers::th_query;
 mod helpers;
 
 #[test]
@@ -70,4 +71,9 @@ fn test_submit_icq_for_host() {
         }
         i += 1;
     }
+
+    let binary = Binary::from("13909".as_bytes());
+    let data_slice = str::from_utf8(binary.as_slice()).unwrap();
+    let amount = Uint128::from_str(data_slice).unwrap();
+    assert_eq!(amount, Uint128::from(13909u128));
 }
