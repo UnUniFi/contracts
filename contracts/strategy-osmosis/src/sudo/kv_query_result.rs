@@ -51,12 +51,14 @@ pub fn sudo_kv_query_result(
     if query_prefix == BANK_STORE_KEY {
         let mut amount = Uint128::from(0u128);
         if data.len() > 0 {
-            // before SDK v0.47
-            // let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
-            // amount = Uint128::from_str(balance.amount.as_str())?;
-
             // from SDK v0.47
-            amount = Uint128::from_str(str::from_utf8(data.as_slice())?)?;
+            if let Ok(amount_v47) = Uint128::from_str(str::from_utf8(data.as_slice())?) {
+                amount = amount_v47;
+            } else {
+                // before SDK v0.47
+                let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
+                amount = Uint128::from_str(balance.amount.as_str())?;
+            }
         }
         if query_key == base_balance_key {
             state.free_base_amount = amount;
