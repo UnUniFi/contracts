@@ -13,7 +13,7 @@ use crate::query::fee_info::query_fee_info;
 use crate::query::kyc::query_kyc_info;
 use crate::query::params::{query_deposit_denom, query_params};
 use crate::query::state::query_state;
-use crate::state::{LegacyState, Params, State, LEGACY_STATE, PARAMS, STATE};
+use crate::state::{Params, State, PARAMS, STATE};
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
 
@@ -126,15 +126,5 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let legacy_state: LegacyState = LEGACY_STATE.load(deps.storage)?;
-    let state = State {
-        total_amount: legacy_state.total_amount,
-        total_deposit: legacy_state.total_deposit,
-        total_withdrawn: legacy_state.total_withdrawn,
-        ls_redemption_rate: legacy_state.ls_redemption_rate,
-        ls_denom_apy: Decimal::zero(),
-    };
-
-    STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }

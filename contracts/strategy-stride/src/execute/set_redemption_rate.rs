@@ -21,7 +21,7 @@ pub fn execute_set_redemption_rate(
     let mut state = STATE.load(deps.storage)?;
     state.ls_redemption_rate = msg.ls_rate;
     let ls_yield = (msg.ls_rate - msg.last_ls_rate) / msg.last_ls_rate;
-    let apy = ls_yield.mul(Decimal::raw(1460u128)); // 365 * 24 / 6
+    let apy = ls_yield.mul(Decimal::from_atomics(1460u128, 0).unwrap()); // 365 * 24 / 6
     state.ls_denom_apy = apy;
     STATE.save(deps.storage, &state)?;
     Ok(Response::new())

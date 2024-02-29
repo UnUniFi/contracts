@@ -32,14 +32,3 @@ pub struct DepositInfo {
 }
 
 pub const DEPOSITS: Map<String, DepositInfo> = Map::new("deposits");
-pub const LS_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000_000000_000000u128); // 10^18
-
-#[cw_serde]
-pub struct LegacyState {
-    pub total_amount: Uint128,
-    pub total_deposit: Uint128,
-    pub total_withdrawn: Uint128,
-    pub ls_redemption_rate: Decimal,
-}
-
-pub const LEGACY_STATE: Item<LegacyState> = Item::new("state");
