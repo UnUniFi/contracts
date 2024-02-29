@@ -49,6 +49,7 @@ pub struct IbcTransferToControllerMsg {}
 #[cw_serde]
 pub struct SetRedemptionRateMsg {
     pub ls_rate: Decimal,
+    pub last_ls_rate: Decimal,
 }
 
 #[cw_serde]

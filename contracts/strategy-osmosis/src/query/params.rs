@@ -21,6 +21,7 @@ pub fn query_deposit_denom(deps: Deps) -> StdResult<DepositDenomResp> {
         denom: params.controller_deposit_denom.to_string(),
         deposit_denom: params.controller_deposit_denom.to_string(),
         deposit_denom_rate: Decimal::one().to_string(),
+        deposit_denom_apy: Decimal::zero().to_string(),
         target_chain_id: params.chain_id,
         target_chain_denom: target_deposit_denom,
         target_chain_addr: params.ica_account,

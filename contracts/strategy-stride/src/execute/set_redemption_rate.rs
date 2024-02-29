@@ -1,7 +1,8 @@
 use crate::msgs::SetRedemptionRateMsg;
 use crate::state::STATE;
 use crate::{error::ContractError, state::PARAMS};
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Decimal, DepsMut, Env, MessageInfo, Response};
+use std::ops::Mul;
 use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_set_redemption_rate(
@@ -19,6 +20,9 @@ pub fn execute_set_redemption_rate(
 
     let mut state = STATE.load(deps.storage)?;
     state.ls_redemption_rate = msg.ls_rate;
+    let ls_yield = (msg.ls_rate - msg.last_ls_rate) / msg.last_ls_rate;
+    let apy = ls_yield.mul(Decimal::raw(1460u128)); // 365 * 24 / 6
+    state.ls_denom_apy = apy;
     STATE.save(deps.storage, &state)?;
     Ok(Response::new())
 }

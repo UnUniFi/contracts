@@ -13,15 +13,14 @@ use crate::query::fee_info::query_fee_info;
 use crate::query::kyc::query_kyc_info;
 use crate::query::params::{query_deposit_denom, query_params};
 use crate::query::state::query_state;
-use crate::state::{DepositInfo, Params, State, DEPOSITS, PARAMS, STATE};
+use crate::state::{LegacyState, Params, State, LEGACY_STATE, PARAMS, STATE};
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
-    Uint128,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
@@ -51,6 +50,7 @@ pub fn instantiate(
         total_deposit: Uint128::from(0u128),
         total_withdrawn: Uint128::from(0u128),
         ls_redemption_rate: Decimal::one(),
+        ls_denom_apy: Decimal::zero(),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -126,19 +126,15 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let deposits: Vec<DepositInfo> = DEPOSITS
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| {
-            let (_, v) = item?;
-            Ok(v)
-        })
-        .collect::<StdResult<Vec<DepositInfo>>>()?;
-    let mut total_amount = Uint128::from(0u128);
-    for deposit in deposits {
-        total_amount = total_amount + deposit.amount;
-    }
-    let mut state = STATE.load(deps.storage)?;
-    state.total_amount = total_amount;
+    let legacy_state: LegacyState = LEGACY_STATE.load(deps.storage)?;
+    let state = State {
+        total_amount: legacy_state.total_amount,
+        total_deposit: legacy_state.total_deposit,
+        total_withdrawn: legacy_state.total_withdrawn,
+        ls_redemption_rate: legacy_state.ls_redemption_rate,
+        ls_denom_apy: Decimal::zero(),
+    };
+
     STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }

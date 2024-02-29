@@ -11,6 +11,7 @@ pub fn query_deposit_denom(deps: Deps) -> StdResult<DepositDenomResp> {
         denom: params.deposit_denom.to_string(),
         deposit_denom: params.deposit_denom.to_string(),
         deposit_denom_rate: Decimal::one().to_string(),
+        deposit_denom_apy: Decimal::zero().to_string(),
         target_chain_id: "".to_string(),
         target_chain_denom: "".to_string(),
         target_chain_addr: "".to_string(),
