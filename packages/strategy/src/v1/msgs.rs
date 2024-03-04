@@ -48,6 +48,9 @@ pub struct VersionResp {
 #[cw_serde]
 pub struct DepositDenomResp {
     pub denom: String,
+    pub deposit_denom: String,
+    pub deposit_denom_rate: String,
+    pub deposit_denom_apy: String,
     pub target_chain_id: String,
     pub target_chain_denom: String,
     pub target_chain_addr: String,

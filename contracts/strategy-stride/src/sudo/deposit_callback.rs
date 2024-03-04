@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::{DepositInfo, DEPOSITS, STAKE_RATE_MULTIPLIER, STATE};
+use crate::state::{DepositInfo, DEPOSITS, STATE};
 use cosmwasm_std::{DepsMut, Env, Response, StdResult, Uint128};
 use std::str::FromStr;
 use ununifi_binding::v1::binding::UnunifiMsg;
@@ -22,8 +22,7 @@ pub fn sudo_deposit_callback(
     let sender = deps.api.addr_validate(sender.as_str())?;
     let mut state = STATE.load(deps.storage)?;
     let amount = Uint128::from_str(amount.as_str())?;
-    let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
-    state.total_shares += share_amount;
+    state.total_amount += amount;
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -31,12 +30,12 @@ pub fn sudo_deposit_callback(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    share: unwrapped.share.checked_add(share_amount)?,
+                    amount: unwrapped.amount.checked_add(amount)?,
                 });
             }
             Ok(DepositInfo {
                 sender: sender.clone(),
-                share: share_amount,
+                amount: amount,
             })
         },
     )?;
@@ -48,7 +47,6 @@ pub fn sudo_deposit_callback(
         .add_attribute("denom", denom.to_string())
         .add_attribute("amount", amount.to_string())
         .add_attribute("sender", sender.to_string())
-        .add_attribute("receiver", receiver.to_string())
-        .add_attribute("share_amount", share_amount);
+        .add_attribute("receiver", receiver.to_string());
     return Ok(res);
 }

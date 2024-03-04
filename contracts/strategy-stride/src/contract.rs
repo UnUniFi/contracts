@@ -2,6 +2,7 @@ use std::vec;
 
 use crate::error::ContractError;
 use crate::execute::epoch::execute_epoch;
+use crate::execute::set_redemption_rate::execute_set_redemption_rate;
 use crate::execute::stake::execute_stake;
 use crate::execute::unstake::execute_unstake;
 use crate::execute::update_params::execute_update_params;
@@ -12,14 +13,14 @@ use crate::query::fee_info::query_fee_info;
 use crate::query::kyc::query_kyc_info;
 use crate::query::params::{query_deposit_denom, query_params};
 use crate::query::state::query_state;
-use crate::state::{DepositInfo, Params, State, DEPOSITS, PARAMS, STAKE_RATE_MULTIPLIER, STATE};
+use crate::state::{Params, State, PARAMS, STATE};
 use crate::sudo::deposit_callback::sudo_deposit_callback;
 use crate::sudo::kv_query_result::sudo_kv_query_result;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, Uint128,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use strategy::v1::msgs::SudoMsg;
 use strategy::v1::msgs::VersionResp;
@@ -36,18 +37,20 @@ pub fn instantiate(
     let params = Params {
         authority: info.sender,
         chain_id: msg.chain_id,
-        deposit_denom: msg.deposit_denom, // `ibc/xxxxstuatom`
-        ls_denom: msg.ls_denom,           // stuatom
+        denom: msg.denom,                     // `uatom`
+        ls_denom: msg.ls_denom,               // `ibc/xxxxxstuatom`
+        ls_denom_native: msg.ls_denom_native, // `stuatom`
+        ls_rate_feeder: msg.ls_rate_feeder,
         connection_id: msg.connection_id,
     };
     PARAMS.save(deps.storage, &params)?;
 
     let state = State {
-        redemption_rate: STAKE_RATE_MULTIPLIER,
-        total_shares: Uint128::from(0u128),
+        total_amount: Uint128::from(0u128),
         total_deposit: Uint128::from(0u128),
         total_withdrawn: Uint128::from(0u128),
-        ls_redemption_rate: Uint128::from(200000u128),
+        ls_redemption_rate: Decimal::one(),
+        ls_denom_apy: Decimal::zero(),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -93,6 +96,7 @@ pub fn execute(
         ExecuteMsg::Stake(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake(msg) => execute_unstake(deps, env, info, msg),
         ExecuteMsg::Epoch(_) => execute_epoch(deps, env, true, None),
+        ExecuteMsg::SetRedemptionRate(msg) => execute_set_redemption_rate(deps, env, info, msg),
     }
 }
 
@@ -122,19 +126,5 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let deposits: Vec<DepositInfo> = DEPOSITS
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| {
-            let (_, v) = item?;
-            Ok(v)
-        })
-        .collect::<StdResult<Vec<DepositInfo>>>()?;
-    let mut total_shares = Uint128::from(0u128);
-    for deposit in deposits {
-        total_shares = total_shares + deposit.share;
-    }
-    let mut state = STATE.load(deps.storage)?;
-    state.total_shares = total_shares;
-    STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }
