@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::{PARAMS, STATE};
+use crate::state::{DepositToken, PARAMS, STATE};
 use cosmwasm_std::StdError;
 use cosmwasm_std::{coin, Env, IbcTimeout, Response, Storage, Uint128};
 use ica_tx::helpers::send_ica_tx;
@@ -51,11 +51,15 @@ pub fn execute_ibc_transfer_to_controller(
     if to_transfer_to_controller.is_zero() {
         return Ok(Response::new());
     }
+    let mut withdraw_denom = params.base_denom;
+    if params.deposit_token == DepositToken::Quote {
+        withdraw_denom = params.quote_denom.to_string();
+    }
     let msg = MsgTransfer {
         source_port: "transfer".to_string(),
         source_channel: params.transfer_channel_id,
         token: Some(ProtoCoin {
-            denom: params.base_denom,
+            denom: withdraw_denom,
             amount: to_transfer_to_controller.to_string(),
         }),
         sender: params.ica_account,
