@@ -157,6 +157,9 @@ pub fn execute_withdraw_phase_epoch(
                     if unbonding.marked {
                         let returning_amount =
                             amount_to_return * unbonding.amount / total_marked_lp_amount;
+                        if returning_amount.is_zero() {
+                            continue;
+                        }
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
