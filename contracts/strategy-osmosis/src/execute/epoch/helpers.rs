@@ -10,14 +10,16 @@ pub fn determine_ica_amounts(params: Params, state: State) -> IcaAmounts {
             .unwrap_or(Uint128::from(0u128));
 
         let mut to_swap_amount = state.free_quote_amount;
+        let mut to_transfer_to_controller = state.free_base_amount;
         if params.deposit_token == DepositToken::Quote {
             to_swap_amount = state.free_base_amount;
+            to_transfer_to_controller = state.free_quote_amount;
         }
 
         return IcaAmounts {
             to_swap_amount: to_swap_amount,
             to_remove_lp: state.free_lp_amount,
-            to_transfer_to_controller: state.free_base_amount,
+            to_transfer_to_controller: to_transfer_to_controller,
             to_transfer_to_host: Uint128::from(0u128),
             to_return_amount: amount_to_return,
         };
