@@ -1,20 +1,33 @@
 use crate::error::{ContractError, NoDeposit};
+use crate::msgs::{
+    ProcessInstantUnbondingsMsg, ResetUnbondRequestLpAmountMsg, ResetUnbondingsToBeginStateMsg,
+};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
 use crate::state::{
-    DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
-    UNBONDINGS,
+    DepositInfo, Unbonding, DEPOSITS, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER,
+    STATE, UNBONDINGS,
 };
 
-use cosmwasm_std::{Addr, DepsMut, Response, StdResult, Uint128};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use cosmwasm_std::{
+    coins, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+};
+use strategy::v1::msgs::UnstakeMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_unstake(
     deps: DepsMut,
-    amount: Uint128,
-    sender: Addr,
+    _: Env,
+    info: MessageInfo,
+    msg: UnstakeMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
+    let amount = msg.share_amount;
+    let sender = info.sender;
+    let recipient = msg.recipient;
     let mut state = STATE.load(deps.storage)?;
     let share_amount = amount * STAKE_RATE_MULTIPLIER / state.redemption_rate;
+    if share_amount.is_zero() {
+        return Ok(Response::new());
+    }
     DEPOSITS.update(
         deps.storage,
         sender.to_string(),
@@ -22,7 +35,7 @@ pub fn execute_unstake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_sub(share_amount)?,
+                    share: unwrapped.share.checked_sub(share_amount)?,
                 });
             }
             Err(NoDeposit {}.into())
@@ -34,9 +47,14 @@ pub fn execute_unstake(
         return Err(ContractError::UnbondingItemLimitReached {});
     }
 
+    let mut recipient_addr = sender.to_owned();
+    if let Some(recipient_str) = recipient {
+        recipient_addr = deps.api.addr_validate(recipient_str.as_str())?;
+    }
+
     let unbonding = &Unbonding {
         id: state.last_unbonding_id + 1,
-        sender: sender.to_owned(),
+        sender: recipient_addr.to_owned(),
         amount: amount * HOST_LP_RATE_MULTIPLIER / state.lp_redemption_rate,
         pending_start: false,
         start_time: 0u64,
@@ -45,17 +63,14 @@ pub fn execute_unstake(
     UNBONDINGS.save(deps.storage, unbonding.id, unbonding)?;
 
     // increase last unbonding id
-    // NOTE: eventually, we should remove these params from config because it's simply double counting
+    // NOTE: eventually, we should remove these params from params because it's simply double counting
     state.last_unbonding_id += 1;
-    state.unbonding_lp_amount += unbonding.amount;
-    if state.bonded_lp_amount < unbonding.amount {
-        state.bonded_lp_amount = Uint128::from(0u128);
-    } else {
-        state.bonded_lp_amount = state
-            .bonded_lp_amount
-            .checked_sub(unbonding.amount)
-            .unwrap_or(Uint128::from(0u128));
+    if state.bonded_lp_amount < state.unbond_request_lp_amount + unbonding.amount {
+        return Err(ContractError::InsufficientBondedLpTokens {});
     }
+
+    state.unbond_request_lp_amount += unbonding.amount;
+
     state.total_shares = state
         .total_shares
         .checked_sub(share_amount)
@@ -65,8 +80,113 @@ pub fn execute_unstake(
 
     let rsp = Response::new()
         .add_attribute("action", "unstake")
+        .add_attribute("unbonding_id", state.last_unbonding_id.to_string())
         .add_attribute("sender", sender.to_string())
+        .add_attribute("recipient", recipient_addr.to_string())
         .add_attribute("amount", amount)
         .add_attribute("share_amount", share_amount);
+    Ok(rsp)
+}
+
+pub fn execute_reset_unbond_request_lp_amount(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    _msg: ResetUnbondRequestLpAmountMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+    // - unbond_request_lp_amount - set from unbondings query
+    let mut state = STATE.load(deps.storage)?;
+    let mut unbond_request_lp_amount = Uint128::zero();
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for unbonding in unbondings {
+        if unbonding.start_time == 0 || unbonding.pending_start == true {
+            unbond_request_lp_amount += unbonding.amount;
+        }
+    }
+    state.unbond_request_lp_amount = unbond_request_lp_amount;
+    STATE.save(deps.storage, &state)?;
+
+    let rsp = Response::new().add_attribute("action", "reset_unbond_request_lp_amount");
+    Ok(rsp)
+}
+
+pub fn execute_reset_unbondings_to_beginning_state(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    _msg: ResetUnbondingsToBeginStateMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+    // - unbond_request_lp_amount - set from unbondings query
+    let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
+    for mut unbonding in unbondings {
+        unbonding.start_time = 0;
+        unbonding.pending_start = false;
+        unbonding.marked = false;
+        UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
+    }
+
+    let rsp = Response::new().add_attribute("action", "reset_unbondings_to_beginning_state");
+    Ok(rsp)
+}
+
+pub fn execute_instant_unbondings(
+    deps: DepsMut,
+    _: Env,
+    info: MessageInfo,
+    msg: ProcessInstantUnbondingsMsg,
+) -> Result<Response<UnunifiMsg>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+    if info.sender != params.authority {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut state = STATE.load(deps.storage)?;
+    let mut rsp = Response::new().add_attribute("action", "instant_unbondings");
+    for update in msg.unbondings {
+        let unbonding = UNBONDINGS.load(deps.storage, update.unbonding_id)?;
+        // decrease total unbonding lp amount
+        state.unbonding_lp_amount -= unbonding.amount;
+
+        // remove unbonding
+        UNBONDINGS.remove(deps.storage, update.unbonding_id);
+
+        // update the share amount on the sender
+        let share_receiver = deps.api.addr_validate(update.share_receiver.as_str())?;
+        DEPOSITS.update(
+            deps.storage,
+            share_receiver.to_string(),
+            |deposit: Option<DepositInfo>| -> StdResult<_> {
+                if let Some(unwrapped) = deposit {
+                    return Ok(DepositInfo {
+                        sender: share_receiver.clone(),
+                        share: unwrapped.share.checked_add(update.share_recover_amount)?,
+                    });
+                }
+                Ok(DepositInfo {
+                    sender: share_receiver.clone(),
+                    share: update.share_recover_amount,
+                })
+            },
+        )?;
+        state.total_shares += update.share_recover_amount;
+
+        // token send to unbonding recipient
+        let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: unbonding.sender.to_string(),
+            amount: coins(update.withdrawal.u128(), &params.controller_deposit_denom),
+        });
+        rsp = rsp.add_message(bank_send_msg)
+    }
+
+    STATE.save(deps.storage, &state)?;
+
     Ok(rsp)
 }

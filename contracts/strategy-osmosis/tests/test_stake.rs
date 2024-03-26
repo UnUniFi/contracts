@@ -1,6 +1,7 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, Uint128};
 use helpers::th_query;
+use strategy::v1::msgs::StakeMsg;
 use strategy_osmosis::error::ContractError;
 use strategy_osmosis::execute::stake::execute_stake;
 use strategy_osmosis::msgs::QueryMsg;
@@ -17,24 +18,12 @@ fn stake() {
 
     // Error: because of the invalid denom
     let invalid_info = mock_info("anyone", &coins(10000 as u128, "invalid"));
-    let err = execute_stake(
-        deps.as_mut(),
-        mock_env(),
-        invalid_info.funds[0].clone(),
-        invalid_info.sender,
-    )
-    .unwrap_err();
+    let err = execute_stake(deps.as_mut(), mock_env(), invalid_info, StakeMsg {}).unwrap_err();
     assert_eq!(err, ContractError::NoAllowedToken {});
 
     // Success:
     let info = mock_info(sender, &coins(10000 as u128, "uguu"));
-    let res = execute_stake(
-        deps.as_mut(),
-        mock_env(),
-        info.funds[0].clone(),
-        info.sender,
-    )
-    .unwrap();
+    let res = execute_stake(deps.as_mut(), mock_env(), info, StakeMsg {}).unwrap();
 
     assert_eq!(0, res.messages.len());
 

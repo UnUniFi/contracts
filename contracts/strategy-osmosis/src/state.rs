@@ -27,8 +27,8 @@ pub struct ExternToken {
 }
 
 #[cw_serde]
-pub struct Config {
-    pub owner: Addr,
+pub struct Params {
+    pub authority: Addr,
     pub unbond_period: u64,
     pub phase: Phase,
     pub phase_step: PhaseStep, // counted from 1 for each phase
@@ -52,7 +52,7 @@ pub struct Config {
     pub ica_connection_id: String,
     pub ica_account: String,
 }
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const PARAMS: Item<Params> = Item::new("params");
 
 #[cw_serde]
 pub struct State {
@@ -65,6 +65,10 @@ pub struct State {
     pub lp_redemption_rate: Uint128,
     pub lock_id: u64,
     pub bonded_lp_amount: Uint128,
+    // unbonding amount to request unbonding through ica
+    pub unbond_request_lp_amount: Uint128,
+    // unbonding amount initiated on host - available till remove liquidity operation's executed
+    // - should not confuse with host unbonding amount - during unbonding period, this value should be same
     pub unbonding_lp_amount: Uint128,
     pub free_lp_amount: Uint128,
     pub pending_bond_lp_amount: Uint128,
@@ -82,7 +86,7 @@ pub const STATE: Item<State> = Item::new("state");
 #[cw_serde]
 pub struct DepositInfo {
     pub sender: Addr,
-    pub amount: Uint128, // contract deposit ratio
+    pub share: Uint128, // contract deposit ratio
 }
 
 // Unbonding record is removed when bank send is finalized
@@ -139,3 +143,28 @@ pub enum EpochCallSource {
 
 pub const STAKE_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000u128); // 10^6
 pub const HOST_LP_RATE_MULTIPLIER: Uint128 = Uint128::new(1000000_000000_000000u128); // 10^18
+
+#[cw_serde]
+pub struct LegacyState {
+    pub last_unbonding_id: u64,
+    pub redemption_rate: Uint128,
+    pub total_shares: Uint128,
+    pub total_deposit: Uint128,
+    pub total_withdrawn: Uint128,
+    pub pending_icq: u64,
+    pub lp_redemption_rate: Uint128,
+    pub lock_id: u64,
+    pub bonded_lp_amount: Uint128,
+    pub unbonding_lp_amount: Uint128,
+    pub free_lp_amount: Uint128,
+    pub pending_bond_lp_amount: Uint128,
+    pub pending_lp_removal_amount: Uint128,
+    pub free_quote_amount: Uint128,
+    pub free_base_amount: Uint128,
+    pub extern_token_amounts: Vec<Uint128>,
+    pub controller_free_amount: Uint128,
+    pub controller_pending_transfer_amount: Uint128,
+    pub controller_stacked_amount_to_deposit: Uint128,
+}
+
+pub const LEGACY_STATE: Item<LegacyState> = Item::new("state");

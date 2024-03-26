@@ -4,7 +4,7 @@ use helpers::th_query;
 use strategy_osmosis::execute::epoch::epoch::execute_epoch;
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
 use strategy_osmosis::state::{
-    Config, EpochCallSource, State, Unbonding, CONFIG, STATE, UNBONDINGS,
+    EpochCallSource, Params, State, Unbonding, PARAMS, STATE, UNBONDINGS,
 };
 
 use crate::helpers::{register_ica, remove_free_atom_from_host_account, setup};
@@ -16,7 +16,7 @@ mod helpers;
 fn epoch_deposit_phase_flow() {
     let mut deps = setup();
 
-    // CASE: when the step is PhaseStep::IbcTransferToHost as the config is just initialized
+    // CASE: when the step is PhaseStep::IbcTransferToHost as the params is just initialized
     // without any pending deposit
     let epoch_call_source_normal = EpochCallSource::NormalEpoch;
     let res = execute_epoch(
@@ -28,19 +28,22 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::RequestIcqAfterIbcTransferToHost
     );
 
     // TODO: CASE: Step is PhaseStep::IbcTransferToHost, but, with pending deposit
     // take a step back to PhaseStep::IbcTransferToHost
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = PhaseStep::IbcTransferToHost;
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = PhaseStep::IbcTransferToHost;
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.controller_stacked_amount_to_deposit = Uint128::from(10000u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
 
-    let amount = coins(10000, config.controller_deposit_denom.clone());
+    let amount = coins(10000, params.controller_deposit_denom.clone());
     // send some funds to the contract
     deps.querier
         .update_balance(mock_env().contract.address, amount);
@@ -54,13 +57,13 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::IbcTransferToHostCallback);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::IbcTransferToHostCallback);
 
     // remove funds from contract as it's supposed to be
     deps.querier.update_balance(
         mock_env().contract.address,
-        coins(0, config.controller_deposit_denom.clone()),
+        coins(0, params.controller_deposit_denom.clone()),
     );
 
     // CASE: when the step is 2
@@ -74,9 +77,9 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::RequestIcqAfterIbcTransferToHost
     );
 
@@ -95,9 +98,9 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::ResponseIcqAfterIbcTransferToHost
     );
 
@@ -111,8 +114,8 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::AddLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::AddLiquidity);
 
     // CASE: When the step is PhaseStep::AddLiquidity
     // And, when the contract doens't have any deposit toke to be swapped in this step of this phase
@@ -124,17 +127,17 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::BeginUnbondingForPendingRequests
     );
 
     // CASE: with pending deposit
     // take a step back to PhaseStep::AddLiquidity
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = PhaseStep::AddLiquidity;
-    _ = CONFIG.save(deps.as_mut().storage, &config);
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = PhaseStep::AddLiquidity;
+    _ = PARAMS.save(deps.as_mut().storage, &params);
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     // set some value in to_transfer_to_host in order to test the case when there is pending deposit
     state.free_base_amount = Uint128::from(1000000u128);
@@ -149,8 +152,8 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::AddLiquidityCallback);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::AddLiquidityCallback);
     // remove free_atom_amount since it's supposed to be in real execution
     remove_free_atom_from_host_account(deps.as_mut());
 
@@ -166,13 +169,13 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::BondLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::BondLiquidity);
 
     // CASE: When the step is 6 and the callback status is failure
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = PhaseStep::AddLiquidityCallback;
-    _ = CONFIG.save(deps.as_mut().storage, &config);
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = PhaseStep::AddLiquidityCallback;
+    _ = PARAMS.save(deps.as_mut().storage, &params);
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -182,14 +185,14 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::AddLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::AddLiquidity);
 
     // CASE: When the step is PhaseStep::BondLiquidity
     // take a step forward to PhaseStep::BondLiquidity
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = PhaseStep::BondLiquidity;
-    _ = CONFIG.save(deps.as_mut().storage, &config);
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = PhaseStep::BondLiquidity;
+    _ = PARAMS.save(deps.as_mut().storage, &params);
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     state.pending_bond_lp_amount = Uint128::from(100000u128);
     _ = STATE.save(deps.as_mut().storage, &state);
@@ -203,8 +206,8 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::BondLiquidityCallback);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::BondLiquidityCallback);
 
     // CASE: When the step is PhaseStep::BondLiquidityCallback
     let res = execute_epoch(
@@ -215,8 +218,8 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::RequestIcqAfterBondLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::RequestIcqAfterBondLiquidity);
 
     // remove free_atom_amount since it's supposed to be in real execution
     remove_free_atom_from_host_account(deps.as_mut());
@@ -231,8 +234,8 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
 
     // CASE: When the step is PhaseStep::ResponseIcqAfterBondLiquidity
     let res = execute_epoch(
@@ -243,8 +246,8 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::ResponseIcqAfterBondLiquidity);
 
     // CASE: When the step is PhaseStep::BeginUnbondingForPendingRequestsCallback
     let res = execute_epoch(
@@ -255,9 +258,9 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::BeginUnbondingForPendingRequests
     );
 
@@ -271,14 +274,14 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::CheckMaturedUnbondings);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::CheckMaturedUnbondings);
 
     // CASE: when the step is PhaseStep::BeginUnbondingForPendingRequests and there're unbondinds
     // take a step back to PhaseStep::BeginUnbondingForPendingRequests
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = PhaseStep::BeginUnbondingForPendingRequests;
-    _ = CONFIG.save(deps.as_mut().storage, &config);
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = PhaseStep::BeginUnbondingForPendingRequests;
+    _ = PARAMS.save(deps.as_mut().storage, &params);
     // register unbonding
     let sender = deps
         .api
@@ -294,6 +297,10 @@ fn epoch_deposit_phase_flow() {
     };
     _ = UNBONDINGS.save(deps.as_mut().storage, 1, &unbondings);
 
+    let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
+    state.unbond_request_lp_amount = Uint128::from(100u128);
+    _ = STATE.save(deps.as_mut().storage, &state);
+
     let res = execute_epoch(
         deps.as_mut(),
         mock_env(),
@@ -303,9 +310,9 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     assert_eq!(
-        config.phase_step,
+        params.phase_step,
         PhaseStep::BeginUnbondingForPendingRequestsCallback
     );
 
@@ -319,8 +326,8 @@ fn epoch_deposit_phase_flow() {
     );
     assert!(res.is_ok());
 
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, PhaseStep::CheckMaturedUnbondings);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, PhaseStep::CheckMaturedUnbondings);
 
     // CASE: When the step is 13
     // And when  free lp amount is 0
@@ -332,19 +339,19 @@ fn epoch_deposit_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase, Phase::Deposit);
-    assert_eq!(config.phase_step, PhaseStep::IbcTransferToHost);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase, Phase::Deposit);
+    assert_eq!(params.phase_step, PhaseStep::IbcTransferToHost);
 
     // CASE: When the step is PhaseStep::CheckMaturedUnbondings
     // And when  free lp amount is not 0 and matured unbondings are not empty
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
     // take a step back to PhaseStep::CheckMaturedUnbondings
-    config.phase_step = PhaseStep::CheckMaturedUnbondings;
+    params.phase_step = PhaseStep::CheckMaturedUnbondings;
 
-    // change unbonding_time to useful configure for this test
-    config.unbond_period = 1;
-    _ = CONFIG.save(deps.as_mut().storage, &config);
+    // change unbonding_time to useful paramsure for this test
+    params.unbond_period = 1;
+    _ = PARAMS.save(deps.as_mut().storage, &params);
 
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     state.free_lp_amount = Uint128::from(100 as u32);
@@ -371,9 +378,9 @@ fn epoch_deposit_phase_flow() {
         true,
         None,
     );
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase, Phase::Withdraw);
-    assert_eq!(config.phase_step, PhaseStep::RemoveLiquidity);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase, Phase::Withdraw);
+    assert_eq!(params.phase_step, PhaseStep::RemoveLiquidity);
 }
 
 // test of the step flow in Withdraw phase
@@ -383,11 +390,11 @@ fn epoch_withdraw_phase_flow() {
     let epoch_call_source_normal = EpochCallSource::NormalEpoch;
     let epoch_call_source_icq = EpochCallSource::IcqCallback;
     let epoch_call_source_ica = EpochCallSource::IcaCallback;
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase = Phase::Withdraw;
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase = Phase::Withdraw;
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
-    // CASE: when the step is PhaseStep::RemoveLiquidity as the config is just initialized
+    // CASE: when the step is PhaseStep::RemoveLiquidity as the params is just initialized
     // without any pending deposit
     setup_test_case_for_execute_epoch(deps.as_mut(), PhaseStep::RemoveLiquidity, Uint128::zero());
 
@@ -399,7 +406,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::RemoveLiquidityCallback);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::RemoveLiquidityCallback);
 
     // CASE: when the step is 2
     setup_test_case_for_execute_epoch(
@@ -416,7 +423,7 @@ fn epoch_withdraw_phase_flow() {
     );
     assert!(res.is_ok());
 
-    assert_config_phase_step(deps.as_mut(), PhaseStep::RequestIcqAfterRemoveLiquidity);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::RequestIcqAfterRemoveLiquidity);
 
     // CASE: when the step is 3
     // first, register ica_account so that it can be executed properly
@@ -438,7 +445,7 @@ fn epoch_withdraw_phase_flow() {
     );
     assert!(res.is_ok());
 
-    assert_config_phase_step(deps.as_mut(), PhaseStep::ResponseIcqAfterRemoveLiquidity);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::ResponseIcqAfterRemoveLiquidity);
 
     // CASE: When the step is PhaseStep::ResponseIcqAfterRemoveLiquidity
     setup_test_case_for_execute_epoch(
@@ -454,7 +461,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::SwapTwoTokensToDepositToken);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::SwapTwoTokensToDepositToken);
 
     // CASE: When the step is PhaseStep::SwapTwoTokensToDepositToken
     // And, when
@@ -471,7 +478,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(
+    assert_params_phase_step(
         deps.as_mut(),
         PhaseStep::SwapTwoTokensToDepositTokenCallback,
     );
@@ -491,7 +498,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(
+    assert_params_phase_step(
         deps.as_mut(),
         PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken,
     );
@@ -511,7 +518,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::SwapTwoTokensToDepositToken);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::SwapTwoTokensToDepositToken);
 
     // CASE: When the step is PhaseStep::RequestIcqAfterSwapTwoTokensToDepositToken
     setup_test_case_for_execute_epoch(
@@ -527,7 +534,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(
+    assert_params_phase_step(
         deps.as_mut(),
         PhaseStep::ResponseIcqAfterSwapTwoTokensToDepositToken,
     );
@@ -547,7 +554,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::IbcTransferToController);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::IbcTransferToController);
 
     // CASE: When the step is PhaseStep::IbcTransferToController
     setup_test_case_for_execute_epoch(
@@ -564,7 +571,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::IbcTransferToControllerCallback);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::IbcTransferToControllerCallback);
 
     // CASE: When the step is PhaseStep::IbcTransferToControllerCallback
     // And, ica tx is success
@@ -582,7 +589,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(
+    assert_params_phase_step(
         deps.as_mut(),
         PhaseStep::RequestIcqAfterIbcTransferToController,
     );
@@ -603,7 +610,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::IbcTransferToController);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::IbcTransferToController);
 
     // CASE: When the step is 11
     setup_test_case_for_execute_epoch(
@@ -620,7 +627,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(
+    assert_params_phase_step(
         deps.as_mut(),
         PhaseStep::ResponseIcqAfterIbcTransferToController,
     );
@@ -640,7 +647,7 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::DistributeToUnbondedUsers);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::DistributeToUnbondedUsers);
 
     // CASE: When the step is PhaseStep::DistributeToUnbondedUsers
     setup_test_case_for_execute_epoch(
@@ -657,9 +664,9 @@ fn epoch_withdraw_phase_flow() {
         None,
     );
     assert!(res.is_ok());
-    assert_config_phase_step(deps.as_mut(), PhaseStep::IbcTransferToHost);
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase, Phase::Deposit);
+    assert_params_phase_step(deps.as_mut(), PhaseStep::IbcTransferToHost);
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase, Phase::Deposit);
 }
 
 fn setup_test_case_for_execute_epoch(
@@ -667,16 +674,16 @@ fn setup_test_case_for_execute_epoch(
     phase_step: PhaseStep,
     free_atom_amount: Uint128,
 ) {
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase_step = phase_step;
-    CONFIG.save(deps.storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase_step = phase_step;
+    PARAMS.save(deps.storage, &params).unwrap();
 
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     state.free_base_amount = free_atom_amount;
     _ = STATE.save(deps.storage, &state);
 }
 
-fn assert_config_phase_step(deps: DepsMut, expected_phase_step: PhaseStep) {
-    let config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    assert_eq!(config.phase_step, expected_phase_step);
+fn assert_params_phase_step(deps: DepsMut, expected_phase_step: PhaseStep) {
+    let params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    assert_eq!(params.phase_step, expected_phase_step);
 }

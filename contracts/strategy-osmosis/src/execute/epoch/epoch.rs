@@ -2,10 +2,10 @@ use crate::error::ContractError;
 use crate::helpers::query_balance;
 use crate::msgs::Phase;
 use crate::state::{
-    EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STAKE_RATE_MULTIPLIER, STATE,
+    DepositToken, EpochCallSource, HOST_LP_RATE_MULTIPLIER, PARAMS, STAKE_RATE_MULTIPLIER, STATE,
 };
 use cosmwasm_std::{DepsMut, Env, Response};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::deposit::execute_deposit_phase_epoch;
 use super::withdraw::execute_withdraw_phase_epoch;
@@ -17,12 +17,12 @@ pub fn execute_epoch(
     success: bool,
     ret: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let params = PARAMS.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
     if let Ok(balance) = query_balance(
         &deps.querier,
         env.contract.address.to_owned(),
-        config.controller_deposit_denom.to_string(),
+        params.controller_deposit_denom.to_string(),
     ) {
         state.controller_free_amount = balance;
         STATE.save(deps.storage, &state)?;
@@ -34,19 +34,24 @@ pub fn execute_epoch(
             state.redemption_rate = STAKE_RATE_MULTIPLIER;
         } else {
             // active tvl is not unbonding tvl that is allocated to shares
-            let mut active_tvl =
-                state.bonded_lp_amount * state.lp_redemption_rate / HOST_LP_RATE_MULTIPLIER;
+            let mut active_tvl = (state.bonded_lp_amount - state.unbond_request_lp_amount)
+                * state.lp_redemption_rate
+                / HOST_LP_RATE_MULTIPLIER;
             active_tvl += state.controller_stacked_amount_to_deposit
                 + state.controller_pending_transfer_amount;
-            if config.phase == Phase::Deposit {
-                active_tvl += state.free_base_amount;
+            if params.phase == Phase::Deposit {
+                if params.deposit_token == DepositToken::Quote {
+                    active_tvl += state.free_quote_amount;
+                } else {
+                    active_tvl += state.free_base_amount;
+                }
             }
             state.redemption_rate = active_tvl * STAKE_RATE_MULTIPLIER / state.total_shares;
         }
         STATE.save(deps.storage, &state)?;
     }
 
-    if config.phase == Phase::Withdraw {
+    if params.phase == Phase::Withdraw {
         return execute_withdraw_phase_epoch(deps, env, called_from, success, ret);
     }
     return execute_deposit_phase_epoch(deps, env, called_from, success, ret);

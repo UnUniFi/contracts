@@ -1,16 +1,20 @@
 use crate::error::ContractError;
-use crate::state::{DepositInfo, CONFIG, DEPOSITS, STAKE_RATE_MULTIPLIER, STATE};
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, Response, StdResult};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use crate::state::{DepositInfo, DEPOSITS, PARAMS, STAKE_RATE_MULTIPLIER, STATE};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw_utils::one_coin;
+use strategy::v1::msgs::StakeMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn execute_stake(
     deps: DepsMut,
-    _env: Env,
-    coin: Coin,
-    sender: Addr,
+    _: Env,
+    info: MessageInfo,
+    _: StakeMsg,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if config.controller_deposit_denom != coin.denom {
+    let coin: Coin = one_coin(&info).map_err(|err| ContractError::Payment(err))?;
+    let sender = info.sender;
+    let params = PARAMS.load(deps.storage)?;
+    if params.controller_deposit_denom != coin.denom {
         return Err(ContractError::NoAllowedToken {});
     }
     let mut state = STATE.load(deps.storage)?;
@@ -24,16 +28,17 @@ pub fn execute_stake(
             if let Some(unwrapped) = deposit {
                 return Ok(DepositInfo {
                     sender: sender.clone(),
-                    amount: unwrapped.amount.checked_add(share_amount)?,
+                    share: unwrapped.share.checked_add(share_amount)?,
                 });
             }
             Ok(DepositInfo {
                 sender: sender.clone(),
-                amount: share_amount,
+                share: share_amount,
             })
         },
     )?;
     state.total_deposit += amount;
+    state.controller_stacked_amount_to_deposit += amount;
     STATE.save(deps.storage, &state)?;
 
     let rsp = Response::default()

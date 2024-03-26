@@ -2,14 +2,15 @@ use crate::error::ContractError;
 use crate::execute::epoch::epoch::execute_epoch;
 use crate::helpers::{decode_and_convert, BANK_STORE_KEY};
 use crate::icq::create_account_denom_balance_key;
-use crate::state::{DepositToken, EpochCallSource, CONFIG, HOST_LP_RATE_MULTIPLIER, STATE};
+use crate::state::{DepositToken, EpochCallSource, HOST_LP_RATE_MULTIPLIER, PARAMS, STATE};
 use cosmwasm_std::{Binary, DepsMut, Env, Response, Uint128};
 use osmosis_std::types::osmosis::gamm::v1beta1::Pool as OsmosisBalancerPool;
 use prost::Message;
 use prost_types::Any;
 use proto::cosmos::base::v1beta1::Coin as ProtoCoin;
+use std::str;
 use std::str::FromStr;
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// sudo_kv_query_result is the contract's callback for KV query results. Note that only the query
 /// id is provided, so you need to read the query result from the state.
@@ -30,30 +31,34 @@ pub fn sudo_kv_query_result(
         .as_str(),
     );
 
-    let config = CONFIG.load(deps.storage)?;
+    let params = PARAMS.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
-    let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
+    let converted_addr_bytes = decode_and_convert(&params.ica_account.as_str())?;
     let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.base_denom.to_string(),
+        params.base_denom.to_string(),
     )?;
     let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.quote_denom.to_string(),
+        params.quote_denom.to_string(),
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.lp_denom.to_string(),
+        params.lp_denom.to_string(),
     )?;
 
     let mut resp = Response::new().add_attribute("action", "sudo_kv_query_result");
     if query_prefix == BANK_STORE_KEY {
-        if query_key == base_balance_key {}
         let mut amount = Uint128::from(0u128);
         if data.len() > 0 {
-            // TODO: to update if Osmosis update Cosmos version to v0.47
-            let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
-            amount = Uint128::from_str(balance.amount.as_str())?;
+            // from SDK v0.47
+            if let Ok(amount_v47) = Uint128::from_str(str::from_utf8(data.as_slice())?) {
+                amount = amount_v47;
+            } else {
+                // before SDK v0.47
+                let balance: ProtoCoin = ProtoCoin::decode(data.as_slice())?;
+                amount = Uint128::from_str(balance.amount.as_str())?;
+            }
         }
         if query_key == base_balance_key {
             state.free_base_amount = amount;
@@ -66,26 +71,23 @@ pub fn sudo_kv_query_result(
             resp = resp.add_attribute("free_lp_amount", state.free_lp_amount);
         }
 
-        for (i, extern_token) in config.extern_tokens.iter().enumerate() {
+        for (i, extern_token) in params.extern_tokens.iter().enumerate() {
             let extern_balance_key = create_account_denom_balance_key(
                 converted_addr_bytes.clone(),
                 extern_token.extern_token.to_string(),
             )?;
             if query_key == extern_balance_key {
                 state.extern_token_amounts[i] = amount;
-                resp = resp.add_attribute(
-                    format!("free_{}", extern_token.extern_token),
-                    state.free_lp_amount,
-                );
+                resp = resp.add_attribute(format!("free_{}", extern_token.extern_token), amount);
             }
         }
     } else {
         // GAMM_STORE_KEY
         let any: Any = Any::decode(data.as_slice())?;
         let pool: OsmosisBalancerPool = OsmosisBalancerPool::decode(any.value.as_slice())?;
-        let mut host_deposit_denom = config.base_denom;
-        if config.deposit_token == DepositToken::Quote {
-            host_deposit_denom = config.quote_denom;
+        let mut host_deposit_denom = params.base_denom;
+        if params.deposit_token == DepositToken::Quote {
+            host_deposit_denom = params.quote_denom;
         }
         let mut deposit_denom_amount = Uint128::from(0u128);
         let mut total_share = Uint128::from(0u128);

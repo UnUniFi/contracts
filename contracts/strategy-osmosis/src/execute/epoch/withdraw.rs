@@ -2,9 +2,9 @@ use crate::error::ContractError;
 use crate::icq::submit_icq_for_host;
 use crate::msgs::{Phase, PhaseStep};
 use crate::query::unbondings::{query_unbondings, UNBONDING_ITEM_LIMIT};
-use crate::state::{EpochCallSource, CONFIG, STATE, UNBONDINGS};
+use crate::state::{EpochCallSource, PARAMS, STATE, UNBONDINGS};
 use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, Response, Uint128};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 use super::liquidity::execute_ica_remove_liquidity;
 use super::swap::execute_swap_to_deposit_token;
@@ -17,13 +17,13 @@ pub fn execute_withdraw_phase_epoch(
     success: bool,
     _: Option<Vec<u8>>,
 ) -> Result<Response<UnunifiMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let params = PARAMS.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     let mut rsp: Result<Response<UnunifiMsg>, ContractError> = Ok(Response::new());
-    let mut next_phase = config.phase.to_owned();
-    let mut next_phase_step = config.phase_step.to_owned();
+    let mut next_phase = params.phase.to_owned();
+    let mut next_phase_step = params.phase_step.to_owned();
 
-    match config.phase_step {
+    match params.phase_step {
         PhaseStep::RemoveLiquidity => {
             if called_from != EpochCallSource::NormalEpoch {
                 return rsp;
@@ -32,7 +32,10 @@ pub fn execute_withdraw_phase_epoch(
             // assumption: matured unbondings on the contract is same as matured unbondings on host chain
             let unbondings = query_unbondings(deps.storage, Some(UNBONDING_ITEM_LIMIT))?;
             for mut unbonding in unbondings {
-                if unbonding.start_time + config.unbond_period < env.block.time.seconds() {
+                // mark the items already started unbonding and passed unbond period
+                if unbonding.pending_start == false
+                    && unbonding.start_time + params.unbond_period < env.block.time.seconds()
+                {
                     unbonding.marked = true;
                     UNBONDINGS.save(deps.storage, unbonding.id, &unbonding)?;
                 }
@@ -154,16 +157,19 @@ pub fn execute_withdraw_phase_epoch(
                     if unbonding.marked {
                         let returning_amount =
                             amount_to_return * unbonding.amount / total_marked_lp_amount;
+                        if returning_amount.is_zero() {
+                            continue;
+                        }
                         let bank_send_msg = CosmosMsg::Bank(BankMsg::Send {
                             to_address: unbonding.sender.to_string(),
                             amount: coins(
                                 returning_amount.into(),
-                                &config.controller_deposit_denom,
+                                &params.controller_deposit_denom,
                             ),
                         });
                         resp = resp.add_message(bank_send_msg);
                         UNBONDINGS.remove(deps.storage, unbonding.id);
-                        // update the total_withdrawn amount in config just for the record
+                        // update the total_withdrawn amount in params just for the record
                         // memo: this param can be deleted in the future
                         state.total_withdrawn += returning_amount;
                     }
@@ -178,9 +184,9 @@ pub fn execute_withdraw_phase_epoch(
     }
 
     // update phase
-    let mut config = CONFIG.load(deps.storage)?;
-    config.phase = next_phase;
-    config.phase_step = next_phase_step;
-    CONFIG.save(deps.storage, &config)?;
+    let mut params = PARAMS.load(deps.storage)?;
+    params.phase = next_phase;
+    params.phase_step = next_phase_step;
+    PARAMS.save(deps.storage, &params)?;
     return rsp;
 }

@@ -10,15 +10,15 @@ use strategy_osmosis::execute::epoch::liquidity::execute_ica_join_swap_extern_am
 use strategy_osmosis::execute::epoch::token_transfer::execute_ibc_transfer_to_controller;
 use strategy_osmosis::helpers::join_pool_to_any;
 use strategy_osmosis::msgs::{Phase, PhaseStep, QueryMsg};
-use strategy_osmosis::state::{Config, DepositToken, State, CONFIG, STAKE_RATE_MULTIPLIER, STATE};
+use strategy_osmosis::state::{DepositToken, Params, State, PARAMS, STAKE_RATE_MULTIPLIER, STATE};
 mod helpers;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
 #[test]
 fn determine_ica_amounts_for_deposit() {
     // Phase is Deposit
-    let config = Config {
-        owner: Addr::unchecked("owner"),
+    let params = Params {
+        authority: Addr::unchecked("authority"),
         unbond_period: 0,
         phase: Phase::Deposit,
         phase_step: PhaseStep::IbcTransferToHost,
@@ -50,6 +50,7 @@ fn determine_ica_amounts_for_deposit() {
         lp_redemption_rate: Uint128::from(2u128),
         lock_id: 0u64,
         bonded_lp_amount: Uint128::from(0u128),
+        unbond_request_lp_amount: Uint128::from(0u128),
         unbonding_lp_amount: Uint128::from(0u128),
         free_lp_amount: Uint128::from(0u128),
         pending_bond_lp_amount: Uint128::from(0u128),
@@ -58,11 +59,11 @@ fn determine_ica_amounts_for_deposit() {
         free_base_amount: Uint128::from(10000u128),
         controller_free_amount: Uint128::from(10000u128),
         controller_pending_transfer_amount: Uint128::from(0u128),
-        controller_stacked_amount_to_deposit: Uint128::from(0u128),
+        controller_stacked_amount_to_deposit: Uint128::from(10000u128),
         extern_token_amounts: vec![],
     };
 
-    let ica_amounts = determine_ica_amounts(config, state);
+    let ica_amounts = determine_ica_amounts(params, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -72,7 +73,7 @@ fn determine_ica_amounts_for_deposit() {
 
 #[test]
 fn determine_ica_amounts_for_withdraw() {
-    let config = Config {
+    let params = Params {
         phase: Phase::Withdraw,
         // unused fields
         chain_id: "test-1".to_string(),
@@ -83,7 +84,7 @@ fn determine_ica_amounts_for_withdraw() {
         base_denom: "stake".to_string(),
         controller_transfer_channel_id: "channel-1".to_string(),
         controller_deposit_denom: "stake".to_string(), // `ibc/xxxxuatom`
-        owner: Addr::unchecked("owner"),
+        authority: Addr::unchecked("authority"),
         deposit_token: DepositToken::Base,
         unbond_period: 0,
         transfer_timeout: 300,
@@ -99,6 +100,7 @@ fn determine_ica_amounts_for_withdraw() {
     let state = State {
         lock_id: 0u64,
         bonded_lp_amount: Uint128::from(0u128),
+        unbond_request_lp_amount: Uint128::from(0u128),
         unbonding_lp_amount: Uint128::from(0u128),
         pending_bond_lp_amount: Uint128::from(0u128),
         pending_lp_removal_amount: Uint128::from(0u128),
@@ -117,7 +119,7 @@ fn determine_ica_amounts_for_withdraw() {
         pending_icq: 0u64,
         extern_token_amounts: vec![],
     };
-    let ica_amounts = determine_ica_amounts(config, state);
+    let ica_amounts = determine_ica_amounts(params, state);
 
     // NOTE: below nums are just filled in by refering to the code.
     // Of course, this doesn't assure the code itself is designed as intended
@@ -140,9 +142,9 @@ fn test_execute_transfer_to_controller() {
     assert_eq!(res.as_ref().unwrap().messages.len(), 0);
 
     // When is to_transfer_to_controller is not zero.
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.phase = Phase::Withdraw;
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.phase = Phase::Withdraw;
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
     let mut state: State = th_query(deps.as_ref(), QueryMsg::State {});
     state.free_base_amount = Uint128::from(10000u128);

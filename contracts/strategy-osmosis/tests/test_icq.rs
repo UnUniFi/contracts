@@ -1,25 +1,26 @@
+use crate::helpers::th_query;
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Binary, CosmosMsg};
+use cosmwasm_std::{Binary, CosmosMsg, Uint128};
 use helpers::setup;
+use std::str;
+use std::str::FromStr;
 use strategy_osmosis::helpers::decode_and_convert;
 use strategy_osmosis::icq::{
     create_account_denom_balance_key, create_pool_key, submit_icq_for_host,
 };
 use strategy_osmosis::msgs::QueryMsg;
-use strategy_osmosis::state::{Config, CONFIG, STATE};
-use ununifi_binding::v0::binding::UnunifiMsg;
-
-use crate::helpers::th_query;
+use strategy_osmosis::state::{Params, PARAMS, STATE};
+use ununifi_binding::v1::binding::UnunifiMsg;
 mod helpers;
 
 #[test]
 fn test_submit_icq_for_host() {
     let mut deps = setup();
-    let mut config: Config = th_query(deps.as_ref(), QueryMsg::Config {});
-    config.ica_account =
+    let mut params: Params = th_query(deps.as_ref(), QueryMsg::Params {});
+    params.ica_account =
         "osmo1aqvlxpk8dc4m2nkmxkf63a5zez9jkzgm6amkgddhfk0qj9j4rw3q662wuk".to_string();
 
-    CONFIG.save(deps.as_mut().storage, &config).unwrap();
+    PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
     let res = submit_icq_for_host(deps.as_mut().storage, mock_env());
     assert!(res.is_ok());
@@ -29,26 +30,26 @@ fn test_submit_icq_for_host() {
     let state = STATE.load(deps.as_ref().storage).unwrap();
     assert_eq!(state.pending_icq, 4u64);
 
-    let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str()).unwrap();
+    let converted_addr_bytes = decode_and_convert(&params.ica_account.as_str()).unwrap();
 
     let exp_base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.base_denom.to_string(),
+        params.base_denom.to_string(),
     )
     .unwrap();
     let exp_quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.quote_denom.to_string(),
+        params.quote_denom.to_string(),
     )
     .unwrap();
     let exp_lp_balance_key =
-        create_account_denom_balance_key(converted_addr_bytes.clone(), config.lp_denom.to_string())
+        create_account_denom_balance_key(converted_addr_bytes.clone(), params.lp_denom.to_string())
             .unwrap();
-    let exp_pool_key = create_pool_key(config.pool_id).unwrap();
+    let exp_pool_key = create_pool_key(params.pool_id).unwrap();
 
     let mut i = 0;
     for message in res.as_ref().unwrap().messages.clone() {
-        if let CosmosMsg::Custom(UnunifiMsg::SubmitICQRequest {
+        if let CosmosMsg::Custom(UnunifiMsg::RequestKvIcq {
             chain_id: _,
             connection_id: _,
             query_prefix: _,
@@ -70,4 +71,9 @@ fn test_submit_icq_for_host() {
         }
         i += 1;
     }
+
+    let binary = Binary::from("13909".as_bytes());
+    let data_slice = str::from_utf8(binary.as_slice()).unwrap();
+    let amount = Uint128::from_str(data_slice).unwrap();
+    assert_eq!(amount, Uint128::from(13909u128));
 }

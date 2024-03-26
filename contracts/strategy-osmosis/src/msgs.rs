@@ -1,7 +1,8 @@
 use crate::state::{DepositToken, ExternToken};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::IbcEndpoint;
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{Coin, Uint128};
+use strategy::v1::msgs::{EpochMsg, StakeMsg, UnstakeMsg};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -22,16 +23,20 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateConfig(UpdateConfigMsg),
+    UpdateParams(UpdateParamsMsg),
+    UpdateState(UpdateStateMsg),
     Stake(StakeMsg),
     Unstake(UnstakeMsg),
-    SuperfluidDelegate(ExecuteSuperfluidDelegateMsg),
-    ExecuteEpoch(ExecuteEpochMsg),
+    SuperfluidDelegate(SuperfluidDelegateMsg),
+    Epoch(EpochMsg),
+    ResetUnbondRequestLpAmount(ResetUnbondRequestLpAmountMsg),
+    ResetUnbondingsToBeginState(ResetUnbondingsToBeginStateMsg),
+    ProcessInstantUnbondings(ProcessInstantUnbondingsMsg),
 }
 
 #[cw_serde]
-pub struct UpdateConfigMsg {
-    pub owner: Option<String>,
+pub struct UpdateParamsMsg {
+    pub authority: Option<String>,
     pub deposit_token: Option<DepositToken>,
     pub unbond_period: Option<u64>,
     pub pool_id: Option<u64>,
@@ -52,26 +57,50 @@ pub struct UpdateConfigMsg {
 }
 
 #[cw_serde]
+pub struct UpdateStateMsg {
+    pub bonded_lp_amount: Option<Uint128>,
+    pub unbonding_lp_amount: Option<Uint128>,
+    pub total_shares: Option<Uint128>,
+    pub total_deposit: Option<Uint128>,
+    pub total_withdrawn: Option<Uint128>,
+    pub pending_icq: Option<u64>,
+    pub unbond_request_lp_amount: Option<Uint128>,
+    pub free_lp_amount: Option<Uint128>,
+    pub pending_bond_lp_amount: Option<Uint128>,
+    pub pending_lp_removal_amount: Option<Uint128>,
+    pub free_quote_amount: Option<Uint128>,
+    pub free_base_amount: Option<Uint128>,
+    pub controller_free_amount: Option<Uint128>,
+    pub controller_pending_transfer_amount: Option<Uint128>,
+    pub controller_stacked_amount_to_deposit: Option<Uint128>,
+}
+
+#[cw_serde]
+pub struct ResetUnbondRequestLpAmountMsg {}
+
+#[cw_serde]
+pub struct ResetUnbondingsToBeginStateMsg {}
+
+#[cw_serde]
+pub struct InstantUnbonding {
+    pub unbonding_id: u64,
+    pub withdrawal: Uint128,
+    pub share_recover_amount: Uint128,
+    pub share_receiver: String,
+}
+
+#[cw_serde]
+pub struct ProcessInstantUnbondingsMsg {
+    pub unbondings: Vec<InstantUnbonding>,
+}
+
+#[cw_serde]
 pub struct IcqBalanceCallbackMsg {
     pub coins: Vec<Coin>,
 }
 
 #[cw_serde]
 pub struct IbcTransferCallbackMsg {}
-
-#[cw_serde]
-pub struct StakeMsg {}
-
-#[cw_serde]
-pub struct UnstakeMsg {
-    pub amount: Uint128,
-}
-
-#[cw_serde]
-pub struct ExecuteSuperfluidDelegateMsg {}
-
-#[cw_serde]
-pub struct ExecuteEpochMsg {}
 
 #[cw_serde]
 pub struct IbcTransferToHostMsg {}
@@ -103,8 +132,18 @@ pub struct IcaBeginUnbondLpTokensMsg {
 }
 
 #[cw_serde]
+pub struct SuperfluidDelegateMsg {}
+
+#[cw_serde]
 pub enum QueryMsg {
-    Config {},
+    Version {},
+    DepositDenom {},
+    Fee {},
+    Amounts {
+        addr: String,
+    },
+    Kyc {},
+    Params {},
     State {},
     Bonded {
         addr: String,
@@ -112,7 +151,6 @@ pub enum QueryMsg {
     Unbonding {
         addr: String,
     },
-    Fee {},
     /// Show all channels connected to.
     ListChannels {},
     /// Returns the details of the name channel, error if not created.
@@ -122,18 +160,9 @@ pub enum QueryMsg {
     Unbondings {},
 }
 
-#[cw_serde]
-pub struct FeeInfo {
-    pub deposit_fee_rate: Decimal,
-    pub withdraw_fee_rate: Decimal,
-    pub interest_fee_rate: Decimal,
-}
-
 /// We currently take no arguments for migrations
 #[cw_serde]
-pub struct MigrateMsg {
-    pub superfluid_validator: String,
-}
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct ListChannelsResponse {
@@ -234,7 +263,7 @@ impl ToString for PhaseStep {
                 String::from("begin_unbonding_for_pending_requests_callback")
             }
             PhaseStep::CheckMaturedUnbondings => String::from("check_matured_unbondings"),
-            PhaseStep::RemoveLiquidity => String::from("remove_qiquidity"),
+            PhaseStep::RemoveLiquidity => String::from("remove_liquidity"),
             PhaseStep::RemoveLiquidityCallback => String::from("remove_liquidity_callback"),
             PhaseStep::RequestIcqAfterRemoveLiquidity => {
                 String::from("request_icq_after_remove_liquidity")
@@ -266,6 +295,29 @@ impl ToString for PhaseStep {
             }
             PhaseStep::DistributeToUnbondedUsers => String::from("distribute_to_unbonded_users"),
         }
+    }
+}
+
+pub fn phase_from_phase_step(step: PhaseStep) -> Phase {
+    match step {
+        PhaseStep::IbcTransferToHost => Phase::Deposit,
+        PhaseStep::IbcTransferToHostCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterIbcTransferToHost => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterIbcTransferToHost => Phase::Deposit,
+        PhaseStep::SellExternTokens => Phase::Deposit,
+        PhaseStep::SellExternTokensCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterSellExternTokens => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterSellExternTokens => Phase::Deposit,
+        PhaseStep::AddLiquidity => Phase::Deposit,
+        PhaseStep::AddLiquidityCallback => Phase::Deposit,
+        PhaseStep::BondLiquidity => Phase::Deposit,
+        PhaseStep::BondLiquidityCallback => Phase::Deposit,
+        PhaseStep::RequestIcqAfterBondLiquidity => Phase::Deposit,
+        PhaseStep::ResponseIcqAfterBondLiquidity => Phase::Deposit,
+        PhaseStep::BeginUnbondingForPendingRequests => Phase::Deposit,
+        PhaseStep::BeginUnbondingForPendingRequestsCallback => Phase::Deposit,
+        PhaseStep::CheckMaturedUnbondings => Phase::Deposit,
+        _ => Phase::Withdraw,
     }
 }
 

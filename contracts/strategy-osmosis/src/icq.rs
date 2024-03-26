@@ -3,9 +3,9 @@ use crate::helpers::{
     decode_and_convert, length_prefix, BALANCES_PREFIX, BANK_STORE_KEY, GAMM_STORE_KEY,
     POOLS_PREFIX,
 };
-use crate::state::{CONFIG, STATE};
+use crate::state::{PARAMS, STATE};
 use cosmwasm_std::{Binary, Env, Response, Storage};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 /// Creates balances Cosmos-SDK storage prefix for account with **addr**
 /// https://github.com/cosmos/cosmos-sdk/blob/ad9e5620fb3445c716e9de45cfcdb56e8f1745bf/x/bank/types/key.go#L55
@@ -43,58 +43,58 @@ pub fn submit_icq_for_host(
 ) -> Result<Response<UnunifiMsg>, ContractError> {
     let mut state = STATE.load(store)?;
 
-    let config = CONFIG.load(store)?;
-    let converted_addr_bytes = decode_and_convert(&config.ica_account.as_str())?;
+    let params = PARAMS.load(store)?;
+    let converted_addr_bytes = decode_and_convert(&params.ica_account.as_str())?;
 
     let base_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.base_denom.to_string(),
+        params.base_denom.to_string(),
     )?;
     let quote_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.quote_denom.to_string(),
+        params.quote_denom.to_string(),
     )?;
     let lp_balance_key = create_account_denom_balance_key(
         converted_addr_bytes.clone(),
-        config.lp_denom.to_string(),
+        params.lp_denom.to_string(),
     )?;
-    let gamm_pool_key = create_pool_key(config.pool_id.to_owned())?;
+    let gamm_pool_key = create_pool_key(params.pool_id.to_owned())?;
 
     let mut msgs = vec![
-        UnunifiMsg::SubmitICQRequest {
-            chain_id: config.chain_id.to_string(),
-            connection_id: config.ica_connection_id.to_string(),
+        UnunifiMsg::RequestKvIcq {
+            chain_id: params.chain_id.to_string(),
+            connection_id: params.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(base_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
-            chain_id: config.chain_id.to_string(),
-            connection_id: config.ica_connection_id.to_string(),
+        UnunifiMsg::RequestKvIcq {
+            chain_id: params.chain_id.to_string(),
+            connection_id: params.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(quote_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
-            chain_id: config.chain_id.to_string(),
-            connection_id: config.ica_connection_id.to_string(),
+        UnunifiMsg::RequestKvIcq {
+            chain_id: params.chain_id.to_string(),
+            connection_id: params.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(lp_balance_key),
         },
-        UnunifiMsg::SubmitICQRequest {
-            chain_id: config.chain_id.to_string(),
-            connection_id: config.ica_connection_id.to_string(),
+        UnunifiMsg::RequestKvIcq {
+            chain_id: params.chain_id.to_string(),
+            connection_id: params.ica_connection_id.to_string(),
             query_prefix: GAMM_STORE_KEY.to_string(),
             query_key: Binary(gamm_pool_key),
         },
     ];
 
-    for extern_token in config.extern_tokens {
+    for extern_token in params.extern_tokens {
         let extern_balance_key = create_account_denom_balance_key(
             converted_addr_bytes.clone(),
             extern_token.extern_token.to_string(),
         )?;
-        msgs.push(UnunifiMsg::SubmitICQRequest {
-            chain_id: config.chain_id.to_string(),
-            connection_id: config.ica_connection_id.to_string(),
+        msgs.push(UnunifiMsg::RequestKvIcq {
+            chain_id: params.chain_id.to_string(),
+            connection_id: params.ica_connection_id.to_string(),
             query_prefix: BANK_STORE_KEY.to_string(),
             query_key: Binary(extern_balance_key),
         })
@@ -107,9 +107,9 @@ pub fn submit_icq_for_host(
     let resp = Response::new()
         .add_messages(msgs)
         .add_attribute("action", "submit_icq")
-        .add_attribute("base_denom", config.base_denom.to_string())
-        .add_attribute("quote_denom", config.quote_denom.to_string())
-        .add_attribute("lp_denom", config.lp_denom.to_string())
-        .add_attribute("pool_id", config.pool_id.to_string());
+        .add_attribute("base_denom", params.base_denom.to_string())
+        .add_attribute("quote_denom", params.quote_denom.to_string())
+        .add_attribute("lp_denom", params.lp_denom.to_string())
+        .add_attribute("pool_id", params.pool_id.to_string());
     return Ok(resp);
 }

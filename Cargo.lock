@@ -1292,6 +1292,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "strategy-stride"
+version = "1.0.0"
+dependencies = [
+ "bech32",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw20",
+ "ica-tx",
+ "osmosis-std",
+ "prost",
+ "prost-types",
+ "proto",
+ "protobuf",
+ "schemars",
+ "strategy",
+ "thiserror",
+ "ununifi-binding",
+]
+
+[[package]]
 name = "subtle"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,4 +1,5 @@
 use std::num::TryFromIntError;
+use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
@@ -20,6 +21,9 @@ pub enum ContractError {
     #[error("Proto decode error")]
     DecodeError(#[from] prost::DecodeError),
 
+    #[error("Proto decode error")]
+    Utf8Error(#[from] Utf8Error),
+
     #[error("{0}")]
     Payment(#[from] PaymentError),
 
@@ -29,7 +33,7 @@ pub enum ContractError {
     #[error("Insufficient funds to redeem voucher on channel")]
     InsufficientFunds {},
 
-    #[error("Only contract admin can do this")]
+    #[error("Only contract authority can do this")]
     Unauthorized,
 
     #[error("No allowed token")]
@@ -43,6 +47,12 @@ pub enum ContractError {
 
     #[error("Unbonding item limitation reached")]
     UnbondingItemLimitReached {},
+
+    #[error("Insufficient bonded lp tokens")]
+    InsufficientBondedLpTokens {},
+
+    #[error("Phase and PhaseStep mismatch")]
+    PhaseAndPhaseStepMismatch {},
 }
 
 impl From<FromUtf8Error> for ContractError {

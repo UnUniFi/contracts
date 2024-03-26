@@ -1,7 +1,7 @@
 use crate::state::EpochCallSource;
 use crate::{error::ContractError, execute::epoch::epoch::execute_epoch};
 use cosmwasm_std::{DepsMut, Env, Response};
-use ununifi_binding::v0::binding::UnunifiMsg;
+use ununifi_binding::v1::binding::UnunifiMsg;
 
 pub fn sudo_transfer_callback(
     deps: DepsMut,
